@@ -65,8 +65,15 @@ VSCode 上で開発を継続するための引き継ぎ資料。
 ├── radicals.json      部首・漢字データ
 ├── kanji-canvas.js    KanjiCanvas 本体（外部ライブラリ）
 ├── ref-patterns.js    KanjiCanvas の参照パターンデータ（外部ライブラリ）
-└── LICENSE.TXT        KanjiCanvas のライセンス（同梱必須）
+├── LICENSE            本プロジェクトのライセンス（MIT）
+└── third_party-licenses/
+    └── kanjicanvas-LICENSE.TXT   KanjiCanvas のライセンス（同梱必須）
 ```
+
+> **注記（2026-09-04）:** 当初 `license/kanjicanvas-LICENSE.TXT` という配置だったが、
+> ルートに `LICENSE`（プロジェクト本体のMIT）を追加した際、大文字小文字を区別しない
+> ファイルシステム（macOS APFSのデフォルト設定など）では `LICENSE` と `license/` が
+> 同一パスとして衝突することが判明したため、`third_party-licenses/` に改名した。
 
 ### 起動方法
 
@@ -84,11 +91,11 @@ python3 -m http.server 8000
 ```
 Copyright (c) 2019-2024 Dominik Klein
 Copyright (c) 2020 Seth Clydesdale
-licensed under MIT (cf. LICENSE.TXT).
+licensed under MIT (cf. third_party-licenses/kanjicanvas-LICENSE.TXT).
 ```
 
 MIT ライセンスのため商用・改変・再配布が可能。
-**配布物に LICENSE.TXT を同梱すること。**
+**配布物に third_party-licenses/kanjicanvas-LICENSE.TXT を同梱すること。**
 応募資料にも「手書き認識に KanjiCanvas（MIT License）を使用」と明記する。
 
 ### API
