@@ -34,7 +34,7 @@
 |---|---|
 | フロントエンド | 静的サイト（HTML/CSS/バニラJS、ビルド不要） |
 | 手書き認識 | [KanjiCanvas](https://github.com/asdfjkl/kanjicanvas)（クライアントサイドJS、MIT） |
-| バックエンド | Python + [FastAPI](https://fastapi.tiangolo.com/)（対戦のルーム管理・WebSocket） |
+| バックエンド | Python 3.10以上 + [FastAPI](https://fastapi.tiangolo.com/)（対戦のルーム管理・WebSocket） |
 | データ | `radicals.json`（CHISE IDS + KANJIDIC2由来、`scripts/build_radicals.py` で生成） |
 | データ永続化 | なし（対戦の状態はサーバーのメモリ上のみ。試合が終われば破棄） |
 
@@ -89,6 +89,8 @@ python3 -m http.server 8000
 `data/radicals.json` を `fetch` するため、`file://` を直接開いても動かない。
 
 ### 対戦モードも試す場合
+
+バックエンドは `X | None` 形式の型ヒントを使っているため **Python 3.10以上**が必要（3.9以下では起動時に`TypeError`になる）。`python3 --version` で確認し、古い場合は3.10以上を別途インストールして読み替えること。
 
 ```bash
 # 1. バックエンドを起動

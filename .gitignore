@@ -17,3 +17,6 @@ venv/
 # 一時ファイル
 *.log
 *.tmp
+
+# radicals.json生成用の外部データ（scripts/build_radicals.py冒頭のコメント参照）
+scripts/sources/
