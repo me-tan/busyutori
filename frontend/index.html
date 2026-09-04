@@ -122,6 +122,13 @@
   .gotbox .gk { font-size: 19px; color:#0a7d32; margin-right:4px; }
 
   .err { color:#c22; font-size:13px; line-height:1.8; }
+
+  .roomcode { font-size: 40px; font-weight: 700; letter-spacing: 6px; text-align:center; }
+  .codeinput { width:100%; padding:12px; font-size:20px; text-align:center; letter-spacing:6px;
+               border:2px solid #d8d8dc; border-radius:8px; box-sizing:border-box; }
+  .waitmsg { margin-top:10px; color:#888; font-size:14px; text-align:center; }
+  .turnstatus { font-size:15px; font-weight:600; color:#2563eb; margin-bottom:8px; text-align:center; }
+  .roomlabel { font-size:13px; color:#999; text-align:center; }
 </style>
 </head>
 <body>
@@ -133,6 +140,7 @@
   <div class="stack" id="modes">
     <button class="bigbtn" data-mode="time">タイムアタック<small>30秒以内に次々と答える。何連続できるか</small></button>
     <button class="bigbtn" data-mode="complete">コンプリート<small>ひとつの部首の漢字を、すべて書き出す</small></button>
+    <button class="bigbtn" id="toBattle">オンライン対戦<small>別の端末にいる相手と部首を投げ合う</small></button>
   </div>
 </div>
 
@@ -213,8 +221,96 @@
   <div style="margin-top:10px"><button id="toTitle" style="width:100%">最初の画面へ</button></div>
 </div>
 
-<script src="kanji-canvas.js"></script>
-<script src="ref-patterns.js"></script>
+<div id="battleSetupScreen" class="card hidden">
+  <div class="secTitle">オンライン対戦</div>
+  <div class="err hidden" id="battleErr"></div>
+
+  <div class="stack" id="battleChoice">
+    <button class="bigbtn" data-battle="create">部屋を作る<small>相手に伝えるコードが発行されます</small></button>
+    <button class="bigbtn" data-battle="join">部屋に入る<small>相手から聞いたコードを入力します</small></button>
+  </div>
+
+  <div class="stack hidden" id="battleCreatePanel" style="margin-top:14px">
+    <div class="secTitle">難易度をえらぶ</div>
+    <button class="bigbtn" data-blevel="low">初級<small>小1〜小3で習う漢字</small></button>
+    <button class="bigbtn" data-blevel="elem">中級<small>小1〜小6で習う漢字</small></button>
+    <button class="bigbtn" data-blevel="all">上級<small>常用漢字すべて</small></button>
+  </div>
+
+  <div class="hidden" id="battleJoinPanel" style="margin-top:14px">
+    <input class="codeinput" id="joinCodeInput" placeholder="部屋コード" maxlength="8">
+    <button class="primary" id="joinCodeBtn" style="width:100%;margin-top:10px">入る</button>
+  </div>
+
+  <div class="hidden" id="battleWaiting" style="margin-top:18px">
+    <div class="roomlabel">部屋コード</div>
+    <div class="roomcode" id="roomCodeDisplay">----</div>
+    <div class="waitmsg" id="waitingMsg">相手を待っています…</div>
+  </div>
+
+  <button class="back" id="battleBack">もどる</button>
+</div>
+
+<div id="battlePlayScreen" class="hidden">
+  <div class="topbar">
+    <div><div class="lbl">部屋</div><div class="streak" id="bRoomCode">----</div></div>
+    <div class="timer" id="bTimer">-</div>
+  </div>
+
+  <div class="quest">
+    <div class="turnstatus" id="bStatus">-</div>
+    <div class="radical" id="bRadical">—</div>
+    <div class="rad-name" id="bRadName"></div>
+    <div class="rad-meaning" id="bRadMeaning"></div>
+  </div>
+
+  <div class="boxwrap hidden" id="bOfferBox">
+    <div class="boxhead"><span>部首をえらんで投げる</span></div>
+    <div class="radgrid" id="bOfferRow"></div>
+  </div>
+
+  <div class="board hidden" id="bBoard">
+    <canvas id="canBattle" width="300" height="300"></canvas>
+    <div class="btns">
+      <button id="bUndo">一画戻す</button>
+      <button id="bErase">消す</button>
+      <button id="bRec" class="primary">これでいく</button>
+    </div>
+    <div class="picker hidden" id="bPicker">
+      <div class="picker-label">書いた漢字を選んでください</div>
+      <div class="pick-row" id="bPickRow"></div>
+    </div>
+    <div class="msg" id="bMsg"></div>
+  </div>
+
+  <div class="usedbox">
+    <div class="head"><span>使った漢字</span><span id="bUsedCount">0字</span></div>
+    <div class="usedlist" id="bUsedList"><span class="usedempty">まだありません</span></div>
+  </div>
+
+  <button class="back hidden" id="bGiveUp">こうさんする</button>
+</div>
+
+<div id="battleOverScreen" class="card over hidden">
+  <h2 id="bOverTitle">-</h2>
+  <div class="unit" id="bOverUnit"></div>
+
+  <div class="reveal" id="bReveal">
+    <div class="reveal-rad" id="bRevRad">—</div>
+    <div class="reveal-name" id="bRevName"></div>
+    <div class="reveal-lead" id="bRevLead"></div>
+    <div class="kgrid" id="bRevGrid"></div>
+    <div class="more" id="bRevMore"></div>
+    <div class="gotbox" id="bRevGot"></div>
+  </div>
+
+  <div style="margin-top:24px"><button id="bToTitle" style="width:100%">最初の画面へ</button></div>
+</div>
+
+<script src="js/vendor/kanji-canvas.js"></script>
+<script src="js/vendor/ref-patterns.js"></script>
+<script src="js/config.js"></script>
+<script src="js/net.js"></script>
 <script>
 "use strict";
 
@@ -235,23 +331,26 @@ const state = {
 const cleared = new Set();
 
 async function boot() {
-  try { DATA = await (await fetch('radicals.json')).json(); }
+  try { DATA = await (await fetch('data/radicals.json')).json(); }
   catch (e) {
     const el = document.getElementById('loadErr');
     el.classList.remove('hidden');
-    el.innerHTML = 'radicals.json が読み込めません。<br>' +
-      '同じフォルダに radicals.json / kanji-canvas.js / ref-patterns.js を置き、<br>' +
-      '<code>python3 -m http.server 8000</code> を実行して開いてください。';
+    el.innerHTML = 'data/radicals.json が読み込めません。<br>' +
+      'frontend/ ディレクトリで <code>python3 -m http.server 8000</code> を実行し、<br>' +
+      '<code>http://localhost:8000/</code> を開いてください。';
     document.getElementById('modes').classList.add('hidden');
     return;
   }
   KanjiCanvas.init('can');
+  KanjiCanvas.init('canBattle');
   bind();
+  bBind();
 }
 
+const SCREENS = ['modeScreen','levelScreen','radScreen','playScreen','overScreen',
+  'battleSetupScreen','battlePlayScreen','battleOverScreen'];
 function show(id) {
-  ['modeScreen','levelScreen','radScreen','playScreen','overScreen']
-    .forEach(s => document.getElementById(s).classList.toggle('hidden', s !== id));
+  SCREENS.forEach(s => document.getElementById(s).classList.toggle('hidden', s !== id));
 }
 
 function poolOf(rad, grades) {
@@ -535,9 +634,10 @@ function gameOver(reason) {
 }
 
 function bind() {
-  document.querySelectorAll('#modes .bigbtn').forEach(b => {
+  document.querySelectorAll('#modes .bigbtn[data-mode]').forEach(b => {
     b.onclick = () => { state.mode = b.dataset.mode; show('levelScreen'); };
   });
+  document.getElementById('toBattle').onclick = () => { bReset(); show('battleSetupScreen'); };
   document.querySelectorAll('#levelScreen .bigbtn').forEach(b => {
     b.onclick = () => {
       state.level = b.dataset.level;
@@ -562,6 +662,302 @@ function bind() {
     else startTime(state.level);
   };
   document.getElementById('toTitle').onclick = () => show('modeScreen');
+}
+
+/* ---------------- オンライン対戦 ---------------- */
+
+const bstate = {
+  code: null, myId: null, level: null,
+  radical: null, deadline: 0, tickId: null,
+  isDefending: false, used: [], locked: false,
+};
+
+function bReset() {
+  Net.close();
+  bstate.code = null; bstate.myId = null; bstate.level = null;
+  bstate.radical = null; bstate.deadline = 0; bstate.used = []; bstate.locked = false;
+  clearInterval(bstate.tickId);
+  document.getElementById('battleChoice').classList.remove('hidden');
+  document.getElementById('battleCreatePanel').classList.add('hidden');
+  document.getElementById('battleJoinPanel').classList.add('hidden');
+  document.getElementById('battleWaiting').classList.add('hidden');
+  bSetErr('');
+}
+
+function bSetErr(t) {
+  const el = document.getElementById('battleErr');
+  if (!t) { el.classList.add('hidden'); el.textContent = ''; return; }
+  el.classList.remove('hidden'); el.textContent = t;
+}
+
+async function bCreateRoom(level) {
+  bSetErr('');
+  try {
+    const room = await Net.createRoom(level);
+    bstate.code = room.code; bstate.myId = room.player_id; bstate.level = level;
+    bEnterWaiting('相手を待っています…');
+    bConnect();
+  } catch (e) {
+    bSetErr('部屋を作れませんでした。通信環境を確認してください。');
+  }
+}
+
+async function bJoinRoom(code) {
+  bSetErr('');
+  try {
+    const room = await Net.joinRoom(code);
+    bstate.code = room.code; bstate.myId = room.player_id; bstate.level = room.level;
+    bEnterWaiting('対戦を開始しています…');
+    bConnect();
+  } catch (e) {
+    bSetErr('その部屋には入れませんでした。コードを確認してください。');
+  }
+}
+
+function bEnterWaiting(msg) {
+  document.getElementById('battleChoice').classList.add('hidden');
+  document.getElementById('battleCreatePanel').classList.add('hidden');
+  document.getElementById('battleJoinPanel').classList.add('hidden');
+  document.getElementById('battleWaiting').classList.remove('hidden');
+  document.getElementById('roomCodeDisplay').textContent = bstate.code;
+  document.getElementById('waitingMsg').textContent = msg;
+}
+
+function bConnect() {
+  Net.connect(bstate.code, bstate.myId);
+  Net.on('start', onBStart);
+  Net.on('offer', onBOffer);
+  Net.on('defend', onBDefend);
+  Net.on('answer_rejected', onBRejected);
+  Net.on('turn_result', onBTurnResult);
+  Net.on('game_over', onBGameOver);
+  Net.on('closed', () => bSetErr('通信が切れました。もう一度お試しください。'));
+}
+
+function onBStart() {
+  document.getElementById('bRoomCode').textContent = bstate.code;
+  document.getElementById('bGiveUp').classList.add('hidden');
+  bRenderUsed();
+  show('battlePlayScreen');
+}
+
+function onBOffer(msg) {
+  clearInterval(bstate.tickId);
+  bstate.locked = false;
+  bstate.used = msg.used || [];
+  bRenderUsed();
+  KanjiCanvas.erase('canBattle');
+  document.getElementById('bPicker').classList.add('hidden');
+  bSetMsg('', '');
+
+  const iAmAttacker = msg.attacker === bstate.myId;
+  document.getElementById('bOfferBox').classList.toggle('hidden', !iAmAttacker);
+  document.getElementById('bBoard').classList.add('hidden');
+  document.getElementById('bRadical').textContent = '—';
+  document.getElementById('bRadName').textContent = '';
+  document.getElementById('bRadMeaning').textContent = '';
+  document.getElementById('bTimer').textContent = '-';
+
+  if (iAmAttacker) {
+    document.getElementById('bStatus').textContent = '部首をえらんで、相手に投げてください';
+    document.getElementById('bOfferRow').innerHTML = msg.choices.map(c =>
+      `<div class="radbtn" data-radical="${c.radical}">` +
+      `<div class="r">${c.radical}</div><div class="n">${c.name}</div></div>`
+    ).join('');
+    document.querySelectorAll('#bOfferRow .radbtn').forEach(el => {
+      el.onclick = () => {
+        document.getElementById('bOfferBox').classList.add('hidden');
+        document.getElementById('bStatus').textContent = '相手が書くのを待っています…';
+        Net.send('throw', { radical: el.dataset.radical });
+      };
+    });
+  } else {
+    document.getElementById('bStatus').textContent = '相手が部首をえらんでいます…';
+  }
+}
+
+function onBDefend(msg) {
+  bstate.radical = msg.radical;
+  bstate.isDefending = msg.defender === bstate.myId;
+  bstate.deadline = Date.now() + msg.seconds * 1000;
+
+  const d = DATA.radicals[msg.radical];
+  document.getElementById('bRadical').textContent = msg.radical;
+  document.getElementById('bRadName').textContent = d.name;
+  document.getElementById('bRadMeaning').textContent = d.meaning;
+  document.getElementById('bOfferBox').classList.add('hidden');
+
+  if (bstate.isDefending) {
+    document.getElementById('bStatus').textContent = '20秒以内に、この部首を含む漢字を書いてください';
+    document.getElementById('bBoard').classList.remove('hidden');
+    document.getElementById('bGiveUp').classList.remove('hidden');
+    KanjiCanvas.erase('canBattle');
+  } else {
+    document.getElementById('bStatus').textContent = '相手が書いています…';
+    document.getElementById('bGiveUp').classList.add('hidden');
+  }
+  bTick();
+}
+
+function bTick() {
+  clearInterval(bstate.tickId);
+  const render = () => {
+    const left = Math.max(0, Math.ceil((bstate.deadline - Date.now()) / 1000));
+    const el = document.getElementById('bTimer');
+    el.textContent = left;
+    el.classList.toggle('low', left <= 5);
+    if (left <= 0) clearInterval(bstate.tickId);
+  };
+  render();
+  bstate.tickId = setInterval(render, 250);
+}
+
+function bJudge() {
+  if (bstate.locked || !bstate.isDefending) return;
+  const cands = String(KanjiCanvas.recognize('canBattle') || '').trim().split(/\s+/).filter(Boolean).slice(0, 3);
+  const grades = GRADES[bstate.level];
+  const inRange = new Set(poolOf(bstate.radical, grades));
+  const usedSet = new Set(bstate.used);
+
+  const valid = [], dupes = [], other = [];
+  for (const c of cands) {
+    if (inRange.has(c)) {
+      if (usedSet.has(c)) { if (!dupes.includes(c)) dupes.push(c); }
+      else if (!valid.includes(c)) valid.push(c);
+    } else if (!other.includes(c)) other.push(c);
+  }
+
+  const picker = document.getElementById('bPicker');
+  const row = document.getElementById('bPickRow');
+  row.innerHTML = '';
+
+  if (!valid.length) {
+    picker.classList.add('hidden');
+    if (dupes.length) bSetMsg(`「${dupes.join('・')}」はもう書きました`, 'ng');
+    else bSetMsg('その部首を含む漢字が見つかりません', 'ng');
+    return;
+  }
+
+  bSetMsg('', '');
+  picker.classList.remove('hidden');
+  for (const k of valid) {
+    const b = document.createElement('button');
+    b.className = 'pick';
+    const g = DATA.kanji[k] ? DATA.kanji[k].grade : '';
+    b.innerHTML = k + '<small>' + (GLABEL[g] || '') + '</small>';
+    b.onclick = () => bSubmit(k);
+    row.appendChild(b);
+  }
+}
+
+function bSubmit(kanji) {
+  if (bstate.locked) return;
+  bstate.locked = true;
+  document.getElementById('bPicker').classList.add('hidden');
+  bSetMsg(kanji + '  送信しました', 'ok');
+  Net.send('answer', { kanji });
+}
+
+function onBRejected(msg) {
+  bstate.locked = false;
+  const why = { used: 'もう使われています', out_of_grade: '選んだ難易度の範囲外です', not_in_radical: 'その部首を含みません' };
+  bSetMsg(`「${msg.kanji}」は${why[msg.reason] || '認められませんでした'}`, 'ng');
+}
+
+function onBTurnResult(msg) {
+  clearInterval(bstate.tickId);
+  bstate.used = msg.used || [];
+  bRenderUsed();
+}
+
+function onBGameOver(msg) {
+  clearInterval(bstate.tickId);
+  Net.close();
+  const iLost = msg.loser === bstate.myId;
+  const title = document.getElementById('bOverTitle');
+  const unit = document.getElementById('bOverUnit');
+
+  const REASON_TEXT = {
+    timeout: iLost ? '時間切れで負けました' : '相手が時間切れ。あなたの勝ちです',
+    give_up: iLost ? 'こうさんしました' : '相手がこうさん。あなたの勝ちです',
+    disconnect: '相手との通信が切れました',
+    exhausted: '出せる部首がなくなりました（引き分け）',
+  };
+  title.textContent = REASON_TEXT[msg.reason] || '対戦終了';
+  unit.textContent = '';
+
+  const box = document.getElementById('bReveal');
+  if (!msg.reveal) {
+    box.classList.add('hidden');
+  } else {
+    box.classList.remove('hidden');
+    const { radical, unused, got } = msg.reveal;
+    const d = DATA.radicals[radical];
+    document.getElementById('bRevRad').textContent = radical;
+    document.getElementById('bRevName').textContent = d.name;
+
+    if (!unused.length) {
+      document.getElementById('bRevLead').innerHTML = `${radical}を含む漢字は、すべて使われました`;
+      document.getElementById('bRevGrid').innerHTML = got.map(cellHTML).join('');
+      document.getElementById('bRevMore').textContent = '';
+      document.getElementById('bRevGot').innerHTML = '';
+    } else {
+      document.getElementById('bRevLead').innerHTML =
+        `${radical}を含む漢字は、まだ <b>${unused.length}</b> 字ありました`;
+      const sorted = unused.slice().sort((a, b) =>
+        (DATA.kanji[a] ? DATA.kanji[a].grade : 99) - (DATA.kanji[b] ? DATA.kanji[b].grade : 99));
+      const shown = sorted.slice(0, MAX_REVEAL);
+      document.getElementById('bRevGrid').innerHTML = shown.map(cellHTML).join('');
+      const rest = sorted.length - shown.length;
+      document.getElementById('bRevMore').textContent = rest > 0 ? `ほか ${rest} 字` : '';
+      document.getElementById('bRevGot').innerHTML = got.length
+        ? '書かれたのは ' + got.map(k => `<span class="gk">${k}</span>`).join('') + ` の ${got.length} 字`
+        : '';
+    }
+  }
+  show('battleOverScreen');
+}
+
+function bSetMsg(t, c) {
+  const el = document.getElementById('bMsg');
+  el.textContent = t; el.className = 'msg' + (c ? ' ' + c : '');
+}
+
+function bRenderUsed() {
+  const el = document.getElementById('bUsedList');
+  document.getElementById('bUsedCount').textContent = bstate.used.length + '字';
+  if (!bstate.used.length) { el.innerHTML = '<span class="usedempty">まだありません</span>'; return; }
+  el.innerHTML = bstate.used.map(k => `<span>${k}</span>`).join('');
+}
+
+function bBind() {
+  document.querySelectorAll('#battleChoice .bigbtn').forEach(b => {
+    b.onclick = () => {
+      document.getElementById('battleChoice').classList.add('hidden');
+      document.getElementById(b.dataset.battle === 'create' ? 'battleCreatePanel' : 'battleJoinPanel')
+        .classList.remove('hidden');
+    };
+  });
+  document.querySelectorAll('#battleCreatePanel .bigbtn').forEach(b => {
+    b.onclick = () => bCreateRoom(b.dataset.blevel);
+  });
+  document.getElementById('joinCodeBtn').onclick = () => {
+    const code = document.getElementById('joinCodeInput').value.trim();
+    if (code) bJoinRoom(code);
+  };
+  document.getElementById('battleBack').onclick = () => { bReset(); show('modeScreen'); };
+
+  document.getElementById('bRec').onclick = bJudge;
+  document.getElementById('bErase').onclick = () => {
+    KanjiCanvas.erase('canBattle');
+    document.getElementById('bPicker').classList.add('hidden');
+    bSetMsg('', '');
+  };
+  document.getElementById('bUndo').onclick = () => KanjiCanvas.deleteLast('canBattle');
+  document.getElementById('bGiveUp').onclick = () => {
+    if (bstate.isDefending) Net.send('give_up', {});
+  };
+  document.getElementById('bToTitle').onclick = () => { bReset(); show('modeScreen'); };
 }
 
 boot();

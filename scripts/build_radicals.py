@@ -1,13 +1,20 @@
+# データ生成には以下の外部ソースが必要（このリポジトリには含まれない）:
+#   kd.json            - KANJIDIC2由来の学年・読みデータ
+#   cjkvi-ids-master/  - https://github.com/cjkvi/cjkvi-ids の ids.txt
+# 入手して SOURCE_DIR 以下に配置してから実行する。
 import json, re
 from collections import defaultdict
+from pathlib import Path
 
-kd = json.load(open('/home/claude/kanji/kd.json'))
+SOURCE_DIR = Path(__file__).resolve().parent / 'sources'
+
+kd = json.load(open(SOURCE_DIR / 'kd.json'))
 JOYO = (1,2,3,4,5,6,8)
 joyo = {k:v for k,v in kd.items() if v.get('grade') in JOYO}
 
 IDC = set(chr(c) for c in range(0x2FF0, 0x2FFC))
 ids = {}
-for line in open('/home/claude/kanji/cjkvi-ids-master/ids.txt', encoding='utf-8'):
+for line in open(SOURCE_DIR / 'cjkvi-ids-master' / 'ids.txt', encoding='utf-8'):
     if line.startswith('#'): continue
     p = line.rstrip('\n').split('\t')
     if len(p) < 3: continue
@@ -161,7 +168,8 @@ out = {
     "kanji": kanji_out,
 }
 
-with open('/mnt/user-data/outputs/radicals.json', 'w', encoding='utf-8') as f:
+OUT_PATH = Path(__file__).resolve().parents[1] / 'frontend' / 'data' / 'radicals.json'
+with open(OUT_PATH, 'w', encoding='utf-8') as f:
     json.dump(out, f, ensure_ascii=False, indent=1)
 
 # ---- 集計レポート ----
