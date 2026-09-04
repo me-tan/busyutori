@@ -1,0 +1,19 @@
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# エディタ
+.vscode/
+*.swp
+
+# Python
+__pycache__/
+*.pyc
+venv/
+.venv/
+
+# 一時ファイル
+*.log
+*.tmp

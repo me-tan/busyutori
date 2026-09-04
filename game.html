@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>部首アタック</title>
+<style>
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Noto Sans JP", sans-serif;
+    max-width: 480px; margin: 0 auto; padding: 16px;
+    background: #f4f4f6; color: #16161a;
+  }
+  .hidden { display: none !important; }
+  .card { background: #fff; border: 1px solid #e2e2e5; border-radius: 12px; padding: 16px; }
+
+  h1 { font-size: 28px; margin: 0 0 4px; text-align: center; }
+  .tag { font-size: 13px; color: #888; margin-bottom: 22px; text-align: center; }
+  .secTitle { font-size: 13px; color: #888; font-weight: 600; margin-bottom: 10px; text-align: center; }
+
+  button {
+    padding: 10px 16px; font-size: 14px; font-family: inherit; font-weight: 600;
+    border: none; border-radius: 8px; cursor: pointer; background: #e8e8eb; color: #333;
+  }
+  button.primary { background: #2563eb; color: #fff; }
+  .stack { display: flex; flex-direction: column; gap: 10px; }
+  .bigbtn {
+    padding: 18px; font-size: 17px; border-radius: 10px;
+    background: #fff; border: 2px solid #d8d8dc; color: #333; text-align: center;
+  }
+  .bigbtn:active { border-color: #2563eb; }
+  .bigbtn small { display: block; font-size: 12px; color: #999; font-weight: 400; margin-top: 3px; }
+  .back { margin-top: 16px; width: 100%; }
+
+  .radgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(84px,1fr)); gap: 9px; }
+  .radbtn {
+    background: #fff; border: 2px solid #d8d8dc; border-radius: 10px;
+    padding: 10px 4px 8px; text-align: center; cursor: pointer;
+  }
+  .radbtn:active { border-color: #2563eb; }
+  .radbtn.done { border-color: #0a7d32; background: #f2fbf5; }
+  .radbtn .r { font-size: 30px; line-height: 1.1; }
+  .radbtn .n { font-size: 10px; color: #999; }
+  .radbtn .c { font-size: 11px; color: #2563eb; font-weight: 700; }
+  .radbtn.done .c { color: #0a7d32; }
+
+  .topbar {
+    display: flex; align-items: center; justify-content: space-between;
+    background: #fff; border: 1px solid #e2e2e5; border-radius: 12px;
+    padding: 12px 16px; margin-bottom: 12px;
+  }
+  .lbl { font-size: 11px; color: #999; font-weight: 600; }
+  .streak { font-size: 28px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .timer { font-size: 34px; font-weight: 700; font-variant-numeric: tabular-nums; color: #2563eb; }
+  .timer.low { color: #d33; }
+
+  .quest { background: #fff; border: 1px solid #e2e2e5; border-radius: 12px;
+           padding: 14px; margin-bottom: 12px; text-align: center; }
+  .radical { font-size: 66px; line-height: 1; font-weight: 700; }
+  .rad-name { font-size: 14px; color: #666; margin-top: 4px; }
+  .rad-meaning { font-size: 12px; color: #aaa; }
+
+  .boxwrap { background: #fff; border: 1px solid #e2e2e5; border-radius: 12px;
+             padding: 14px; margin-bottom: 12px; }
+  .boxhead { display:flex; justify-content:space-between; align-items:baseline;
+             font-size: 11px; color:#999; font-weight:600; margin-bottom:8px; }
+  .boxhead b { font-size: 15px; color:#2563eb; }
+  .boxgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(42px,1fr)); gap: 6px; }
+  .box {
+    aspect-ratio: 1; border: 2px dashed #dcdce0; border-radius: 6px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 24px; background: #fbfbfc; color: #16161a;
+  }
+  .box.filled { border: 2px solid #0a7d32; background: #f2fbf5; }
+
+  .board { background: #fff; border: 1px solid #e2e2e5; border-radius: 12px;
+           padding: 14px; margin-bottom: 12px; }
+  #can { border: 2px solid #333; border-radius: 8px; background: #fff;
+         touch-action: none; display: block; margin: 0 auto; cursor: crosshair; }
+  .btns { display: flex; gap: 8px; margin-top: 12px; justify-content: center; }
+  .btns .primary { flex: 1; }
+
+  .picker { margin-top: 14px; }
+  .picker-label { font-size: 12px; color: #777; font-weight: 600; margin-bottom: 8px; text-align: center; }
+  .pick-row { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+  .pick { font-size: 34px; padding: 8px 16px; border: 2px solid #ccc; border-radius: 10px;
+          background: #fff; cursor: pointer; line-height: 1.2; font-weight: 400; }
+  .pick:active { background: #eef4ff; }
+  .pick small { display: block; font-size: 11px; color: #999; font-weight: 600; }
+
+  .msg { text-align: center; font-size: 17px; font-weight: 700; margin-top: 12px; min-height: 24px; }
+  .msg.ok { color: #0a7d32; } .msg.ng { color: #c22; }
+
+  .usedbox { background:#fff; border:1px solid #e2e2e5; border-radius:12px;
+             padding:12px 14px; margin-bottom:12px; }
+  .usedbox .head { display:flex; justify-content:space-between; align-items:baseline;
+                   font-size:11px; color:#999; font-weight:600; margin-bottom:6px; }
+  .usedlist { font-size:20px; line-height:1.6; word-break:break-all; max-height:96px; overflow-y:auto; }
+  .usedlist span { margin-right:4px; color:#bbb; }
+  .usedlist span.cur { color:#16161a; font-weight:700; }
+  .usedempty { font-size:12px; color:#ccc; }
+
+  .over { text-align: center; padding: 26px 16px; }
+  .over h2 { font-size: 22px; margin: 0 0 8px; }
+  .over .score { font-size: 60px; font-weight: 700; color: #2563eb; line-height: 1; }
+  .over .score.gold { color: #0a7d32; }
+  .over .unit { font-size: 15px; color: #666; margin-top: 4px; }
+
+  .reveal { margin-top: 26px; padding-top: 20px; border-top: 1px solid #ececef; }
+  .reveal-rad { font-size: 42px; font-weight: 700; line-height: 1; }
+  .reveal-name { font-size: 12px; color: #999; margin-top: 2px; }
+  .reveal-lead { font-size: 15px; margin: 14px 0 4px; }
+  .reveal-lead b { font-size: 26px; color: #d33; }
+  .reveal-sub { font-size: 12px; color: #aaa; margin-bottom: 14px; }
+  .kgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(58px,1fr)); gap: 8px; text-align:center; }
+  .kcell { background:#fafafb; border:1px solid #ececef; border-radius:8px; padding:7px 2px 5px; }
+  .kcell .k { font-size: 26px; line-height: 1.15; }
+  .kcell .r { font-size: 10px; color:#999; margin-top:2px; }
+  .kcell .g { font-size: 9px; color:#c4c4c8; }
+  .more { font-size: 12px; color:#aaa; margin-top:10px; }
+  .gotbox { margin-top: 18px; font-size: 12px; color:#999; }
+  .gotbox .gk { font-size: 19px; color:#0a7d32; margin-right:4px; }
+
+  .err { color:#c22; font-size:13px; line-height:1.8; }
+</style>
+</head>
+<body>
+
+<div id="modeScreen" class="card">
+  <h1>部首アタック</h1>
+  <div class="tag">提示された部首を含む漢字を書く</div>
+  <div id="loadErr" class="err hidden"></div>
+  <div class="stack" id="modes">
+    <button class="bigbtn" data-mode="time">タイムアタック<small>30秒以内に次々と答える。何連続できるか</small></button>
+    <button class="bigbtn" data-mode="complete">コンプリート<small>ひとつの部首の漢字を、すべて書き出す</small></button>
+  </div>
+</div>
+
+<div id="levelScreen" class="card hidden">
+  <div class="secTitle">難易度をえらぶ</div>
+  <div class="stack">
+    <button class="bigbtn" data-level="low">初級<small>小1〜小3で習う漢字</small></button>
+    <button class="bigbtn" data-level="elem">中級<small>小1〜小6で習う漢字</small></button>
+    <button class="bigbtn" data-level="all">上級<small>常用漢字すべて</small></button>
+  </div>
+  <button class="back" id="lvBack">もどる</button>
+</div>
+
+<div id="radScreen" class="card hidden">
+  <div class="secTitle">部首をえらぶ</div>
+  <div class="radgrid" id="radGrid"></div>
+  <button class="back" id="radBack">もどる</button>
+</div>
+
+<div id="playScreen" class="hidden">
+  <div class="topbar" id="topbarTime">
+    <div><div class="lbl">連続</div><div class="streak" id="streak">0</div></div>
+    <div class="timer" id="timer">30</div>
+  </div>
+
+  <div class="quest">
+    <div class="radical" id="radical">—</div>
+    <div class="rad-name" id="radName"></div>
+    <div class="rad-meaning" id="radMeaning"></div>
+  </div>
+
+  <div class="boxwrap hidden" id="boxwrap">
+    <div class="boxhead">
+      <span>あつめた漢字</span>
+      <span><b id="boxDone">0</b> / <span id="boxTotal">0</span></span>
+    </div>
+    <div class="boxgrid" id="boxGrid"></div>
+  </div>
+
+  <div class="board">
+    <canvas id="can" width="300" height="300"></canvas>
+    <div class="btns">
+      <button id="undo">一画戻す</button>
+      <button id="erase">消す</button>
+      <button id="rec" class="primary">これでいく</button>
+    </div>
+    <div class="picker hidden" id="picker">
+      <div class="picker-label">書いた漢字を選んでください</div>
+      <div class="pick-row" id="pickRow"></div>
+    </div>
+    <div class="msg" id="msg"></div>
+  </div>
+
+  <div class="usedbox" id="usedbox">
+    <div class="head"><span>使った漢字</span><span id="usedCount">0字</span></div>
+    <div class="usedlist" id="usedList"><span class="usedempty">まだありません</span></div>
+  </div>
+
+  <button class="back hidden" id="giveup">ここでやめる</button>
+</div>
+
+<div id="overScreen" class="card over hidden">
+  <h2 id="overTitle">時間切れ</h2>
+  <div class="score" id="finalScore">0</div>
+  <div class="unit" id="finalUnit">連続で答えられました</div>
+
+  <div class="reveal" id="reveal">
+    <div class="reveal-rad" id="revRad">—</div>
+    <div class="reveal-name" id="revName"></div>
+    <div class="reveal-lead" id="revLead"></div>
+    <div class="reveal-sub" id="revSub"></div>
+    <div class="kgrid" id="revGrid"></div>
+    <div class="more" id="revMore"></div>
+    <div class="gotbox" id="revGot"></div>
+  </div>
+
+  <div style="margin-top:24px"><button class="primary" id="retry" style="width:100%">もう一度</button></div>
+  <div style="margin-top:10px"><button id="toTitle" style="width:100%">最初の画面へ</button></div>
+</div>
+
+<script src="kanji-canvas.js"></script>
+<script src="ref-patterns.js"></script>
+<script>
+"use strict";
+
+const TIME_LIMIT = 30;
+const MAX_REVEAL = 24;
+const ALL_GRADES = ['1','2','3','4','5','6','8'];
+const GRADES = { low:['1','2','3'], elem:['1','2','3','4','5','6'], all:ALL_GRADES };
+const GLABEL = {1:'小1',2:'小2',3:'小3',4:'小4',5:'小5',6:'小6',8:'中学'};
+
+let DATA = null;
+const state = {
+  mode: 'time', level: 'elem',
+  used: new Set(), streak: 0,
+  radical: null, recent: [],
+  timeLeft: TIME_LIMIT, timerId: null, locked: false,
+  target: [], startedAt: 0
+};
+const cleared = new Set();
+
+async function boot() {
+  try { DATA = await (await fetch('radicals.json')).json(); }
+  catch (e) {
+    const el = document.getElementById('loadErr');
+    el.classList.remove('hidden');
+    el.innerHTML = 'radicals.json が読み込めません。<br>' +
+      '同じフォルダに radicals.json / kanji-canvas.js / ref-patterns.js を置き、<br>' +
+      '<code>python3 -m http.server 8000</code> を実行して開いてください。';
+    document.getElementById('modes').classList.add('hidden');
+    return;
+  }
+  KanjiCanvas.init('can');
+  bind();
+}
+
+function show(id) {
+  ['modeScreen','levelScreen','radScreen','playScreen','overScreen']
+    .forEach(s => document.getElementById(s).classList.toggle('hidden', s !== id));
+}
+
+function poolOf(rad, grades) {
+  const d = DATA.radicals[rad];
+  let ks = [];
+  for (const g of grades) if (d.kanji[g]) ks = ks.concat(d.kanji[g]);
+  return ks;
+}
+function gradesNow() { return GRADES[state.level]; }
+function firstReading(k) {
+  const d = DATA.kanji[k];
+  if (!d) return '';
+  if (d.kun && d.kun.length) return d.kun[0];
+  if (d.on && d.on.length) return d.on[0];
+  return '';
+}
+
+function renderRadicalList() {
+  const g = gradesNow();
+  const list = Object.keys(DATA.radicals)
+    .map(r => ({ r, n: poolOf(r, g).length }))
+    .filter(x => x.n >= 3)
+    .sort((a, b) => a.n - b.n);
+
+  document.getElementById('radGrid').innerHTML = list.map(x => {
+    const d = DATA.radicals[x.r];
+    const done = cleared.has(state.level + ':' + x.r);
+    return `<div class="radbtn ${done ? 'done' : ''}" data-rad="${x.r}">` +
+           `<div class="r">${x.r}</div><div class="n">${d.name}</div>` +
+           `<div class="c">${done ? '達成' : x.n + '字'}</div></div>`;
+  }).join('');
+
+  document.querySelectorAll('.radbtn').forEach(el => {
+    el.onclick = () => startComplete(el.dataset.rad);
+  });
+}
+
+function pickRadical() {
+  const g = gradesNow();
+  let list = Object.keys(DATA.radicals)
+    .filter(r => poolOf(r, g).filter(k => !state.used.has(k)).length >= 5);
+  const fresh = list.filter(r => !state.recent.includes(r));
+  if (fresh.length) list = fresh;
+  if (!list.length) return null;
+
+  const rad = list[Math.floor(Math.random() * list.length)];
+  setRadical(rad);
+  state.recent.push(rad);
+  if (state.recent.length > 2) state.recent.shift();
+  return rad;
+}
+
+function setRadical(rad) {
+  state.radical = rad;
+  const d = DATA.radicals[rad];
+  document.getElementById('radical').textContent = rad;
+  document.getElementById('radName').textContent = d.name;
+  document.getElementById('radMeaning').textContent = d.meaning;
+}
+
+function startTime(level) {
+  state.mode = 'time'; state.level = level;
+  state.used = new Set(); state.streak = 0; state.recent = [];
+  document.getElementById('streak').textContent = '0';
+  document.getElementById('topbarTime').classList.remove('hidden');
+  document.getElementById('boxwrap').classList.add('hidden');
+  document.getElementById('usedbox').classList.remove('hidden');
+  document.getElementById('giveup').classList.add('hidden');
+  renderUsed();
+  show('playScreen');
+  nextTurn();
+}
+
+function startComplete(rad) {
+  state.mode = 'complete';
+  state.used = new Set(); state.streak = 0;
+  state.target = poolOf(rad, gradesNow()).slice()
+    .sort((a,b) => (DATA.kanji[a].grade - DATA.kanji[b].grade));
+  state.startedAt = Date.now();
+  setRadical(rad);
+  document.getElementById('topbarTime').classList.add('hidden');
+  document.getElementById('boxwrap').classList.remove('hidden');
+  document.getElementById('usedbox').classList.add('hidden');
+  document.getElementById('giveup').classList.remove('hidden');
+  document.getElementById('boxTotal').textContent = state.target.length;
+  renderBoxes();
+  state.locked = false;
+  clearBoard();
+  show('playScreen');
+}
+
+function renderBoxes() {
+  document.getElementById('boxDone').textContent = state.used.size;
+  document.getElementById('boxGrid').innerHTML = state.target.map(k => {
+    const got = state.used.has(k);
+    return `<div class="box ${got ? 'filled' : ''}">${got ? k : ''}</div>`;
+  }).join('');
+}
+
+function nextTurn() {
+  state.locked = false;
+  clearBoard();
+  if (!pickRadical()) { gameOver('exhausted'); return; }
+  renderUsed();
+  startTimer();
+}
+
+function clearBoard() {
+  KanjiCanvas.erase('can');
+  document.getElementById('picker').classList.add('hidden');
+  document.getElementById('pickRow').innerHTML = '';
+  setMsg('', '');
+}
+function setMsg(t, c) {
+  const el = document.getElementById('msg');
+  el.textContent = t; el.className = 'msg' + (c ? ' ' + c : '');
+}
+
+function startTimer() {
+  clearInterval(state.timerId);
+  state.timeLeft = TIME_LIMIT;
+  renderTimer();
+  state.timerId = setInterval(() => {
+    state.timeLeft--; renderTimer();
+    if (state.timeLeft <= 0) { clearInterval(state.timerId); gameOver('timeup'); }
+  }, 1000);
+}
+function renderTimer() {
+  const el = document.getElementById('timer');
+  el.textContent = state.timeLeft;
+  el.classList.toggle('low', state.timeLeft <= 5);
+}
+
+function judge() {
+  if (state.locked) return;
+  const cands = String(KanjiCanvas.recognize('can') || '').trim().split(/\s+/).filter(Boolean).slice(0, 3);
+
+  const inLevel = state.mode === 'complete'
+    ? new Set(state.target)
+    : new Set(poolOf(state.radical, gradesNow()));
+  const allPool = new Set(poolOf(state.radical, ALL_GRADES));
+
+  const valid = [], dupes = [], over = [];
+  for (const c of cands) {
+    if (inLevel.has(c)) {
+      if (state.used.has(c)) { if (!dupes.includes(c)) dupes.push(c); }
+      else if (!valid.includes(c)) valid.push(c);
+    } else if (allPool.has(c) && !over.includes(c)) over.push(c);
+  }
+
+  const picker = document.getElementById('picker');
+  const row = document.getElementById('pickRow');
+  row.innerHTML = '';
+
+  if (!valid.length) {
+    picker.classList.add('hidden');
+    if (dupes.length) setMsg(`「${dupes.join('・')}」はもう書きました`, 'ng');
+    else if (over.length) {
+      const k = over[0], g = DATA.kanji[k] ? DATA.kanji[k].grade : null;
+      setMsg(`「${k}」は${g ? GLABEL[g] : '範囲外'}で習う漢字です`, 'ng');
+    } else setMsg('その部首を含む漢字が見つかりません', 'ng');
+    return;
+  }
+
+  setMsg('', '');
+  picker.classList.remove('hidden');
+  for (const k of valid) {
+    const b = document.createElement('button');
+    b.className = 'pick';
+    const g = DATA.kanji[k] ? DATA.kanji[k].grade : '';
+    b.innerHTML = k + '<small>' + (GLABEL[g] || '') + '</small>';
+    b.onclick = () => accept(k);
+    row.appendChild(b);
+  }
+}
+
+function accept(k) {
+  if (state.locked) return;
+  state.locked = true;
+  clearInterval(state.timerId);
+  state.used.add(k);
+  document.getElementById('picker').classList.add('hidden');
+  setMsg(k + '  正解', 'ok');
+
+  if (state.mode === 'complete') {
+    renderBoxes();
+    if (state.used.size >= state.target.length) {
+      cleared.add(state.level + ':' + state.radical);
+      setTimeout(() => gameOver('complete'), 700);
+      return;
+    }
+    setTimeout(() => { state.locked = false; clearBoard(); }, 700);
+  } else {
+    state.streak++;
+    document.getElementById('streak').textContent = state.streak;
+    renderUsed();
+    setTimeout(nextTurn, 800);
+  }
+}
+
+function renderUsed() {
+  const el = document.getElementById('usedList');
+  document.getElementById('usedCount').textContent = state.used.size + '字';
+  if (!state.used.size) { el.innerHTML = '<span class="usedempty">まだありません</span>'; return; }
+  const cur = state.radical ? new Set(poolOf(state.radical, ALL_GRADES)) : new Set();
+  el.innerHTML = [...state.used].map(k => `<span class="${cur.has(k) ? 'cur' : ''}">${k}</span>`).join('');
+}
+
+function cellHTML(k) {
+  const g = DATA.kanji[k] ? DATA.kanji[k].grade : '';
+  return `<div class="kcell"><div class="k">${k}</div>` +
+         `<div class="r">${firstReading(k)}</div>` +
+         `<div class="g">${GLABEL[g] || ''}</div></div>`;
+}
+
+function renderReveal() {
+  const rad = state.radical;
+  const box = document.getElementById('reveal');
+  if (!rad) { box.classList.add('hidden'); return; }
+  box.classList.remove('hidden');
+
+  const d = DATA.radicals[rad];
+  const pool = state.mode === 'complete' ? state.target : poolOf(rad, gradesNow());
+  const unused = pool.filter(k => !state.used.has(k));
+  const got = pool.filter(k => state.used.has(k));
+
+  document.getElementById('revRad').textContent = rad;
+  document.getElementById('revName').textContent = d.name;
+  document.getElementById('revSub').textContent = d.meaning;
+
+  if (!unused.length) {
+    document.getElementById('revLead').innerHTML = `${rad}を含む漢字を、すべて書き出しました`;
+    document.getElementById('revGrid').innerHTML = got.map(cellHTML).join('');
+    document.getElementById('revMore').textContent = '';
+    document.getElementById('revGot').innerHTML = '';
+    return;
+  }
+
+  document.getElementById('revLead').innerHTML =
+    `${rad}を含む漢字は、まだ <b>${unused.length}</b> 字ありました`;
+
+  const sorted = unused.slice().sort((a,b) =>
+    (DATA.kanji[a] ? DATA.kanji[a].grade : 99) - (DATA.kanji[b] ? DATA.kanji[b].grade : 99));
+  const shown = sorted.slice(0, MAX_REVEAL);
+  document.getElementById('revGrid').innerHTML = shown.map(cellHTML).join('');
+  const rest = sorted.length - shown.length;
+  document.getElementById('revMore').textContent = rest > 0 ? `ほか ${rest} 字` : '';
+  document.getElementById('revGot').innerHTML = got.length
+    ? 'あなたが書けたのは ' + got.map(k => `<span class="gk">${k}</span>`).join('') + ` の ${got.length} 字`
+    : '';
+}
+
+function gameOver(reason) {
+  clearInterval(state.timerId);
+  state.locked = true;
+  const title = document.getElementById('overTitle');
+  const score = document.getElementById('finalScore');
+  const unit  = document.getElementById('finalUnit');
+  score.classList.remove('gold');
+
+  if (state.mode === 'complete') {
+    if (reason === 'complete') {
+      const sec = Math.round((Date.now() - state.startedAt) / 1000);
+      const m = Math.floor(sec / 60), s = sec % 60;
+      title.textContent = 'コンプリート';
+      score.textContent = state.target.length;
+      score.classList.add('gold');
+      unit.textContent = `字すべて書けました（${m}分${s}秒）`;
+    } else {
+      title.textContent = 'とちゅうでやめました';
+      score.textContent = state.used.size;
+      unit.textContent = `/ ${state.target.length} 字`;
+    }
+  } else {
+    title.textContent = reason === 'exhausted' ? '出せる部首がなくなりました' : '時間切れ';
+    score.textContent = state.streak;
+    unit.textContent = '連続で答えられました';
+  }
+  renderReveal();
+  show('overScreen');
+}
+
+function bind() {
+  document.querySelectorAll('#modes .bigbtn').forEach(b => {
+    b.onclick = () => { state.mode = b.dataset.mode; show('levelScreen'); };
+  });
+  document.querySelectorAll('#levelScreen .bigbtn').forEach(b => {
+    b.onclick = () => {
+      state.level = b.dataset.level;
+      if (state.mode === 'complete') { renderRadicalList(); show('radScreen'); }
+      else startTime(state.level);
+    };
+  });
+  document.getElementById('lvBack').onclick  = () => show('modeScreen');
+  document.getElementById('radBack').onclick = () => show('levelScreen');
+
+  document.getElementById('rec').onclick = judge;
+  document.getElementById('erase').onclick = () => {
+    KanjiCanvas.erase('can');
+    document.getElementById('picker').classList.add('hidden');
+    setMsg('', '');
+  };
+  document.getElementById('undo').onclick = () => KanjiCanvas.deleteLast('can');
+  document.getElementById('giveup').onclick = () => gameOver('giveup');
+
+  document.getElementById('retry').onclick = () => {
+    if (state.mode === 'complete') startComplete(state.radical);
+    else startTime(state.level);
+  };
+  document.getElementById('toTitle').onclick = () => show('modeScreen');
+}
+
+boot();
+</script>
+
+</body>
+</html>
