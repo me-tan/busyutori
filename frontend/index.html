@@ -51,16 +51,22 @@
              flex: none; cursor: pointer; padding: 0; }
   .iconBtn:active { background: #F1EAD9; }
 
-  .stack { display: flex; flex-direction: column; gap: 0; }
+  /* リストの外枠・角丸はstack自身が持ち、overflow:hiddenで子を切り抜く。
+     行ごとに角丸を出し分ける方式は、真ん中の行だけ既定のborder-radiusが
+     上書きされずに残るミスが起きやすいので採用しない。 */
+  .stack { display: flex; flex-direction: column; gap: 0;
+           border: 1.5px solid var(--border); border-radius: 14px; overflow: hidden; }
   .bigbtn {
     position: relative; display: block; width: 100%; text-align: left; font-family: inherit;
-    background: var(--card); border: 1.5px solid var(--border); color: var(--ink);
+    background: var(--card); border: none; border-radius: 0; color: var(--ink);
     padding: 16px 34px 16px 16px; font-size: 16px; font-weight: 700; cursor: pointer;
   }
-  .stack .bigbtn:not(:first-child) { border-top: none; }
-  .stack .bigbtn:first-child { border-radius: 14px 14px 0 0; }
-  .stack .bigbtn:last-child { border-radius: 0 0 14px 14px; }
-  .stack .bigbtn:only-child { border-radius: 14px; }
+  .stack .bigbtn:not(:last-child) { border-bottom: 1px solid var(--border); }
+  /* アイコン付きの行は、区切り線をアイコン分だけ内側にずらす（iOSの設定リストと同じ見せ方） */
+  .stack .bigbtn.has-icon:not(:last-child) { border-bottom: none; }
+  .stack .bigbtn.has-icon:not(:last-child)::before {
+    content: ""; position: absolute; left: 54px; right: 16px; bottom: 0; height: 1px; background: var(--border);
+  }
   .bigbtn:active { background: #F7F1E4; }
   .bigbtn::after {
     content: ""; position: absolute; right: 18px; top: 50%; width: 7px; height: 7px;
