@@ -22,7 +22,13 @@
   （対象年齢・スコープ的にこの割り切りを採用している）。
 
 フレンド追加は一方向・承認不要（コードを入れた時点で自分の一覧に載る。相手が
-追加し返す必要はない）。
+追加し返す必要はない）。ランキングは見知らぬ相手のニックネームを公開しないよう、
+自分とフレンドだけの範囲に限定している（全体ランキングは今回作らない）。
+
+対戦への招待は、対戦バックエンド（`backend/`, FastAPI）の部屋コードをこのAPI経由で
+フレンドに渡すだけの「メールボックス」。リアルタイムのプッシュ通知はできないため、
+招待された側がフレンド画面を開いたときにポーリングで確認する方式（`invites`テーブル、
+作成から10分で表示対象から外れる）。
 
 ## API
 
@@ -35,30 +41,40 @@
 | `GET /api/friends` | 必要 | `{friends: [{code, nickname, best: {low?, elem?, all?}}]}`。`best`はタイムアタックの難易度別ベストストリーク |
 | `DELETE /api/friends/:code` | 必要 | フレンド解除 |
 | `POST /api/scores` | 必要 | `{level, streak}` → タイムアタック結果を記録（追記のみ。ベストは`MAX(streak)`で都度計算） |
+| `GET /api/ranking?level=elem` | 必要 | `{ranking: [{code, nickname, best, isMe}]}`（自分＋フレンドのみ、best降順） |
+| `POST /api/invites` | 必要 | `{code, room_code, level}` → `code`のフレンドを対戦に誘う（`code`がフレンドでないと400） |
+| `GET /api/invites` | 必要 | `{invites: [{id, from_code, from_nickname, room_code, level, created_at}]}`。自分あての新しい誘い（10分以内） |
+| `DELETE /api/invites/:id` | 必要 | 誘いを消す（参加した後・断った後） |
 
 認証は`Authorization: Bearer <token>`をSHA-256でハッシュ化し、`players.token_hash`と
 一致する行を探すだけ（`workers/src/index.js`の`requireAuth`）。
 
 ## データ
 
-スキーマは`workers/migrations/0001_init.sql`。`players` / `friends` / `scores` の3テーブル。
-D1無料枠は1日あたり読み取り500万行・書き込み10万行・容量5GB（2026年9月時点、
-超過するとその日はエラーになる）。この規模のアプリなら十分。
+スキーマは`workers/migrations/`（`0001_init.sql`: players/friends/scores、
+`0002_invites.sql`: invites）。D1無料枠は1日あたり読み取り500万行・書き込み10万行・
+容量5GB（2026年9月時点、超過するとその日はエラーになる）。この規模のアプリなら十分。
 
 ## セットアップ・デプロイ
 
 1. `wrangler login` でCloudflareにログインする（対話的なブラウザ認証が必要）。
 2. `wrangler d1 create kanjinage-users` を実行し、返ってきた`database_id`を
    `wrangler.jsonc`の`d1_databases[0].database_id`に書き込む。
-3. `wrangler d1 execute kanjinage-users --remote --file=workers/migrations/0001_init.sql`
-   でスキーマを適用する。
+3. `workers/migrations/`配下のファイルを番号順にすべて適用する
+   （`wrangler d1 execute kanjinage-users --remote --file=workers/migrations/0001_init.sql`、
+   続けて`0002_invites.sql`も）。
 4. `wrangler deploy` でフロントエンド（`frontend/`）とWorker（`workers/src/index.js`）を
    まとめてデプロイする。
+
+新しいマイグレーションを追加したときは、ローカルD1・本番D1の両方に
+`--local`/`--remote`それぞれで同じファイルを適用すること（片方だけ適用すると
+「テーブルが無い」エラーになる）。
 
 ローカルでの動作確認は`--local`を付ける（ローカルD1が使われ、実際のCloudflare
 アカウントには一切触れない）:
 
 ```
 wrangler d1 execute kanjinage-users --local --file=workers/migrations/0001_init.sql
+wrangler d1 execute kanjinage-users --local --file=workers/migrations/0002_invites.sql
 wrangler dev --local
 ```

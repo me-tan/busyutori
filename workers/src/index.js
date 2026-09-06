@@ -14,6 +14,7 @@ const CODE_LENGTH = 6;
 const NICKNAME_MAX = 20;
 const LEVELS = new Set(["low", "elem", "all"]);
 const MAX_STREAK = 100000; // 異常値の投稿を弾くための上限
+const INVITE_TTL_MS = 10 * 60 * 1000; // 対戦の誘いを表示する期限（ポーリング前提の簡易メールボックス）
 
 function json(data, status = 200) {
   return new Response(JSON.stringify(data), {
@@ -171,6 +172,80 @@ async function handleApi(request, env, url) {
     if (!me) return err(401, "認証が必要です");
     const code = parts[2].toUpperCase();
     await db.prepare("DELETE FROM friends WHERE owner_code = ? AND friend_code = ?").bind(me.code, code).run();
+    return json({ ok: true });
+  }
+
+  // GET /api/ranking?level=elem
+  // 自分とフレンドだけのランキング（見知らぬ相手のニックネームを公開しないための制限）
+  if (method === "GET" && parts.length === 2 && parts[1] === "ranking") {
+    const me = await requireAuth(request, db);
+    if (!me) return err(401, "認証が必要です");
+    const level = url.searchParams.get("level");
+    if (!LEVELS.has(level)) return err(400, "levelが不正です");
+    const friendRows = await db
+      .prepare(
+        `SELECT p.code AS code, p.nickname AS nickname
+         FROM friends f JOIN players p ON p.code = f.friend_code
+         WHERE f.owner_code = ?`
+      )
+      .bind(me.code)
+      .all();
+    const nicknames = { [me.code]: me.nickname };
+    for (const r of friendRows.results) nicknames[r.code] = r.nickname;
+    const codes = Object.keys(nicknames);
+    const bests = await bestScoresFor(db, codes);
+    const ranking = codes
+      .map((code) => ({ code, nickname: nicknames[code], best: (bests[code] || {})[level] ?? 0, isMe: code === me.code }))
+      .sort((a, b) => b.best - a.best);
+    return json({ ranking });
+  }
+
+  // POST /api/invites  { code, room_code, level }  相手を対戦に誘う
+  if (method === "POST" && parts.length === 2 && parts[1] === "invites") {
+    const me = await requireAuth(request, db);
+    if (!me) return err(401, "認証が必要です");
+    const body = await request.json().catch(() => ({}));
+    const toCode = typeof body.code === "string" ? body.code.trim().toUpperCase() : "";
+    const roomCode = typeof body.room_code === "string" ? body.room_code.trim() : "";
+    const level = body.level;
+    if (!toCode || !roomCode) return err(400, "codeとroom_codeを入力してください");
+    if (!LEVELS.has(level)) return err(400, "levelが不正です");
+    const isFriend = await db
+      .prepare("SELECT 1 FROM friends WHERE owner_code = ? AND friend_code = ?")
+      .bind(me.code, toCode)
+      .first();
+    if (!isFriend) return err(400, "フレンドにしか誘いを送れません");
+    await db
+      .prepare("INSERT INTO invites (from_code, to_code, room_code, level, created_at) VALUES (?, ?, ?, ?, ?)")
+      .bind(me.code, toCode, roomCode, level, Date.now())
+      .run();
+    return json({ ok: true });
+  }
+
+  // GET /api/invites  自分あての、まだ新しい誘いの一覧
+  if (method === "GET" && parts.length === 2 && parts[1] === "invites") {
+    const me = await requireAuth(request, db);
+    if (!me) return err(401, "認証が必要です");
+    const rows = await db
+      .prepare(
+        `SELECT i.id AS id, i.from_code AS from_code, p.nickname AS from_nickname,
+                i.room_code AS room_code, i.level AS level, i.created_at AS created_at
+         FROM invites i JOIN players p ON p.code = i.from_code
+         WHERE i.to_code = ? AND i.created_at > ?
+         ORDER BY i.created_at DESC`
+      )
+      .bind(me.code, Date.now() - INVITE_TTL_MS)
+      .all();
+    return json({ invites: rows.results });
+  }
+
+  // DELETE /api/invites/:id  誘いを消す（参加した後・断った後）
+  if (method === "DELETE" && parts.length === 3 && parts[1] === "invites") {
+    const me = await requireAuth(request, db);
+    if (!me) return err(401, "認証が必要です");
+    const id = Number(parts[2]);
+    if (!Number.isInteger(id)) return err(400, "idが不正です");
+    await db.prepare("DELETE FROM invites WHERE id = ? AND to_code = ?").bind(id, me.code).run();
     return json({ ok: true });
   }
 

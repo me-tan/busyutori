@@ -60,8 +60,33 @@
     fetch("/api/scores", { method: "POST", headers: authHeaders(), body: JSON.stringify({ level, streak }) }).catch(() => {});
   }
 
+  async function listRanking(level) {
+    const res = await fetch("/api/ranking?level=" + encodeURIComponent(level), { headers: authHeaders() });
+    const data = await readJson(res);
+    return data.ranking;
+  }
+
+  async function sendInvite(code, roomCode, level) {
+    const res = await fetch("/api/invites", {
+      method: "POST", headers: authHeaders(), body: JSON.stringify({ code, room_code: roomCode, level }),
+    });
+    return readJson(res);
+  }
+
+  async function listInvites() {
+    const res = await fetch("/api/invites", { headers: authHeaders() });
+    const data = await readJson(res);
+    return data.invites;
+  }
+
+  async function dismissInvite(id) {
+    const res = await fetch("/api/invites/" + encodeURIComponent(id), { method: "DELETE", headers: authHeaders() });
+    return readJson(res);
+  }
+
   window.Players = {
     getProfile, saveProfile, clearProfile,
     createProfile, renameProfile, addFriend, removeFriend, listFriends, submitScore,
+    listRanking, sendInvite, listInvites, dismissInvite,
   };
 })();

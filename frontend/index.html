@@ -39,6 +39,10 @@
   button:disabled { opacity: .5; cursor: default; }
   .back { margin-top: 16px; width: 100%; background: transparent; color: var(--ink-soft); }
 
+  .avatarChip { width: 34px; height: 34px; border-radius: 50%; background: #FDEDE5; color: var(--accent);
+                display: flex; align-items: center; justify-content: center; font-size: 15px; font-weight: 900;
+                flex: none; }
+
   .stack { display: flex; flex-direction: column; gap: 0; }
   .bigbtn {
     position: relative; display: block; width: 100%; text-align: left; font-family: inherit;
@@ -77,6 +81,30 @@
   .friendBest b { color: var(--accent); font-size: 13px; }
   .friendRemove { background: transparent; border: none; color: var(--ink-faint); font-size: 11px;
                   font-weight: 700; padding: 4px; flex: none; }
+  .friendActions { display: flex; align-items: center; gap: 6px; flex: none; }
+  .inviteBtn { display: flex; align-items: center; gap: 5px; background: #FDEDE5; border: none;
+               border-radius: 10px; padding: 8px 12px; color: var(--accent); font-size: 11px;
+               font-weight: 700; font-family: inherit; }
+
+  .segmented { display: flex; border: 1px solid var(--border); border-radius: 10px; overflow: hidden;
+               margin-bottom: 12px; }
+  .seg { flex: 1; background: var(--card); border: none; border-radius: 0; padding: 9px 4px;
+         font-size: 12.5px; font-weight: 700; color: var(--ink-soft); }
+  .seg:not(:last-child) { border-right: 1px solid var(--border); }
+  .seg.active { background: var(--accent); color: #fff; }
+
+  .rankRow { display: flex; align-items: center; gap: 12px; padding: 12px 2px; border-bottom: 1px solid var(--border); }
+  .rankRow.me { background: #FDF6EC; border-radius: 8px; }
+  .rankBadge { width: 22px; height: 22px; border-radius: 50%; flex: none; font-size: 11px; font-weight: 900;
+               display: flex; align-items: center; justify-content: center; background: var(--border); color: var(--ink-soft); }
+  .rankBadge.gold { background: #F0C75E; color: #7A5A0E; }
+  .rankBadge.silver { background: #D9D2C4; color: #6B6152; }
+  .rankBadge.bronze { background: #EDE4D3; color: #9A9080; }
+  .rankName { flex: 1; font-size: 14px; font-weight: 700; color: var(--ink); }
+  .rankScore { font-size: 17px; font-weight: 900; color: var(--accent); }
+
+  .inviteCard { border: 1.5px solid var(--accent); border-radius: 14px; padding: 14px 16px;
+                display: flex; align-items: center; justify-content: space-between; gap: 12px; background: #FDF3EE; }
 
   .radgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(84px,1fr)); gap: 9px; }
   .radbtn {
@@ -206,7 +234,7 @@
 
   @media (min-width: 900px) {
     body { max-width: none; padding: 0 32px 48px; }
-    #modeScreen, #settingsScreen, #levelScreen, #radScreen, #battleSetupScreen,
+    #loginScreen, #modeScreen, #settingsScreen, #friendsScreen, #levelScreen, #radScreen, #battleSetupScreen,
     #overScreen, #battleOverScreen {
       max-width: 560px; margin: 64px auto 0;
     }
@@ -231,10 +259,32 @@
 </head>
 <body>
 
-<div id="modeScreen" class="card">
+<div id="loginScreen" class="card">
+  <h1 style="text-align:center"><span class="accent">ぶしゅ</span>とり</h1>
+  <div class="tag">部首をつないで、漢字をつぎつぎ書くゲーム</div>
+  <div id="loadErr" class="err hidden"></div>
+  <div class="secTitle" style="text-align:left">ニックネームをきめてね</div>
+  <input class="codeinput" id="nicknameInput" placeholder="れい: たろう" maxlength="20"
+         style="letter-spacing:normal;font-size:16px;text-align:left;">
+  <div class="err hidden" id="profileErr" style="margin-top:10px"></div>
+  <button class="primary btn-block" id="createProfileBtn" style="margin-top:10px">はじめる</button>
+  <div style="font-size:10.5px;color:var(--ink-faint);margin-top:12px;line-height:1.6;text-align:center;">
+    はじめると、あなた専用の合言葉コードが発行されます。<br>フレンドに教えて対戦・記録くらべができます。
+  </div>
+</div>
+
+<div id="modeScreen" class="card hidden">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:22px">
+    <div style="display:flex;align-items:center;gap:10px">
+      <div class="avatarChip" id="avatarChip">?</div>
+      <div>
+        <div style="font-size:13px;font-weight:700;color:var(--ink)" id="myNickname">-</div>
+        <div style="font-size:9px;color:var(--ink-faint);letter-spacing:0.05em" id="myCodeSmall">------</div>
+      </div>
+    </div>
+  </div>
   <h1><span class="accent">ぶしゅ</span>とり</h1>
   <div class="tag">提示された部首を含む漢字を書く</div>
-  <div id="loadErr" class="err hidden"></div>
   <div class="stack" id="modes">
     <button class="bigbtn has-icon" data-mode="time">
       <svg class="icon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
@@ -258,30 +308,30 @@
 <div id="friendsScreen" class="card hidden">
   <div class="secTitle">フレンド</div>
 
-  <div id="profileSetup">
-    <div class="tag" style="margin-bottom:14px">まずニックネームを決めてください</div>
-    <input class="codeinput" id="nicknameInput" placeholder="ニックネーム" maxlength="20"
+  <div id="inviteBanner" class="hidden" style="margin-bottom:16px"></div>
+
+  <div class="roomTicket" style="margin-bottom:16px">
+    <div class="roomlabel">あなたの合言葉コード</div>
+    <div class="roomcode" id="myCodeDisplay">------</div>
+    <button class="ghost" id="copyCodeBtn" style="margin-top:6px">コードをコピー</button>
+  </div>
+
+  <div style="display:flex;gap:8px;margin-bottom:10px">
+    <input class="codeinput" id="addFriendInput" placeholder="フレンドのコード" maxlength="6"
            style="letter-spacing:normal;font-size:16px;">
-    <div class="err hidden" id="profileErr" style="margin-top:10px"></div>
-    <button class="primary btn-block" id="createProfileBtn" style="margin-top:10px">はじめる</button>
+    <button class="primary" id="addFriendBtn" style="flex:none">追加</button>
   </div>
+  <div class="err hidden" id="friendsErr" style="margin-bottom:10px"></div>
 
-  <div id="profileMain" class="hidden">
-    <div class="roomTicket" style="margin-bottom:16px">
-      <div class="roomlabel">あなたのコード</div>
-      <div class="roomcode" id="myCodeDisplay">------</div>
-      <button class="ghost" id="copyCodeBtn" style="margin-top:6px">コードをコピー</button>
-    </div>
+  <div id="friendsList"></div>
 
-    <div style="display:flex;gap:8px;margin-bottom:10px">
-      <input class="codeinput" id="addFriendInput" placeholder="フレンドのコード" maxlength="6"
-             style="letter-spacing:normal;font-size:16px;">
-      <button class="primary" id="addFriendBtn" style="flex:none">追加</button>
-    </div>
-    <div class="err hidden" id="friendsErr" style="margin-bottom:10px"></div>
-
-    <div id="friendsList"></div>
+  <div class="secTitle" style="margin:26px 0 10px">ランキング（タイムアタック）</div>
+  <div class="segmented" id="rankLevelSeg">
+    <button class="seg" data-ranklevel="low">初級</button>
+    <button class="seg active" data-ranklevel="elem">中級</button>
+    <button class="seg" data-ranklevel="all">上級</button>
   </div>
+  <div id="rankingList"></div>
 
   <button class="back" id="friendsBack">もどる</button>
 </div>
@@ -526,18 +576,29 @@ async function boot() {
     el.innerHTML = 'data/radicals.json が読み込めません。<br>' +
       'frontend/ ディレクトリで <code>python3 -m http.server 8000</code> を実行し、<br>' +
       '<code>http://localhost:8000/</code> を開いてください。';
-    document.getElementById('modes').classList.add('hidden');
+    document.getElementById('createProfileBtn').disabled = true;
     return;
   }
   KanjiCanvas.init('can');
   KanjiCanvas.init('canBattle');
   bind();
   bBind();
+
+  if (Players.getProfile()) { renderModeScreen(); show('modeScreen'); }
+  else { show('loginScreen'); }
 }
 
-const SCREENS = ['modeScreen','settingsScreen','friendsScreen','levelScreen','radScreen','playScreen','overScreen',
+function renderModeScreen() {
+  const p = Players.getProfile();
+  if (!p) return;
+  document.getElementById('avatarChip').textContent = p.nickname.slice(0, 1);
+  document.getElementById('myNickname').textContent = p.nickname;
+  document.getElementById('myCodeSmall').textContent = 'コード ' + p.code;
+}
+
+const SCREENS = ['loginScreen','modeScreen','settingsScreen','friendsScreen','levelScreen','radScreen','playScreen','overScreen',
   'battleSetupScreen','battlePlayScreen','battleOverScreen'];
-const BGM_SCREENS = new Set(['modeScreen','settingsScreen','friendsScreen','levelScreen','radScreen',
+const BGM_SCREENS = new Set(['loginScreen','modeScreen','settingsScreen','friendsScreen','levelScreen','radScreen',
   'overScreen','battleSetupScreen','battleOverScreen']);
 const LEVEL_LABEL = { low: '初級', elem: '中級', all: '上級' };
 function show(id) {
@@ -897,12 +958,68 @@ function setFriendsErr(t) {
 
 function renderFriendsScreen() {
   const p = Players.getProfile();
-  document.getElementById('profileSetup').classList.toggle('hidden', !!p);
-  document.getElementById('profileMain').classList.toggle('hidden', !p);
-  setProfileErr(''); setFriendsErr('');
-  if (p) {
-    document.getElementById('myCodeDisplay').textContent = p.code;
-    refreshFriendsList();
+  if (!p) return;
+  setFriendsErr('');
+  document.getElementById('myCodeDisplay').textContent = p.code;
+  refreshInvites();
+  refreshFriendsList();
+  refreshRanking('elem');
+}
+
+async function refreshInvites() {
+  const el = document.getElementById('inviteBanner');
+  let invites;
+  try { invites = await Players.listInvites(); }
+  catch (e) { el.classList.add('hidden'); el.innerHTML = ''; return; }
+  if (!invites.length) { el.classList.add('hidden'); el.innerHTML = ''; return; }
+  el.classList.remove('hidden');
+  el.innerHTML = invites.map(inv => `
+    <div class="inviteCard" style="margin-bottom:8px">
+      <div>
+        <div style="font-size:13px;font-weight:700;color:var(--ink)">${inv.from_nickname}さんから対戦の誘い</div>
+        <div style="font-size:10.5px;color:var(--ink-soft)">難易度: ${LEVEL_LABEL[inv.level] || inv.level}</div>
+      </div>
+      <div style="display:flex;gap:6px">
+        <button class="primary" data-accept="${inv.id}" data-room="${inv.room_code}" style="padding:9px 14px;font-size:12.5px">参加する</button>
+        <button class="ghost" data-dismiss="${inv.id}">断る</button>
+      </div>
+    </div>`).join('');
+  el.querySelectorAll('[data-accept]').forEach(b => {
+    b.onclick = () => acceptInvite(Number(b.dataset.accept), b.dataset.room);
+  });
+  el.querySelectorAll('[data-dismiss]').forEach(b => {
+    b.onclick = async () => { await Players.dismissInvite(Number(b.dataset.dismiss)).catch(() => {}); refreshInvites(); };
+  });
+}
+
+async function acceptInvite(id, roomCode) {
+  await Players.dismissInvite(id).catch(() => {});
+  bReset();
+  try {
+    const room = await Net.joinRoom(roomCode);
+    bstate.code = room.code; bstate.myId = room.player_id; bstate.level = room.level;
+    bEnterWaiting('対戦を開始しています…');
+    bConnect();
+  } catch (e) {
+    setFriendsErr('その部屋にはもう入れませんでした（相手が先に始めたかもしれません）。');
+  }
+}
+
+async function inviteFriend(code, btn) {
+  setFriendsErr('');
+  const original = btn.textContent;
+  btn.disabled = true; btn.textContent = '誘っています…';
+  bReset();
+  try {
+    const level = state.level || 'elem';
+    const room = await Net.createRoom(level);
+    await Players.sendInvite(code, room.code, level);
+    bstate.code = room.code; bstate.myId = room.player_id; bstate.level = level;
+    bEnterWaiting('相手を待っています…');
+    bConnect();
+  } catch (e) {
+    setFriendsErr('誘えませんでした。通信環境を確認してください。');
+    btn.disabled = false; btn.textContent = original;
   }
 }
 
@@ -925,13 +1042,40 @@ async function refreshFriendsList() {
     return `<div class="friendRow">
       <div><div class="friendName">${f.nickname}</div><div class="friendCode">${f.code}</div></div>
       <div class="friendBest">${best || 'まだ記録なし'}</div>
-      <button class="friendRemove" data-code="${f.code}">削除</button>
+      <div class="friendActions">
+        <button class="inviteBtn" data-invite="${f.code}">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4 20-7z"/></svg>
+          対戦に誘う
+        </button>
+        <button class="friendRemove" data-code="${f.code}">削除</button>
+      </div>
     </div>`;
   }).join('') + '</div>';
 
   listEl.querySelectorAll('.friendRemove').forEach(b => {
     b.onclick = async () => { await Players.removeFriend(b.dataset.code).catch(() => {}); refreshFriendsList(); };
   });
+  listEl.querySelectorAll('.inviteBtn').forEach(b => {
+    b.onclick = () => inviteFriend(b.dataset.invite, b);
+  });
+}
+
+async function refreshRanking(level) {
+  const el = document.getElementById('rankingList');
+  el.innerHTML = '<div class="usedempty" style="padding:14px 2px">読み込み中…</div>';
+  let ranking;
+  try { ranking = await Players.listRanking(level); }
+  catch (e) { el.innerHTML = '<div class="usedempty" style="padding:14px 2px">読み込めませんでした</div>'; return; }
+  if (!ranking.length) { el.innerHTML = '<div class="usedempty" style="padding:14px 2px">まだ記録がありません</div>'; return; }
+  el.innerHTML = ranking.map((r, i) => {
+    const rank = i + 1;
+    const badgeClass = rank === 1 ? 'gold' : rank === 2 ? 'silver' : rank === 3 ? 'bronze' : '';
+    return `<div class="rankRow ${r.isMe ? 'me' : ''}">
+      <div class="rankBadge ${badgeClass}">${rank}</div>
+      <div class="rankName">${r.nickname}${r.isMe ? '（あなた）' : ''}</div>
+      <div class="rankScore">${r.best}</div>
+    </div>`;
+  }).join('');
 }
 
 function bind() {
@@ -974,7 +1118,7 @@ function bind() {
     const name = document.getElementById('nicknameInput').value.trim();
     if (!name) return;
     setProfileErr('');
-    try { await Players.createProfile(name); renderFriendsScreen(); }
+    try { await Players.createProfile(name); renderModeScreen(); show('modeScreen'); }
     catch (e) { setProfileErr(e.message || 'はじめられませんでした'); }
   };
   document.getElementById('copyCodeBtn').onclick = () => {
@@ -989,6 +1133,12 @@ function bind() {
     try { await Players.addFriend(code); input.value = ''; await refreshFriendsList(); }
     catch (e) { setFriendsErr(e.message || '追加できませんでした'); }
   };
+  document.querySelectorAll('#rankLevelSeg .seg').forEach(b => {
+    b.onclick = () => {
+      document.querySelectorAll('#rankLevelSeg .seg').forEach(x => x.classList.toggle('active', x === b));
+      refreshRanking(b.dataset.ranklevel);
+    };
+  });
   document.getElementById('seVolume').oninput = e => KBAudio.setSeVolume(e.target.value / 100);
   document.getElementById('bgmVolume').oninput = e => {
     KBAudio.setBgmVolume(e.target.value / 100);
