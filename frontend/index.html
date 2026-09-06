@@ -20,7 +20,15 @@
     background: var(--paper); color: var(--ink);
   }
   .hidden { display: none !important; }
-  .card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 18px; }
+  /* 画面全体を白い角丸カードで囲うのをやめた（ページ背景と別色の箱に収まっている
+     ように見えるのが「作り物っぽい」印象の一因だったため）。各画面はページの
+     背景の上に直接、bodyの余白だけで配置する。 */
+  .navbar { display: flex; align-items: center; gap: 4px; margin-bottom: 20px; min-height: 36px; }
+  .navBack { width: 36px; height: 36px; border-radius: 50%; background: transparent; border: none;
+             color: var(--ink); display: flex; align-items: center; justify-content: center;
+             flex: none; cursor: pointer; padding: 0; }
+  .navBack:active { background: #F1EAD9; }
+  .navTitle { font-size: 16px; font-weight: 900; color: var(--ink); }
 
   h1 { font-size: 24px; font-weight: 900; margin: 0 0 6px; text-align: center; }
   h1 .accent { color: var(--accent); }
@@ -273,7 +281,7 @@
 </head>
 <body>
 
-<div id="loginScreen" class="card">
+<div id="loginScreen">
   <h1 style="text-align:center"><span class="accent">ぶしゅ</span>とり</h1>
   <div class="tag">部首をつないで、漢字をつぎつぎ書くゲーム</div>
   <div id="loadErr" class="err hidden"></div>
@@ -287,7 +295,7 @@
   </div>
 </div>
 
-<div id="modeScreen" class="card hidden">
+<div id="modeScreen" class="hidden">
   <div class="topnav">
     <button class="avatarChip" id="avatarChip" title="ニックネームを変更">?</button>
     <div class="topnavName">
@@ -310,17 +318,22 @@
   <div class="stack">
     <button class="bigbtn has-icon" id="toBattle">
       <svg class="icon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="9" r="2.6"/><path d="M2.8 18.5c0-2.7 2.3-4.5 5.2-4.5s5.2 1.8 5.2 4.5"/><circle cx="17.5" cy="8.5" r="2.2"/><path d="M14.7 13.4c2.3.3 3.8 1.8 3.8 4.3"/></svg>
-      だれかと対戦する<small>友だちや、ランダムな相手と部首を投げ合う</small>
+      だれかと対戦する
     </button>
     <button class="bigbtn has-icon" id="toSolo">
       <svg class="icon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
-      ひとりで練習する<small>タイムアタック・部首マスター</small>
+      ひとりで練習する
     </button>
   </div>
 </div>
 
-<div id="soloScreen" class="card hidden">
-  <div class="secTitle">ひとりで練習する</div>
+<div id="soloScreen" class="hidden">
+  <div class="navbar">
+    <button class="navBack" id="soloBack">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg>
+    </button>
+    <div class="navTitle">ひとりで練習する</div>
+  </div>
   <div class="stack" id="modes">
     <button class="bigbtn has-icon" data-mode="time">
       <svg class="icon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
@@ -331,11 +344,15 @@
       部首マスター<small>ひとつの部首の漢字を、すべて書き出す</small>
     </button>
   </div>
-  <button class="back" id="soloBack">もどる</button>
 </div>
 
-<div id="friendsScreen" class="card hidden">
-  <div class="secTitle">フレンド</div>
+<div id="friendsScreen" class="hidden">
+  <div class="navbar">
+    <button class="navBack" id="friendsBack">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg>
+    </button>
+    <div class="navTitle">フレンド</div>
+  </div>
 
   <div id="inviteBanner" class="hidden" style="margin-bottom:16px"></div>
 
@@ -361,12 +378,15 @@
     <button class="seg" data-ranklevel="all">上級</button>
   </div>
   <div id="rankingList"></div>
-
-  <button class="back" id="friendsBack">もどる</button>
 </div>
 
-<div id="settingsScreen" class="card hidden">
-  <div class="secTitle">設定</div>
+<div id="settingsScreen" class="hidden">
+  <div class="navbar">
+    <button class="navBack" id="settingsBack">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg>
+    </button>
+    <div class="navTitle">設定</div>
+  </div>
   <div class="settingsList">
     <div class="settingRow">
       <div class="settingLbl">
@@ -390,23 +410,30 @@
       <input type="checkbox" id="muteAll">
     </label>
   </div>
-  <button class="back" id="settingsBack">もどる</button>
 </div>
 
-<div id="levelScreen" class="card hidden">
-  <div class="secTitle">難易度をえらぶ</div>
+<div id="levelScreen" class="hidden">
+  <div class="navbar">
+    <button class="navBack" id="lvBack">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg>
+    </button>
+    <div class="navTitle">難易度をえらぶ</div>
+  </div>
   <div class="stack">
     <button class="bigbtn" data-level="low">初級<small>小1〜小3で習う漢字</small></button>
     <button class="bigbtn" data-level="elem">中級<small>小1〜小6で習う漢字</small></button>
     <button class="bigbtn" data-level="all">上級<small>常用漢字すべて</small></button>
   </div>
-  <button class="back" id="lvBack">もどる</button>
 </div>
 
-<div id="radScreen" class="card hidden">
-  <div class="secTitle">部首をえらぶ</div>
+<div id="radScreen" class="hidden">
+  <div class="navbar">
+    <button class="navBack" id="radBack">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg>
+    </button>
+    <div class="navTitle">部首をえらぶ</div>
+  </div>
   <div class="radgrid" id="radGrid"></div>
-  <button class="back" id="radBack">もどる</button>
 </div>
 
 <div id="playScreen" class="hidden">
@@ -455,7 +482,7 @@
   <button class="back hidden" id="giveup">ここでやめる</button>
 </div>
 
-<div id="overScreen" class="card over hidden">
+<div id="overScreen" class="over hidden">
   <h2 id="overTitle">時間切れ</h2>
   <div class="score" id="finalScore">0</div>
   <div class="unit" id="finalUnit">連続で答えられました</div>
@@ -475,32 +502,39 @@
   <div style="margin-top:10px"><button id="toTitle" style="width:100%">最初の画面へ</button></div>
 </div>
 
-<div id="battleSetupScreen" class="card hidden">
-  <div class="secTitle">オンライン対戦</div>
+<div id="battleSetupScreen" class="hidden">
+  <div class="navbar">
+    <button class="navBack" id="battleBack">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg>
+    </button>
+    <div class="navTitle" id="battleSetupTitle">だれかと対戦する</div>
+  </div>
   <div class="err hidden" id="battleErr"></div>
   <div class="waitmsg hidden" id="battleBusy"></div>
 
   <div class="stack" id="battleChoice">
     <button class="bigbtn" data-battle="quick">ランダムマッチング<small>だれかとすぐに対戦する</small></button>
+    <button class="bigbtn" data-battle="friend">フレンド対戦<small>部屋コードで友だちと対戦する</small></button>
+  </div>
+
+  <div class="stack hidden" id="battleFriendPanel">
     <button class="bigbtn" data-battle="create">部屋を作る<small>相手に伝えるコードが発行されます</small></button>
     <button class="bigbtn" data-battle="join">部屋に入る<small>相手から聞いたコードを入力します</small></button>
   </div>
 
-  <div class="stack hidden" id="battleQuickPanel" style="margin-top:14px">
-    <div class="secTitle">難易度をえらぶ</div>
+  <div class="stack hidden" id="battleQuickPanel">
     <button class="bigbtn" data-qlevel="low">初級<small>小1〜小3で習う漢字</small></button>
     <button class="bigbtn" data-qlevel="elem">中級<small>小1〜小6で習う漢字</small></button>
     <button class="bigbtn" data-qlevel="all">上級<small>常用漢字すべて</small></button>
   </div>
 
-  <div class="stack hidden" id="battleCreatePanel" style="margin-top:14px">
-    <div class="secTitle">難易度をえらぶ</div>
+  <div class="stack hidden" id="battleCreatePanel">
     <button class="bigbtn" data-blevel="low">初級<small>小1〜小3で習う漢字</small></button>
     <button class="bigbtn" data-blevel="elem">中級<small>小1〜小6で習う漢字</small></button>
     <button class="bigbtn" data-blevel="all">上級<small>常用漢字すべて</small></button>
   </div>
 
-  <div class="hidden" id="battleJoinPanel" style="margin-top:14px">
+  <div class="hidden" id="battleJoinPanel">
     <input class="codeinput" id="joinCodeInput" placeholder="部屋コード" maxlength="8">
     <button class="primary" id="joinCodeBtn" style="width:100%;margin-top:10px">入る</button>
   </div>
@@ -517,8 +551,6 @@
     <div class="waitmsg" id="quickWaitingMsg">対戦相手をさがしています…</div>
     <button class="back" id="quickCancelBtn">あきらめる</button>
   </div>
-
-  <button class="back" id="battleBack">もどる</button>
 </div>
 
 <div id="battlePlayScreen" class="hidden">
@@ -566,7 +598,7 @@
   <button class="back hidden" id="bGiveUp">こうさんする</button>
 </div>
 
-<div id="battleOverScreen" class="card over hidden">
+<div id="battleOverScreen" class="over hidden">
   <h2 id="bOverTitle">-</h2>
   <div class="unit" id="bOverUnit"></div>
 
@@ -1209,9 +1241,37 @@ function bind() {
 const bstate = {
   code: null, myId: null, level: null,
   radical: null, deadline: 0, totalSeconds: 0, tickId: null, quickTimeoutId: null,
-  isDefending: false, used: [], locked: false,
+  isDefending: false, used: [], locked: false, setupStep: 'battleChoice',
 };
 const QUICKMATCH_TIMEOUT_SECONDS = 20;
+
+const BATTLE_STEPS = ['battleChoice', 'battleFriendPanel', 'battleQuickPanel', 'battleCreatePanel', 'battleJoinPanel', 'battleWaiting', 'quickWaiting'];
+const BATTLE_PARENT_STEP = {
+  battleFriendPanel: 'battleChoice', battleQuickPanel: 'battleChoice',
+  battleCreatePanel: 'battleFriendPanel', battleJoinPanel: 'battleFriendPanel',
+};
+
+const BATTLE_STEP_TITLE = {
+  battleChoice: 'だれかと対戦する', battleFriendPanel: 'フレンド対戦',
+  battleQuickPanel: '難易度をえらぶ', battleCreatePanel: '難易度をえらぶ',
+  battleJoinPanel: '部屋に入る', battleWaiting: 'フレンド対戦', quickWaiting: 'ランダムマッチング',
+};
+
+function battleShowStep(step) {
+  BATTLE_STEPS.forEach(id => document.getElementById(id).classList.toggle('hidden', id !== step));
+  bstate.setupStep = step;
+  document.getElementById('battleSetupTitle').textContent = BATTLE_STEP_TITLE[step];
+}
+
+function battleBackStep() {
+  if (bstate.setupStep === 'quickWaiting' && bstate.code && bstate.myId) {
+    Net.cancelRoom(bstate.code, bstate.myId);
+  }
+  if (bstate.setupStep === 'battleWaiting' || bstate.setupStep === 'quickWaiting') { bReset(); return; }
+  const parent = BATTLE_PARENT_STEP[bstate.setupStep];
+  if (parent) { battleShowStep(parent); bSetErr(''); }
+  else { bReset(); show('modeScreen'); }
+}
 
 function bReset() {
   Net.close();
@@ -1219,12 +1279,7 @@ function bReset() {
   bstate.radical = null; bstate.deadline = 0; bstate.used = []; bstate.locked = false;
   clearInterval(bstate.tickId);
   clearTimeout(bstate.quickTimeoutId);
-  document.getElementById('battleChoice').classList.remove('hidden');
-  document.getElementById('battleQuickPanel').classList.add('hidden');
-  document.getElementById('battleCreatePanel').classList.add('hidden');
-  document.getElementById('battleJoinPanel').classList.add('hidden');
-  document.getElementById('battleWaiting').classList.add('hidden');
-  document.getElementById('quickWaiting').classList.add('hidden');
+  battleShowStep('battleChoice');
   bSetErr('');
   bSetBusy('');
 }
@@ -1303,16 +1358,11 @@ async function bQuickMatch(level) {
 }
 
 function bEnterQuickWaiting() {
-  document.getElementById('battleChoice').classList.add('hidden');
-  document.getElementById('battleQuickPanel').classList.add('hidden');
-  document.getElementById('quickWaiting').classList.remove('hidden');
+  battleShowStep('quickWaiting');
 }
 
 function bEnterWaiting(msg) {
-  document.getElementById('battleChoice').classList.add('hidden');
-  document.getElementById('battleCreatePanel').classList.add('hidden');
-  document.getElementById('battleJoinPanel').classList.add('hidden');
-  document.getElementById('battleWaiting').classList.remove('hidden');
+  battleShowStep('battleWaiting');
   document.getElementById('roomCodeDisplay').textContent = bstate.code;
   document.getElementById('waitingMsg').textContent = msg;
 }
@@ -1538,12 +1588,9 @@ function bRenderUsed() {
 }
 
 function bBind() {
-  const BATTLE_PANEL = { create: 'battleCreatePanel', join: 'battleJoinPanel', quick: 'battleQuickPanel' };
-  document.querySelectorAll('#battleChoice .bigbtn').forEach(b => {
-    b.onclick = () => {
-      document.getElementById('battleChoice').classList.add('hidden');
-      document.getElementById(BATTLE_PANEL[b.dataset.battle]).classList.remove('hidden');
-    };
+  const BATTLE_PANEL = { friend: 'battleFriendPanel', quick: 'battleQuickPanel', create: 'battleCreatePanel', join: 'battleJoinPanel' };
+  document.querySelectorAll('#battleChoice .bigbtn, #battleFriendPanel .bigbtn').forEach(b => {
+    b.onclick = () => battleShowStep(BATTLE_PANEL[b.dataset.battle]);
   });
   document.querySelectorAll('#battleQuickPanel .bigbtn').forEach(b => {
     b.onclick = () => bQuickMatch(b.dataset.qlevel);
@@ -1559,7 +1606,7 @@ function bBind() {
     const code = document.getElementById('joinCodeInput').value.trim();
     if (code) bJoinRoom(code);
   };
-  document.getElementById('battleBack').onclick = () => { bReset(); show('modeScreen'); };
+  document.getElementById('battleBack').onclick = battleBackStep;
 
   document.getElementById('bRec').onclick = bJudge;
   document.getElementById('bErase').onclick = () => {
