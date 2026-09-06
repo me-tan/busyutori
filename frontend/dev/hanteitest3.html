@@ -239,9 +239,12 @@ const doRecognize = () => {
   renderStats();
 
   const notInData = cands.filter(c => !pool.has(c) && !DATA.kanji[c]);
+  const scored = KanjiCanvas.lastScored || [];
+  const scoredStr = scored.slice(0, 10).map(([k, d]) => `${k}(${d.toFixed(1)})`).join(' ');
   document.getElementById('diag').innerHTML =
     `全候補 ${cands.length} 個: ${cands.join(' ')}<br>` +
     `該当 ${valid.length} 個 / 使用済み除外 ${dupes.length} 個 / ${ms.toFixed(0)}ms<br>` +
+    `スコア（距離）: ${scoredStr}<br>` +
     (notInData.length ? `<span style="color:#b80">データ未収録の候補: ${notInData.join(' ')}</span>` : '');
 
   const picker = document.getElementById('picker');
