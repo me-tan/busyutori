@@ -112,6 +112,7 @@
   .reveal-lead { font-size: 15px; margin: 14px 0 4px; }
   .reveal-lead b { font-size: 26px; color: #d33; }
   .reveal-sub { font-size: 12px; color: #aaa; margin-bottom: 14px; }
+  .reveal-origin { font-size: 12px; color: #888; line-height: 1.6; margin-bottom: 14px; text-align: left; }
   .kgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(58px,1fr)); gap: 8px; text-align:center; }
   .kcell { background:#fafafb; border:1px solid #ececef; border-radius:8px; padding:7px 2px 5px; }
   .kcell .k { font-size: 26px; line-height: 1.15; }
@@ -142,6 +143,25 @@
     <button class="bigbtn" data-mode="complete">コンプリート<small>ひとつの部首の漢字を、すべて書き出す</small></button>
     <button class="bigbtn" id="toBattle">オンライン対戦<small>別の端末にいる相手と部首を投げ合う</small></button>
   </div>
+  <button class="back" id="openSettings" style="margin-top:14px">設定</button>
+</div>
+
+<div id="settingsScreen" class="card hidden">
+  <div class="secTitle">設定</div>
+  <div class="stack">
+    <div>
+      <div class="lbl" style="margin-bottom:8px">効果音の音量</div>
+      <input type="range" id="seVolume" min="0" max="100" style="width:100%">
+    </div>
+    <div>
+      <div class="lbl" style="margin-bottom:8px">BGMの音量</div>
+      <input type="range" id="bgmVolume" min="0" max="100" style="width:100%">
+    </div>
+    <label style="display:flex;align-items:center;gap:8px;font-size:14px;color:#666">
+      <input type="checkbox" id="muteAll">すべての音を消す
+    </label>
+  </div>
+  <button class="back" id="settingsBack">もどる</button>
 </div>
 
 <div id="levelScreen" class="card hidden">
@@ -192,6 +212,7 @@
       <div class="pick-row" id="pickRow"></div>
     </div>
     <div class="msg" id="msg"></div>
+    <button class="back hidden" id="passBtn">パス</button>
   </div>
 
   <div class="usedbox" id="usedbox">
@@ -212,6 +233,7 @@
     <div class="reveal-name" id="revName"></div>
     <div class="reveal-lead" id="revLead"></div>
     <div class="reveal-sub" id="revSub"></div>
+    <div class="reveal-origin" id="revOrigin"></div>
     <div class="kgrid" id="revGrid"></div>
     <div class="more" id="revMore"></div>
     <div class="gotbox" id="revGot"></div>
@@ -259,9 +281,11 @@
 
   <div class="quest">
     <div class="turnstatus" id="bStatus">-</div>
-    <div class="radical" id="bRadical">—</div>
-    <div class="rad-name" id="bRadName"></div>
-    <div class="rad-meaning" id="bRadMeaning"></div>
+    <div id="bRadicalBox" class="hidden">
+      <div class="radical" id="bRadical">—</div>
+      <div class="rad-name" id="bRadName"></div>
+      <div class="rad-meaning" id="bRadMeaning"></div>
+    </div>
   </div>
 
   <div class="boxwrap hidden" id="bOfferBox">
@@ -299,6 +323,7 @@
     <div class="reveal-rad" id="bRevRad">—</div>
     <div class="reveal-name" id="bRevName"></div>
     <div class="reveal-lead" id="bRevLead"></div>
+    <div class="reveal-origin" id="bRevOrigin"></div>
     <div class="kgrid" id="bRevGrid"></div>
     <div class="more" id="bRevMore"></div>
     <div class="gotbox" id="bRevGot"></div>
@@ -311,11 +336,14 @@
 <script src="js/vendor/ref-patterns.js"></script>
 <script src="js/config.js"></script>
 <script src="js/net.js"></script>
+<script src="js/audio.js"></script>
 <script>
 "use strict";
 
 const TIME_LIMIT = 30;
 const MAX_REVEAL = 24;
+const PASS_LIMIT = 3;
+const OCR_SCORE_THRESHOLD = 1.6; // 最良候補の距離の何倍まで許容するか（実機でチューニングする）
 const ALL_GRADES = ['1','2','3','4','5','6','8'];
 const GRADES = { low:['1','2','3'], elem:['1','2','3','4','5','6'], all:ALL_GRADES };
 const GLABEL = {1:'小1',2:'小2',3:'小3',4:'小4',5:'小5',6:'小6',8:'中学'};
@@ -326,7 +354,7 @@ const state = {
   used: new Set(), streak: 0,
   radical: null, recent: [],
   timeLeft: TIME_LIMIT, timerId: null, locked: false,
-  target: [], startedAt: 0
+  target: [], startedAt: 0, passesLeft: PASS_LIMIT
 };
 const cleared = new Set();
 
@@ -347,10 +375,13 @@ async function boot() {
   bBind();
 }
 
-const SCREENS = ['modeScreen','levelScreen','radScreen','playScreen','overScreen',
+const SCREENS = ['modeScreen','settingsScreen','levelScreen','radScreen','playScreen','overScreen',
   'battleSetupScreen','battlePlayScreen','battleOverScreen'];
+const BGM_SCREENS = new Set(['modeScreen','settingsScreen','levelScreen','radScreen',
+  'overScreen','battleSetupScreen','battleOverScreen']);
 function show(id) {
   SCREENS.forEach(s => document.getElementById(s).classList.toggle('hidden', s !== id));
+  if (BGM_SCREENS.has(id)) KBAudio.playBgm('menu'); else KBAudio.stopBgm();
 }
 
 function poolOf(rad, grades) {
@@ -388,15 +419,27 @@ function renderRadicalList() {
   });
 }
 
+function weightedPick(items, weights) {
+  const total = weights.reduce((a, b) => a + b, 0);
+  let r = Math.random() * total;
+  for (let i = 0; i < items.length; i++) {
+    r -= weights[i];
+    if (r <= 0) return items[i];
+  }
+  return items[items.length - 1];
+}
+
 function pickRadical() {
   const g = gradesNow();
   let list = Object.keys(DATA.radicals)
-    .filter(r => poolOf(r, g).filter(k => !state.used.has(k)).length >= 5);
-  const fresh = list.filter(r => !state.recent.includes(r));
+    .map(r => ({ r, n: poolOf(r, g).filter(k => !state.used.has(k)).length }))
+    .filter(x => x.n >= 5);
+  const fresh = list.filter(x => !state.recent.includes(x.r));
   if (fresh.length) list = fresh;
   if (!list.length) return null;
 
-  const rad = list[Math.floor(Math.random() * list.length)];
+  // 残り字数が多い部首ほど出やすくする（少ない部首は早めに使い切られて選択肢から消えていく）
+  const rad = weightedPick(list.map(x => x.r), list.map(x => x.n));
   setRadical(rad);
   state.recent.push(rad);
   if (state.recent.length > 2) state.recent.shift();
@@ -414,11 +457,14 @@ function setRadical(rad) {
 function startTime(level) {
   state.mode = 'time'; state.level = level;
   state.used = new Set(); state.streak = 0; state.recent = [];
+  state.passesLeft = PASS_LIMIT;
   document.getElementById('streak').textContent = '0';
   document.getElementById('topbarTime').classList.remove('hidden');
   document.getElementById('boxwrap').classList.add('hidden');
   document.getElementById('usedbox').classList.remove('hidden');
   document.getElementById('giveup').classList.add('hidden');
+  document.getElementById('passBtn').classList.remove('hidden');
+  renderPassBtn();
   renderUsed();
   show('playScreen');
   nextTurn();
@@ -435,6 +481,7 @@ function startComplete(rad) {
   document.getElementById('boxwrap').classList.remove('hidden');
   document.getElementById('usedbox').classList.add('hidden');
   document.getElementById('giveup').classList.remove('hidden');
+  document.getElementById('passBtn').classList.add('hidden');
   document.getElementById('boxTotal').textContent = state.target.length;
   renderBoxes();
   state.locked = false;
@@ -448,6 +495,19 @@ function renderBoxes() {
     const got = state.used.has(k);
     return `<div class="box ${got ? 'filled' : ''}">${got ? k : ''}</div>`;
   }).join('');
+}
+
+function renderPassBtn() {
+  const btn = document.getElementById('passBtn');
+  btn.textContent = `パス（残り${state.passesLeft}）`;
+  btn.disabled = state.passesLeft <= 0;
+}
+
+function doPass() {
+  if (state.mode !== 'time' || state.locked || state.passesLeft <= 0) return;
+  state.passesLeft--;
+  renderPassBtn();
+  nextTurn();
 }
 
 function nextTurn() {
@@ -467,6 +527,7 @@ function clearBoard() {
 function setMsg(t, c) {
   const el = document.getElementById('msg');
   el.textContent = t; el.className = 'msg' + (c ? ' ' + c : '');
+  if (c === 'ng') KBAudio.play('incorrect');
 }
 
 function startTimer() {
@@ -475,6 +536,7 @@ function startTimer() {
   renderTimer();
   state.timerId = setInterval(() => {
     state.timeLeft--; renderTimer();
+    if (state.timeLeft > 0 && state.timeLeft <= 5) KBAudio.play('tick');
     if (state.timeLeft <= 0) { clearInterval(state.timerId); gameOver('timeup'); }
   }, 1000);
 }
@@ -484,9 +546,17 @@ function renderTimer() {
   el.classList.toggle('low', state.timeLeft <= 5);
 }
 
+function scoredCandidates(id) {
+  KanjiCanvas.recognize(id);
+  const scored = KanjiCanvas.lastScored || [];
+  if (!scored.length) return [];
+  const best = scored[0][1];
+  return scored.filter(([, dist]) => dist <= best * OCR_SCORE_THRESHOLD).slice(0, 6).map(([k]) => k);
+}
+
 function judge() {
   if (state.locked) return;
-  const cands = String(KanjiCanvas.recognize('can') || '').trim().split(/\s+/).filter(Boolean).slice(0, 6);
+  const cands = scoredCandidates('can');
 
   const inLevel = state.mode === 'complete'
     ? new Set(state.target)
@@ -536,6 +606,7 @@ function accept(k) {
   state.used.add(k);
   document.getElementById('picker').classList.add('hidden');
   setMsg(k + '  正解', 'ok');
+  KBAudio.play('correct');
 
   if (state.mode === 'complete') {
     renderBoxes();
@@ -582,6 +653,7 @@ function renderReveal() {
   document.getElementById('revRad').textContent = rad;
   document.getElementById('revName').textContent = d.name;
   document.getElementById('revSub').textContent = d.meaning;
+  document.getElementById('revOrigin').textContent = d.origin ? `なりたち: ${d.origin}` : '';
 
   if (!unused.length) {
     document.getElementById('revLead').innerHTML = `${rad}を含む漢字を、すべて書き出しました`;
@@ -621,6 +693,7 @@ function gameOver(reason) {
       score.textContent = state.target.length;
       score.classList.add('gold');
       unit.textContent = `字すべて書けました（${m}分${s}秒）`;
+      KBAudio.play('victory');
     } else {
       title.textContent = 'とちゅうでやめました';
       score.textContent = state.used.size;
@@ -630,9 +703,17 @@ function gameOver(reason) {
     title.textContent = reason === 'exhausted' ? '出せる部首がなくなりました' : '時間切れ';
     score.textContent = state.streak;
     unit.textContent = '連続で答えられました';
+    if (reason === 'timeup') KBAudio.play('timeup');
   }
   renderReveal();
   show('overScreen');
+}
+
+function renderSettingsUI() {
+  const s = KBAudio.getSettings();
+  document.getElementById('seVolume').value = Math.round(s.se * 100);
+  document.getElementById('bgmVolume').value = Math.round(s.bgm * 100);
+  document.getElementById('muteAll').checked = s.muted;
 }
 
 function bind() {
@@ -658,12 +739,25 @@ function bind() {
   };
   document.getElementById('undo').onclick = () => KanjiCanvas.deleteLast('can');
   document.getElementById('giveup').onclick = () => gameOver('giveup');
+  document.getElementById('passBtn').onclick = doPass;
 
   document.getElementById('retry').onclick = () => {
     if (state.mode === 'complete') startComplete(state.radical);
     else startTime(state.level);
   };
   document.getElementById('toTitle').onclick = () => show('modeScreen');
+
+  document.getElementById('openSettings').onclick = () => { renderSettingsUI(); show('settingsScreen'); };
+  document.getElementById('settingsBack').onclick = () => show('modeScreen');
+  document.getElementById('seVolume').oninput = e => KBAudio.setSeVolume(e.target.value / 100);
+  document.getElementById('bgmVolume').oninput = e => {
+    KBAudio.setBgmVolume(e.target.value / 100);
+  };
+  document.getElementById('muteAll').onchange = e => KBAudio.setMuted(e.target.checked);
+
+  document.addEventListener('click', e => {
+    if (e.target.closest('button')) KBAudio.play('tap');
+  });
 }
 
 /* ---------------- オンライン対戦 ---------------- */
@@ -741,6 +835,7 @@ function onBStart() {
   document.getElementById('bGiveUp').classList.add('hidden');
   bRenderUsed();
   show('battlePlayScreen');
+  KBAudio.play('start');
 }
 
 function onBOffer(msg) {
@@ -755,9 +850,7 @@ function onBOffer(msg) {
   const iAmAttacker = msg.attacker === bstate.myId;
   document.getElementById('bOfferBox').classList.toggle('hidden', !iAmAttacker);
   document.getElementById('bBoard').classList.add('hidden');
-  document.getElementById('bRadical').textContent = '—';
-  document.getElementById('bRadName').textContent = '';
-  document.getElementById('bRadMeaning').textContent = '';
+  document.getElementById('bRadicalBox').classList.add('hidden');
   document.getElementById('bTimer').textContent = '-';
 
   if (iAmAttacker) {
@@ -784,6 +877,7 @@ function onBDefend(msg) {
   bstate.deadline = Date.now() + msg.seconds * 1000;
 
   const d = DATA.radicals[msg.radical];
+  document.getElementById('bRadicalBox').classList.remove('hidden');
   document.getElementById('bRadical').textContent = msg.radical;
   document.getElementById('bRadName').textContent = d.name;
   document.getElementById('bRadMeaning').textContent = d.meaning;
@@ -816,7 +910,7 @@ function bTick() {
 
 function bJudge() {
   if (bstate.locked || !bstate.isDefending) return;
-  const cands = String(KanjiCanvas.recognize('canBattle') || '').trim().split(/\s+/).filter(Boolean).slice(0, 6);
+  const cands = scoredCandidates('canBattle');
   const grades = GRADES[bstate.level];
   const inRange = new Set(poolOf(bstate.radical, grades));
   const usedSet = new Set(bstate.used);
@@ -872,6 +966,7 @@ function onBTurnResult(msg) {
   clearInterval(bstate.tickId);
   bstate.used = msg.used || [];
   bRenderUsed();
+  KBAudio.play('correct');
 }
 
 function onBGameOver(msg) {
@@ -889,6 +984,9 @@ function onBGameOver(msg) {
   };
   title.textContent = REASON_TEXT[msg.reason] || '対戦終了';
   unit.textContent = '';
+  if (msg.reason === 'timeout' || msg.reason === 'give_up') {
+    KBAudio.play(iLost ? 'timeup' : 'victory');
+  }
 
   const box = document.getElementById('bReveal');
   if (!msg.reveal) {
@@ -899,6 +997,7 @@ function onBGameOver(msg) {
     const d = DATA.radicals[radical];
     document.getElementById('bRevRad').textContent = radical;
     document.getElementById('bRevName').textContent = d.name;
+    document.getElementById('bRevOrigin').textContent = d.origin ? `なりたち: ${d.origin}` : '';
 
     if (!unused.length) {
       document.getElementById('bRevLead').innerHTML = `${radical}を含む漢字は、すべて使われました`;
@@ -925,6 +1024,7 @@ function onBGameOver(msg) {
 function bSetMsg(t, c) {
   const el = document.getElementById('bMsg');
   el.textContent = t; el.className = 'msg' + (c ? ' ' + c : '');
+  if (c === 'ng') KBAudio.play('incorrect');
 }
 
 function bRenderUsed() {
