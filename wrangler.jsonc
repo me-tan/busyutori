@@ -10,9 +10,7 @@
     {
       "binding": "DB",
       "database_name": "kanjinage-users",
-      // "wrangler d1 create kanjinage-users" 実行後にここへ database_id を記入する。
-      // ローカル開発(wrangler dev --local)ではこの値は使われないのでダミーのままでよい。
-      "database_id": "REPLACE_AFTER_WRANGLER_D1_CREATE"
+      "database_id": "74cd6326-49b2-4374-99a5-6712fa89182e"
     }
   ]
 }
