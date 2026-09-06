@@ -13,7 +13,7 @@ RADICAL_CHOICES = 5
 ANSWER_SECONDS = 30
 
 Level = Literal["low", "elem", "all"]
-RejectReason = Literal["used", "out_of_grade", "not_in_radical"]
+RejectReason = Literal["used", "not_in_radical"]
 
 
 @dataclass
@@ -61,19 +61,18 @@ def offer_radicals(state: BattleState) -> list[str]:
 
 
 def is_valid_answer(state: BattleState, radical: str, kanji: str) -> tuple[bool, RejectReason | None]:
-    """サーバー権威の正解判定。(合格か, 不合格なら理由)"""
-    grades = gamedata.grades_for(state.level)
-    in_range = set(gamedata.pool_of(radical, grades))
+    """サーバー権威の正解判定。(合格か, 不合格なら理由)
 
-    if kanji in in_range:
-        if kanji in state.used:
-            return False, "used"
-        return True, None
-
+    難易度（学年範囲）は出題する部首の絞り込みにのみ使う。答え自体は、選んだ
+    難易度より上の学年の字を書けても構わないので、部首を含んでさえいれば
+    学年を問わず受理する。
+    """
     all_pool = set(gamedata.pool_of(radical, gamedata.ALL_GRADES))
-    if kanji in all_pool:
-        return False, "out_of_grade"
-    return False, "not_in_radical"
+    if kanji not in all_pool:
+        return False, "not_in_radical"
+    if kanji in state.used:
+        return False, "used"
+    return True, None
 
 
 def apply_answer(state: BattleState, kanji: str) -> None:
@@ -88,9 +87,11 @@ def apply_answer(state: BattleState, kanji: str) -> None:
 
 
 def reveal(state: BattleState, radical: str) -> dict:
-    """結果画面用: 指定した部首について使った字・使わなかった字の一覧。"""
-    grades = gamedata.grades_for(state.level)
-    pool = gamedata.pool_of(radical, grades)
+    """結果画面用: 指定した部首について使った字・使わなかった字の一覧。
+
+    学年を問わず受理するようになったため、一覧も学年を問わず全体（ALL_GRADES）で出す。
+    """
+    pool = gamedata.pool_of(radical, gamedata.ALL_GRADES)
     return {
         "radical": radical,
         "unused": [k for k in pool if k not in state.used],

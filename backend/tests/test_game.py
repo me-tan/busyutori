@@ -29,11 +29,12 @@ def test_is_valid_answer_rejects_already_used():
     assert reason == "used"
 
 
-def test_is_valid_answer_rejects_out_of_grade_range():
+def test_is_valid_answer_accepts_kanji_above_chosen_level():
+    # 難易度は出題する部首の絞り込みにのみ使う。答えの学年は問わない。
     state = make_state(level="low")  # 小1〜小3のみ
     ok, reason = gamerules.is_valid_answer(state, "氵", "汁")  # 中学以降
-    assert ok is False
-    assert reason == "out_of_grade"
+    assert ok is True
+    assert reason is None
 
 
 def test_is_valid_answer_rejects_wrong_radical():
@@ -93,7 +94,7 @@ def test_reveal_splits_used_and_unused():
     state.used.add("海")
     result = gamerules.reveal(state, "氵")
 
-    pool = gamedata.pool_of("氵", gamedata.grades_for("elem"))
+    pool = gamedata.pool_of("氵", gamedata.ALL_GRADES)
     assert result["radical"] == "氵"
     assert "海" in result["got"]
     assert "海" not in result["unused"]
