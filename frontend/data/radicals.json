@@ -1,6 +1,6 @@
 {
  "meta": {
-  "description": "部首投げ 部首マスタ",
+  "description": "ぶしゅとり 部首マスタ",
   "source": "KANJIDIC2（康熙部首番号・学年・読み） + CHISE IDS（へん/かんむり等の表示形の判定）",
   "note": "部首はKANJIDIC2の康熙部首番号（辞書上の正式な部首）に基づく。字形が偶然似ているだけの誤爆は含まない",
   "grades": {
