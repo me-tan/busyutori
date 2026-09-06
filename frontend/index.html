@@ -512,7 +512,7 @@ function judge() {
       const k = over[0], g = DATA.kanji[k] ? DATA.kanji[k].grade : null;
       setMsg(`「${k}」は${g ? GLABEL[g] : '範囲外'}で習う漢字です`, 'ng');
     } else if (cands.length) {
-      setMsg(`「${cands[0]}」と認識しました。この部首を含む漢字ではありません`, 'ng');
+      setMsg(`「${[...new Set(cands)].join('・')}」と認識しました。この部首を含む漢字ではありません`, 'ng');
     } else setMsg('文字を認識できませんでした。もう一度書いてみてください', 'ng');
     return;
   }
@@ -837,7 +837,7 @@ function bJudge() {
     picker.classList.add('hidden');
     if (dupes.length) bSetMsg(`「${dupes.join('・')}」はもう書きました`, 'ng');
     else if (cands.length) {
-      bSetMsg(`「${cands[0]}」と認識しました。この部首を含む漢字ではありません`, 'ng');
+      bSetMsg(`「${[...new Set(cands)].join('・')}」と認識しました。この部首を含む漢字ではありません`, 'ng');
     } else bSetMsg('文字を認識できませんでした。もう一度書いてみてください', 'ng');
     return;
   }
