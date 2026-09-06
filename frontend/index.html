@@ -60,6 +60,15 @@
   .bigbtn.has-icon { padding-left: 54px; }
   .bigbtn .icon { position: absolute; left: 16px; top: 16px; }
 
+  .settingsList { border-top: 1px solid var(--border); }
+  .settingRow {
+    display: flex; align-items: center; justify-content: space-between; gap: 16px;
+    padding: 16px 2px; border-bottom: 1px solid var(--border);
+  }
+  .settingLbl { display: flex; align-items: center; gap: 10px; font-size: 14px; font-weight: 700; color: var(--ink); }
+  .settingLbl svg { color: var(--ink-soft); flex: none; }
+  .settingRow input[type="range"] { width: 120px; }
+
   .radgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(84px,1fr)); gap: 9px; }
   .radbtn {
     background: var(--card); border: 1px solid var(--border); border-radius: 12px;
@@ -96,12 +105,18 @@
 
   .quest { background: var(--card); border: 1px solid var(--border); border-radius: 14px;
            padding: 18px; margin-bottom: 14px; text-align: center; }
+  /* タイマー行と部首カードを1枚の続いたカードに見せる（箱の重なりを減らす） */
+  #topbarTime, #battlePlayScreen > .topbar {
+    border-radius: 14px 14px 0 0; border-bottom: none; margin-bottom: 0;
+  }
+  #playScreen > .quest, #battlePlayScreen > .quest {
+    border-radius: 0 0 14px 14px; border-top: 1px dashed var(--border); padding-top: 16px;
+  }
   .radical { font-family: var(--font-kanji); font-size: 58px; line-height: 1; font-weight: 600; }
   .rad-name { font-size: 13px; color: #6B6152; font-weight: 700; margin-top: 8px; }
   .rad-meaning { font-size: 11px; color: var(--ink-faint); }
 
-  .boxwrap { background: var(--card); border: 1px solid var(--border); border-radius: 14px;
-             padding: 14px 16px; margin-bottom: 14px; }
+  .boxwrap { border-top: 1px solid var(--border); padding: 14px 2px 0; margin-bottom: 14px; }
   .boxhead { display:flex; justify-content:space-between; align-items:baseline;
              font-size: 10.5px; color: var(--ink-soft); font-weight:700; margin-bottom:10px; }
   .boxhead b { font-size: 15px; color: var(--accent); }
@@ -137,8 +152,7 @@
   .msg.ok { color: var(--success); } .msg.ng { color: var(--error); }
   .msg.ok::before { content: "✓ "; } .msg.ng::before { content: "✕ "; }
 
-  .usedbox { background: var(--card); border: 1px solid var(--border); border-radius: 14px;
-             padding: 14px 16px; margin-bottom: 14px; }
+  .usedbox { border-top: 1px solid var(--border); padding: 14px 2px 0; margin-bottom: 14px; }
   .usedbox .head { display:flex; justify-content:space-between; align-items:baseline;
                    font-size:10.5px; color: var(--ink-soft); font-weight:700; margin-bottom:8px; }
   .usedlist { font-family: var(--font-kanji); font-size:19px; line-height:1.7; word-break:break-all;
@@ -171,12 +185,13 @@
 
   .err { color: var(--error); font-size:13px; line-height:1.8; }
 
-  .roomcode { font-size: 38px; font-weight: 900; letter-spacing: 6px; text-align:center; }
+  .roomTicket { border: 1.5px dashed var(--accent); border-radius: 14px; padding: 18px; text-align: center; }
+  .roomcode { font-size: 36px; font-weight: 900; letter-spacing: 8px; color: var(--accent); }
   .codeinput { width:100%; padding:12px; font-size:19px; text-align:center; letter-spacing:6px;
-               font-family: inherit; border:1px solid var(--border); border-radius:12px; box-sizing:border-box; }
+               font-family: inherit; border:1.5px dashed var(--border); border-radius:12px; box-sizing:border-box; }
   .waitmsg { margin-top:10px; color: var(--ink-soft); font-size:13px; text-align:center; }
   .turnstatus { font-size:14px; font-weight:700; color: var(--ink); margin-bottom:10px; text-align:center; }
-  .roomlabel { font-size:12px; color: var(--ink-faint); text-align:center; }
+  .roomlabel { font-size:11px; color: var(--ink-faint); font-weight:700; text-align:center; }
 
   input[type="range"], input[type="checkbox"] { accent-color: var(--accent); }
 
@@ -230,17 +245,27 @@
 
 <div id="settingsScreen" class="card hidden">
   <div class="secTitle">設定</div>
-  <div class="stack">
-    <div>
-      <div class="lbl" style="margin-bottom:8px">効果音の音量</div>
-      <input type="range" id="seVolume" min="0" max="100" style="width:100%">
+  <div class="settingsList">
+    <div class="settingRow">
+      <div class="settingLbl">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10v4h4l5 5V5L7 10H3z"/><path d="M16 8a5 5 0 010 8"/></svg>
+        効果音の音量
+      </div>
+      <input type="range" id="seVolume" min="0" max="100">
     </div>
-    <div>
-      <div class="lbl" style="margin-bottom:8px">BGMの音量</div>
-      <input type="range" id="bgmVolume" min="0" max="100" style="width:100%">
+    <div class="settingRow">
+      <div class="settingLbl">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+        BGMの音量
+      </div>
+      <input type="range" id="bgmVolume" min="0" max="100">
     </div>
-    <label style="display:flex;align-items:center;gap:8px;font-size:14px;color:#666">
-      <input type="checkbox" id="muteAll">すべての音を消す
+    <label class="settingRow" style="cursor:pointer">
+      <div class="settingLbl">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10v4h4l5 5V5L7 10H3z"/><path d="M17 9l5 6M22 9l-5 6"/></svg>
+        すべての音を消す
+      </div>
+      <input type="checkbox" id="muteAll">
     </label>
   </div>
   <button class="back" id="settingsBack">もどる</button>
@@ -351,8 +376,10 @@
   </div>
 
   <div class="hidden" id="battleWaiting" style="margin-top:18px">
-    <div class="roomlabel">部屋コード</div>
-    <div class="roomcode" id="roomCodeDisplay">----</div>
+    <div class="roomTicket">
+      <div class="roomlabel">部屋コード</div>
+      <div class="roomcode" id="roomCodeDisplay">----</div>
+    </div>
     <div class="waitmsg" id="waitingMsg">相手を待っています…</div>
   </div>
 
