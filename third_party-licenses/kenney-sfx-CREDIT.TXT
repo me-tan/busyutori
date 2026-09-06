@@ -13,7 +13,18 @@
 - frontend/assets/sfx/start.m4a     <- interface-sounds/open_002.ogg
 - frontend/assets/sfx/victory.m4a   <- music-jingles/Pizzicato jingles/jingles_PIZZI00.ogg
 - frontend/assets/sfx/timeup.m4a    <- music-jingles/Hit jingles/jingles_HIT00.ogg
-- frontend/assets/bgm/menu.m4a      <- music-jingles/8-Bit jingles/jingles_NES05.ogg
 
 元はOgg Vorbis形式で配布されているが、Safari非対応のためAAC(.m4a)に変換して同梱している
 （音源そのものはKenneyのオリジナルをそのままエンコードし直したのみで、改変はしていない）。
+
+---
+
+BGM: jkjkke「dream」（OpenGameArt「CC0 - Calm / Relaxing Music」コレクション）
+https://opengameart.org/content/mainmenu-music
+CC0。表記義務なし。
+
+- frontend/assets/bgm/menu.m4a <- 上記mp3をAAC(.m4a, 96kbps)に変換したもの
+
+（旧: Kenney Music Jinglesの1曲を使っていたが、ジングルは1〜2秒の短い
+効果音でありBGMループ用ではないため、ループ再生すると壊れたような音に
+なっていた。ループ前提の長尺トラックに差し替えた）

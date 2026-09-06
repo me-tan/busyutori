@@ -36,6 +36,7 @@
     font-size: 15px; padding: 14px;
   }
   button.ghost { background: transparent; color: var(--ink-soft); padding: 6px 4px; }
+  button:disabled { opacity: .5; cursor: default; }
   .back { margin-top: 16px; width: 100%; background: transparent; color: var(--ink-soft); }
 
   .stack { display: flex; flex-direction: column; gap: 14px; }
@@ -217,7 +218,7 @@
     </button>
     <button class="bigbtn has-icon" data-mode="complete">
       <svg class="icon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="7" height="7" rx="1"/><rect x="13" y="4" width="7" height="7" rx="1"/><rect x="4" y="13" width="7" height="7" rx="1"/><path d="M15 17l2 2 4-4"/></svg>
-      コンプリート<small>ひとつの部首の漢字を、すべて書き出す</small>
+      部首マスター<small>ひとつの部首の漢字を、すべて書き出す</small>
     </button>
     <button class="bigbtn has-icon" id="toBattle">
       <svg class="icon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="9" r="2.6"/><path d="M2.8 18.5c0-2.7 2.3-4.5 5.2-4.5s5.2 1.8 5.2 4.5"/><circle cx="17.5" cy="8.5" r="2.2"/><path d="M14.7 13.4c2.3.3 3.8 1.8 3.8 4.3"/></svg>
@@ -330,6 +331,7 @@
 <div id="battleSetupScreen" class="card hidden">
   <div class="secTitle">オンライン対戦</div>
   <div class="err hidden" id="battleErr"></div>
+  <div class="waitmsg hidden" id="battleBusy"></div>
 
   <div class="stack" id="battleChoice">
     <button class="bigbtn" data-battle="create">部屋を作る<small>相手に伝えるコードが発行されます</small></button>
@@ -653,10 +655,8 @@ function judge() {
   if (state.locked) return;
   const cands = scoredCandidates('can');
 
-  const inLevel = state.mode === 'complete'
-    ? new Set(state.target)
-    : new Set(poolOf(state.radical, gradesNow()));
   const allPool = new Set(poolOf(state.radical, ALL_GRADES));
+  const inLevel = state.mode === 'complete' ? new Set(state.target) : allPool;
 
   const valid = [], dupes = [], over = [];
   for (const c of cands) {
@@ -741,7 +741,7 @@ function renderReveal() {
   box.classList.remove('hidden');
 
   const d = DATA.radicals[rad];
-  const pool = state.mode === 'complete' ? state.target : poolOf(rad, gradesNow());
+  const pool = state.mode === 'complete' ? state.target : poolOf(rad, ALL_GRADES);
   const unused = pool.filter(k => !state.used.has(k));
   const got = pool.filter(k => state.used.has(k));
 
@@ -784,7 +784,7 @@ function gameOver(reason) {
     if (reason === 'complete') {
       const sec = Math.round((Date.now() - state.startedAt) / 1000);
       const m = Math.floor(sec / 60), s = sec % 60;
-      title.textContent = 'コンプリート';
+      title.textContent = '部首マスター';
       score.textContent = state.target.length;
       score.classList.add('gold');
       unit.textContent = `字すべて書けました（${m}分${s}秒）`;
@@ -873,6 +873,7 @@ function bReset() {
   document.getElementById('battleJoinPanel').classList.add('hidden');
   document.getElementById('battleWaiting').classList.add('hidden');
   bSetErr('');
+  bSetBusy('');
 }
 
 function bSetErr(t) {
@@ -881,26 +882,45 @@ function bSetErr(t) {
   el.classList.remove('hidden'); el.textContent = t;
 }
 
+let battleBusyTimer = null;
+function bSetBusy(t) {
+  clearTimeout(battleBusyTimer);
+  const el = document.getElementById('battleBusy');
+  document.querySelectorAll('#battleSetupScreen button').forEach(b => { b.disabled = !!t; });
+  if (!t) { el.classList.add('hidden'); el.textContent = ''; return; }
+  el.classList.remove('hidden'); el.textContent = t;
+}
+
 async function bCreateRoom(level) {
   bSetErr('');
+  bSetBusy('部屋を作っています…');
+  battleBusyTimer = setTimeout(
+    () => bSetBusy('部屋を作っています…（サーバーが起動中の場合があります。もう少しお待ちください）'), 6000);
   try {
     const room = await Net.createRoom(level);
     bstate.code = room.code; bstate.myId = room.player_id; bstate.level = level;
+    bSetBusy('');
     bEnterWaiting('相手を待っています…');
     bConnect();
   } catch (e) {
+    bSetBusy('');
     bSetErr('部屋を作れませんでした。通信環境を確認してください。');
   }
 }
 
 async function bJoinRoom(code) {
   bSetErr('');
+  bSetBusy('部屋に入っています…');
+  battleBusyTimer = setTimeout(
+    () => bSetBusy('部屋に入っています…（サーバーが起動中の場合があります。もう少しお待ちください）'), 6000);
   try {
     const room = await Net.joinRoom(code);
     bstate.code = room.code; bstate.myId = room.player_id; bstate.level = room.level;
+    bSetBusy('');
     bEnterWaiting('対戦を開始しています…');
     bConnect();
   } catch (e) {
+    bSetBusy('');
     bSetErr('その部屋には入れませんでした。コードを確認してください。');
   }
 }
@@ -1010,8 +1030,7 @@ function bTick() {
 function bJudge() {
   if (bstate.locked || !bstate.isDefending) return;
   const cands = scoredCandidates('canBattle');
-  const grades = GRADES[bstate.level];
-  const inRange = new Set(poolOf(bstate.radical, grades));
+  const inRange = new Set(poolOf(bstate.radical, ALL_GRADES));
   const usedSet = new Set(bstate.used);
 
   const valid = [], dupes = [], other = [];
@@ -1057,7 +1076,7 @@ function bSubmit(kanji) {
 
 function onBRejected(msg) {
   bstate.locked = false;
-  const why = { used: 'もう使われています', out_of_grade: '選んだ難易度の範囲外です', not_in_radical: 'その部首を含みません' };
+  const why = { used: 'もう使われています', not_in_radical: 'その部首を含みません' };
   bSetMsg(`「${msg.kanji}」は${why[msg.reason] || '認められませんでした'}`, 'ng');
 }
 
