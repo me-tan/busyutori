@@ -486,7 +486,7 @@ function renderTimer() {
 
 function judge() {
   if (state.locked) return;
-  const cands = String(KanjiCanvas.recognize('can') || '').trim().split(/\s+/).filter(Boolean).slice(0, 3);
+  const cands = String(KanjiCanvas.recognize('can') || '').trim().split(/\s+/).filter(Boolean).slice(0, 10);
 
   const inLevel = state.mode === 'complete'
     ? new Set(state.target)
@@ -511,7 +511,9 @@ function judge() {
     else if (over.length) {
       const k = over[0], g = DATA.kanji[k] ? DATA.kanji[k].grade : null;
       setMsg(`「${k}」は${g ? GLABEL[g] : '範囲外'}で習う漢字です`, 'ng');
-    } else setMsg('その部首を含む漢字が見つかりません', 'ng');
+    } else if (cands.length) {
+      setMsg(`「${cands[0]}」と認識しました。この部首を含む漢字ではありません`, 'ng');
+    } else setMsg('文字を認識できませんでした。もう一度書いてみてください', 'ng');
     return;
   }
 
@@ -814,7 +816,7 @@ function bTick() {
 
 function bJudge() {
   if (bstate.locked || !bstate.isDefending) return;
-  const cands = String(KanjiCanvas.recognize('canBattle') || '').trim().split(/\s+/).filter(Boolean).slice(0, 3);
+  const cands = String(KanjiCanvas.recognize('canBattle') || '').trim().split(/\s+/).filter(Boolean).slice(0, 10);
   const grades = GRADES[bstate.level];
   const inRange = new Set(poolOf(bstate.radical, grades));
   const usedSet = new Set(bstate.used);
@@ -834,7 +836,9 @@ function bJudge() {
   if (!valid.length) {
     picker.classList.add('hidden');
     if (dupes.length) bSetMsg(`「${dupes.join('・')}」はもう書きました`, 'ng');
-    else bSetMsg('その部首を含む漢字が見つかりません', 'ng');
+    else if (cands.length) {
+      bSetMsg(`「${cands[0]}」と認識しました。この部首を含む漢字ではありません`, 'ng');
+    } else bSetMsg('文字を認識できませんでした。もう一度書いてみてください', 'ng');
     return;
   }
 
