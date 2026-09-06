@@ -1,4 +1,4 @@
-"""部首アタック対戦API。
+"""部首投げ対戦API。
 
 REST: ルームの作成・参加。
 WebSocket: 対戦中のリアルタイムなやり取り（部首を投げる/答える/結果通知）。
@@ -16,7 +16,7 @@ from . import game as gamerules
 from .rooms import Room, rooms
 from .schemas import CreateRoomRequest, CreateRoomResponse, JoinRoomResponse
 
-app = FastAPI(title="部首アタック 対戦API")
+app = FastAPI(title="部首投げ 対戦API")
 
 # 開発中は全オリジン許可。本番では実際のフロントエンドのオリジンに絞ること。
 app.add_middleware(
