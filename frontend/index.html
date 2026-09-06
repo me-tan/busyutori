@@ -4,14 +4,14 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>ぶしゅとり</title>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@500;700;900&family=Shippori+Mincho:wght@600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@500;700;900&family=BIZ+UDPMincho:wght@700&display=swap">
 <style>
   :root {
     --paper: #F7F3EC; --card: #fff; --ink: #262019; --ink-soft: #8A8074; --ink-faint: #B0A691;
     --border: #E4DCCB; --accent: #B8391F; --accent-dark: #8F2B16;
     --success: #3F7D53; --success-bg: #EAF3EC; --error: #A8433A;
     --font-ui: "Zen Maru Gothic", "Hiragino Maru Gothic ProN", "Hiragino Sans", "Noto Sans JP", sans-serif;
-    --font-kanji: "Shippori Mincho", "Hiragino Mincho ProN", serif;
+    --font-kanji: "BIZ UDPMincho", "Hiragino Mincho ProN", serif;
   }
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   body {
@@ -41,7 +41,15 @@
 
   .avatarChip { width: 34px; height: 34px; border-radius: 50%; background: #FDEDE5; color: var(--accent);
                 display: flex; align-items: center; justify-content: center; font-size: 15px; font-weight: 900;
-                flex: none; }
+                flex: none; border: none; cursor: pointer; padding: 0; }
+  .topnav { display: flex; align-items: center; gap: 10px; margin-bottom: 22px; }
+  .topnavName { font-size: 13px; line-height: 1.5; text-align: left; }
+  .topnavName div:first-child { font-weight: 700; color: var(--ink); }
+  .topnavName div:last-child { font-size: 9px; color: var(--ink-faint); letter-spacing: 0.05em; }
+  .iconBtn { width: 36px; height: 36px; border-radius: 50%; background: transparent; border: none;
+             color: var(--ink-soft); display: flex; align-items: center; justify-content: center;
+             flex: none; cursor: pointer; padding: 0; }
+  .iconBtn:active { background: #F1EAD9; }
 
   .stack { display: flex; flex-direction: column; gap: 0; }
   .bigbtn {
@@ -149,7 +157,7 @@
   #playScreen > .quest, #battlePlayScreen > .quest {
     border-radius: 0 0 14px 14px; border-top: 1px dashed var(--border); padding-top: 16px;
   }
-  .radical { font-family: var(--font-kanji); font-size: 58px; line-height: 1; font-weight: 600; }
+  .radical { font-family: var(--font-kanji); font-size: 58px; line-height: 1; font-weight: 700; }
   .rad-name { font-size: 13px; color: #6B6152; font-weight: 700; margin-top: 8px; }
   .rad-meaning { font-size: 11px; color: var(--ink-faint); }
 
@@ -181,7 +189,7 @@
   .picker-label { font-size: 11.5px; color: var(--ink-soft); font-weight: 700; margin-bottom: 8px; text-align: center; }
   .pick-row { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
   .pick { font-family: var(--font-kanji); font-size: 32px; padding: 8px 16px; border: 1px solid var(--border);
-          border-radius: 12px; background: var(--card); cursor: pointer; line-height: 1.2; font-weight: 600; }
+          border-radius: 12px; background: var(--card); cursor: pointer; line-height: 1.2; font-weight: 700; }
   .pick:active { background: #FBF3E9; border-color: var(--accent); }
   .pick small { display: block; font-family: var(--font-ui); font-size: 11px; color: var(--ink-faint); font-weight: 700; }
 
@@ -195,7 +203,7 @@
   .usedlist { font-family: var(--font-kanji); font-size:19px; line-height:1.7; word-break:break-all;
               max-height:96px; overflow-y:auto; }
   .usedlist span { margin-right:6px; color: var(--ink-faint); }
-  .usedlist span.cur { color: var(--ink); font-weight:600; }
+  .usedlist span.cur { color: var(--ink); font-weight:700; }
   .usedempty { font-family: var(--font-ui); font-size:12px; color: var(--ink-faint); }
 
   .over { text-align: center; padding: 8px 4px; }
@@ -205,7 +213,7 @@
   .over .unit { font-size: 12.5px; color: var(--ink-soft); font-weight: 700; margin-top: 2px; }
 
   .reveal { margin-top: 22px; padding-top: 20px; border-top: 1px solid var(--border); }
-  .reveal-rad { font-family: var(--font-kanji); font-size: 34px; font-weight: 600; line-height: 1; }
+  .reveal-rad { font-family: var(--font-kanji); font-size: 34px; font-weight: 700; line-height: 1; }
   .reveal-name { font-size: 11.5px; color: var(--ink-faint); margin-top: 4px; }
   .reveal-lead { font-size: 13.5px; margin: 14px 0 4px; }
   .reveal-lead b { font-size: 20px; color: var(--accent); }
@@ -218,7 +226,7 @@
   .kcell .g { font-size: 8px; color: var(--ink-faint); }
   .more { font-size: 11.5px; color: var(--ink-faint); margin-top:10px; }
   .gotbox { margin-top: 18px; font-size: 11.5px; color: var(--ink-soft); }
-  .gotbox .gk { font-family: var(--font-kanji); font-size: 18px; color: var(--success); font-weight:600; margin-right:4px; }
+  .gotbox .gk { font-family: var(--font-kanji); font-size: 18px; color: var(--success); font-weight:700; margin-right:4px; }
 
   .err { color: var(--error); font-size:13px; line-height:1.8; }
 
@@ -234,7 +242,7 @@
 
   @media (min-width: 900px) {
     body { max-width: none; padding: 0 32px 48px; }
-    #loginScreen, #modeScreen, #settingsScreen, #friendsScreen, #levelScreen, #radScreen, #battleSetupScreen,
+    #loginScreen, #modeScreen, #soloScreen, #settingsScreen, #friendsScreen, #levelScreen, #radScreen, #battleSetupScreen,
     #overScreen, #battleOverScreen {
       max-width: 560px; margin: 64px auto 0;
     }
@@ -274,17 +282,39 @@
 </div>
 
 <div id="modeScreen" class="card hidden">
-  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:22px">
-    <div style="display:flex;align-items:center;gap:10px">
-      <div class="avatarChip" id="avatarChip">?</div>
-      <div>
-        <div style="font-size:13px;font-weight:700;color:var(--ink)" id="myNickname">-</div>
-        <div style="font-size:9px;color:var(--ink-faint);letter-spacing:0.05em" id="myCodeSmall">------</div>
-      </div>
+  <div class="topnav">
+    <button class="avatarChip" id="avatarChip" title="ニックネームを変更">?</button>
+    <div class="topnavName">
+      <div id="myNickname">-</div>
+      <div id="myCodeSmall">------</div>
     </div>
+    <div style="flex:1"></div>
+    <button class="iconBtn" id="openFriends" title="フレンド">
+      <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="9" r="2.8"/><path d="M2.5 19c0-3 2.5-5 5.5-5s5.5 2 5.5 5"/><circle cx="17.5" cy="8.5" r="2.3"/><path d="M14.7 13.7c2.6.3 4.3 2 4.3 4.8"/></svg>
+    </button>
+    <button class="iconBtn" id="openSettings" title="設定">
+      <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="3"/>
+        <path d="M19.4 15a1.7 1.7 0 00.3 1.9l.1.1a2 2 0 11-2.8 2.8l-.1-.1a1.7 1.7 0 00-1.9-.3 1.7 1.7 0 00-1 1.5V21a2 2 0 11-4 0v-.1a1.7 1.7 0 00-1-1.6 1.7 1.7 0 00-1.9.3l-.1.1a2 2 0 11-2.8-2.8l.1-.1a1.7 1.7 0 00.3-1.9 1.7 1.7 0 00-1.5-1H3a2 2 0 110-4h.1a1.7 1.7 0 001.5-1 1.7 1.7 0 00-.3-1.9l-.1-.1a2 2 0 112.8-2.8l.1.1a1.7 1.7 0 001.9.3H9a1.7 1.7 0 001-1.5V3a2 2 0 114 0v.1a1.7 1.7 0 001 1.5 1.7 1.7 0 001.9-.3l.1-.1a2 2 0 112.8 2.8l-.1.1a1.7 1.7 0 00-.3 1.9V9a1.7 1.7 0 001.5 1h.1a2 2 0 110 4h-.1a1.7 1.7 0 00-1.5 1z"/>
+      </svg>
+    </button>
   </div>
   <h1><span class="accent">ぶしゅ</span>とり</h1>
-  <div class="tag">提示された部首を含む漢字を書く</div>
+  <div class="tag">部首をつないで、漢字をつぎつぎ書くゲーム</div>
+  <div class="stack">
+    <button class="bigbtn has-icon" id="toBattle">
+      <svg class="icon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="9" r="2.6"/><path d="M2.8 18.5c0-2.7 2.3-4.5 5.2-4.5s5.2 1.8 5.2 4.5"/><circle cx="17.5" cy="8.5" r="2.2"/><path d="M14.7 13.4c2.3.3 3.8 1.8 3.8 4.3"/></svg>
+      だれかと対戦する<small>友だちや、ランダムな相手と部首を投げ合う</small>
+    </button>
+    <button class="bigbtn has-icon" id="toSolo">
+      <svg class="icon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+      ひとりで練習する<small>タイムアタック・部首マスター</small>
+    </button>
+  </div>
+</div>
+
+<div id="soloScreen" class="card hidden">
+  <div class="secTitle">ひとりで練習する</div>
   <div class="stack" id="modes">
     <button class="bigbtn has-icon" data-mode="time">
       <svg class="icon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
@@ -294,15 +324,8 @@
       <svg class="icon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="7" height="7" rx="1"/><rect x="13" y="4" width="7" height="7" rx="1"/><rect x="4" y="13" width="7" height="7" rx="1"/><path d="M15 17l2 2 4-4"/></svg>
       部首マスター<small>ひとつの部首の漢字を、すべて書き出す</small>
     </button>
-    <button class="bigbtn has-icon" id="toBattle">
-      <svg class="icon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="9" r="2.6"/><path d="M2.8 18.5c0-2.7 2.3-4.5 5.2-4.5s5.2 1.8 5.2 4.5"/><circle cx="17.5" cy="8.5" r="2.2"/><path d="M14.7 13.4c2.3.3 3.8 1.8 3.8 4.3"/></svg>
-      オンライン対戦<small>別の端末にいる相手と部首を投げ合う</small>
-    </button>
   </div>
-  <div style="display:flex;gap:8px;margin-top:14px">
-    <button class="back" id="openFriends" style="margin-top:0">フレンド</button>
-    <button class="back" id="openSettings" style="margin-top:0">設定</button>
-  </div>
+  <button class="back" id="soloBack">もどる</button>
 </div>
 
 <div id="friendsScreen" class="card hidden">
@@ -452,8 +475,16 @@
   <div class="waitmsg hidden" id="battleBusy"></div>
 
   <div class="stack" id="battleChoice">
+    <button class="bigbtn" data-battle="quick">ランダムマッチング<small>だれかとすぐに対戦する</small></button>
     <button class="bigbtn" data-battle="create">部屋を作る<small>相手に伝えるコードが発行されます</small></button>
     <button class="bigbtn" data-battle="join">部屋に入る<small>相手から聞いたコードを入力します</small></button>
+  </div>
+
+  <div class="stack hidden" id="battleQuickPanel" style="margin-top:14px">
+    <div class="secTitle">難易度をえらぶ</div>
+    <button class="bigbtn" data-qlevel="low">初級<small>小1〜小3で習う漢字</small></button>
+    <button class="bigbtn" data-qlevel="elem">中級<small>小1〜小6で習う漢字</small></button>
+    <button class="bigbtn" data-qlevel="all">上級<small>常用漢字すべて</small></button>
   </div>
 
   <div class="stack hidden" id="battleCreatePanel" style="margin-top:14px">
@@ -474,6 +505,11 @@
       <div class="roomcode" id="roomCodeDisplay">----</div>
     </div>
     <div class="waitmsg" id="waitingMsg">相手を待っています…</div>
+  </div>
+
+  <div class="hidden" id="quickWaiting" style="margin-top:18px;text-align:center">
+    <div class="waitmsg" id="quickWaitingMsg">対戦相手をさがしています…</div>
+    <button class="back" id="quickCancelBtn">あきらめる</button>
   </div>
 
   <button class="back" id="battleBack">もどる</button>
@@ -553,7 +589,7 @@
 const TIME_LIMIT = 30;
 const MAX_REVEAL = 24;
 const PASS_LIMIT = 3;
-const OCR_SCORE_THRESHOLD = 1.6; // 最良候補の距離の何倍まで許容するか（実機でチューニングする）
+const OCR_SCORE_THRESHOLD = 1.35; // 最良候補の距離の何倍まで許容するか（実機でチューニングする）
 const ALL_GRADES = ['1','2','3','4','5','6','8'];
 const GRADES = { low:['1','2','3'], elem:['1','2','3','4','5','6'], all:ALL_GRADES };
 const GLABEL = {1:'小1',2:'小2',3:'小3',4:'小4',5:'小5',6:'小6',8:'中学'};
@@ -596,9 +632,9 @@ function renderModeScreen() {
   document.getElementById('myCodeSmall').textContent = 'コード ' + p.code;
 }
 
-const SCREENS = ['loginScreen','modeScreen','settingsScreen','friendsScreen','levelScreen','radScreen','playScreen','overScreen',
+const SCREENS = ['loginScreen','modeScreen','soloScreen','settingsScreen','friendsScreen','levelScreen','radScreen','playScreen','overScreen',
   'battleSetupScreen','battlePlayScreen','battleOverScreen'];
-const BGM_SCREENS = new Set(['loginScreen','modeScreen','settingsScreen','friendsScreen','levelScreen','radScreen',
+const BGM_SCREENS = new Set(['loginScreen','modeScreen','soloScreen','settingsScreen','friendsScreen','levelScreen','radScreen',
   'overScreen','battleSetupScreen','battleOverScreen']);
 const LEVEL_LABEL = { low: '初級', elem: '中級', all: '上級' };
 function show(id) {
@@ -781,7 +817,7 @@ function scoredCandidates(id) {
   const scored = KanjiCanvas.lastScored || [];
   if (!scored.length) return [];
   const best = scored[0][1];
-  return scored.filter(([, dist]) => dist <= best * OCR_SCORE_THRESHOLD).slice(0, 6).map(([k]) => k);
+  return scored.filter(([, dist]) => dist <= best * OCR_SCORE_THRESHOLD).slice(0, 4).map(([k]) => k);
 }
 
 function judge() {
@@ -816,6 +852,7 @@ function judge() {
   }
 
   setMsg('', '');
+  if (valid.length === 1) { accept(valid[0]); return; } // 候補が1つに絞れているならタップさせずに確定する
   picker.classList.remove('hidden');
   for (const k of valid) {
     const b = document.createElement('button');
@@ -1083,6 +1120,8 @@ function bind() {
     b.onclick = () => { state.mode = b.dataset.mode; show('levelScreen'); };
   });
   document.getElementById('toBattle').onclick = () => { bReset(); show('battleSetupScreen'); };
+  document.getElementById('toSolo').onclick = () => show('soloScreen');
+  document.getElementById('soloBack').onclick = () => show('modeScreen');
   document.querySelectorAll('#levelScreen .bigbtn').forEach(b => {
     b.onclick = () => {
       state.level = b.dataset.level;
@@ -1090,7 +1129,7 @@ function bind() {
       else startTime(state.level);
     };
   });
-  document.getElementById('lvBack').onclick  = () => show('modeScreen');
+  document.getElementById('lvBack').onclick  = () => show('soloScreen');
   document.getElementById('radBack').onclick = () => show('levelScreen');
 
   document.getElementById('rec').onclick = judge;
@@ -1108,6 +1147,15 @@ function bind() {
     else startTime(state.level);
   };
   document.getElementById('toTitle').onclick = () => show('modeScreen');
+
+  document.getElementById('avatarChip').onclick = async () => {
+    const p = Players.getProfile();
+    if (!p) return;
+    const name = window.prompt('ニックネームを変更', p.nickname);
+    if (!name || !name.trim() || name.trim() === p.nickname) return;
+    try { await Players.renameProfile(name.trim()); renderModeScreen(); }
+    catch (e) { window.alert(e.message || '変更できませんでした'); }
+  };
 
   document.getElementById('openSettings').onclick = () => { renderSettingsUI(); show('settingsScreen'); };
   document.getElementById('settingsBack').onclick = () => show('modeScreen');
@@ -1154,19 +1202,23 @@ function bind() {
 
 const bstate = {
   code: null, myId: null, level: null,
-  radical: null, deadline: 0, totalSeconds: 0, tickId: null,
+  radical: null, deadline: 0, totalSeconds: 0, tickId: null, quickTimeoutId: null,
   isDefending: false, used: [], locked: false,
 };
+const QUICKMATCH_TIMEOUT_SECONDS = 20;
 
 function bReset() {
   Net.close();
   bstate.code = null; bstate.myId = null; bstate.level = null;
   bstate.radical = null; bstate.deadline = 0; bstate.used = []; bstate.locked = false;
   clearInterval(bstate.tickId);
+  clearTimeout(bstate.quickTimeoutId);
   document.getElementById('battleChoice').classList.remove('hidden');
+  document.getElementById('battleQuickPanel').classList.add('hidden');
   document.getElementById('battleCreatePanel').classList.add('hidden');
   document.getElementById('battleJoinPanel').classList.add('hidden');
   document.getElementById('battleWaiting').classList.add('hidden');
+  document.getElementById('quickWaiting').classList.add('hidden');
   bSetErr('');
   bSetBusy('');
 }
@@ -1220,6 +1272,36 @@ async function bJoinRoom(code) {
   }
 }
 
+async function bQuickMatch(level) {
+  bSetErr('');
+  bSetBusy('対戦相手をさがしています…');
+  battleBusyTimer = setTimeout(
+    () => bSetBusy('対戦相手をさがしています…（サーバーが起動中の場合があります）'), 6000);
+  try {
+    const room = await Net.quickMatch(level);
+    bstate.code = room.code; bstate.myId = room.player_id; bstate.level = level;
+    bSetBusy('');
+    bEnterQuickWaiting();
+    bConnect();
+    if (room.is_host) {
+      bstate.quickTimeoutId = setTimeout(() => {
+        Net.cancelRoom(bstate.code, bstate.myId);
+        bReset();
+        bSetErr('対戦相手が見つかりませんでした。もう一度お試しください。');
+      }, QUICKMATCH_TIMEOUT_SECONDS * 1000);
+    }
+  } catch (e) {
+    bSetBusy('');
+    bSetErr('マッチングできませんでした。通信環境を確認してください。');
+  }
+}
+
+function bEnterQuickWaiting() {
+  document.getElementById('battleChoice').classList.add('hidden');
+  document.getElementById('battleQuickPanel').classList.add('hidden');
+  document.getElementById('quickWaiting').classList.remove('hidden');
+}
+
 function bEnterWaiting(msg) {
   document.getElementById('battleChoice').classList.add('hidden');
   document.getElementById('battleCreatePanel').classList.add('hidden');
@@ -1241,6 +1323,7 @@ function bConnect() {
 }
 
 function onBStart() {
+  clearTimeout(bstate.quickTimeoutId);
   document.getElementById('bRoomCode').textContent = bstate.code;
   document.getElementById('bGiveUp').classList.add('hidden');
   bRenderUsed();
@@ -1350,6 +1433,7 @@ function bJudge() {
   }
 
   bSetMsg('', '');
+  if (valid.length === 1) { bSubmit(valid[0]); return; } // 候補が1つに絞れているならタップさせずに送信する
   picker.classList.remove('hidden');
   for (const k of valid) {
     const b = document.createElement('button');
@@ -1448,13 +1532,20 @@ function bRenderUsed() {
 }
 
 function bBind() {
+  const BATTLE_PANEL = { create: 'battleCreatePanel', join: 'battleJoinPanel', quick: 'battleQuickPanel' };
   document.querySelectorAll('#battleChoice .bigbtn').forEach(b => {
     b.onclick = () => {
       document.getElementById('battleChoice').classList.add('hidden');
-      document.getElementById(b.dataset.battle === 'create' ? 'battleCreatePanel' : 'battleJoinPanel')
-        .classList.remove('hidden');
+      document.getElementById(BATTLE_PANEL[b.dataset.battle]).classList.remove('hidden');
     };
   });
+  document.querySelectorAll('#battleQuickPanel .bigbtn').forEach(b => {
+    b.onclick = () => bQuickMatch(b.dataset.qlevel);
+  });
+  document.getElementById('quickCancelBtn').onclick = () => {
+    if (bstate.code && bstate.myId) Net.cancelRoom(bstate.code, bstate.myId);
+    bReset();
+  };
   document.querySelectorAll('#battleCreatePanel .bigbtn').forEach(b => {
     b.onclick = () => bCreateRoom(b.dataset.blevel);
   });
