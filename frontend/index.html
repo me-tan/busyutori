@@ -69,6 +69,16 @@
   .settingLbl svg { color: var(--ink-soft); flex: none; }
   .settingRow input[type="range"] { width: 120px; }
 
+  .friendsList { border-top: 1px solid var(--border); }
+  .friendRow { display: flex; align-items: center; justify-content: space-between; gap: 10px;
+               padding: 14px 2px; border-bottom: 1px solid var(--border); }
+  .friendName { font-size: 14px; font-weight: 700; color: var(--ink); }
+  .friendCode { font-size: 10px; color: var(--ink-faint); letter-spacing: 0.05em; }
+  .friendBest { display: flex; gap: 8px; font-size: 11px; color: var(--ink-soft); flex: none; }
+  .friendBest b { color: var(--accent); font-size: 13px; }
+  .friendRemove { background: transparent; border: none; color: var(--ink-faint); font-size: 11px;
+                  font-weight: 700; padding: 4px; flex: none; }
+
   .radgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(84px,1fr)); gap: 9px; }
   .radbtn {
     background: var(--card); border: 1px solid var(--border); border-radius: 12px;
@@ -240,7 +250,41 @@
       オンライン対戦<small>別の端末にいる相手と部首を投げ合う</small>
     </button>
   </div>
-  <button class="back" id="openSettings" style="margin-top:14px">設定</button>
+  <div style="display:flex;gap:8px;margin-top:14px">
+    <button class="back" id="openFriends" style="margin-top:0">フレンド</button>
+    <button class="back" id="openSettings" style="margin-top:0">設定</button>
+  </div>
+</div>
+
+<div id="friendsScreen" class="card hidden">
+  <div class="secTitle">フレンド</div>
+
+  <div id="profileSetup">
+    <div class="tag" style="margin-bottom:14px">まずニックネームを決めてください</div>
+    <input class="codeinput" id="nicknameInput" placeholder="ニックネーム" maxlength="20"
+           style="letter-spacing:normal;font-size:16px;">
+    <div class="err hidden" id="profileErr" style="margin-top:10px"></div>
+    <button class="primary btn-block" id="createProfileBtn" style="margin-top:10px">はじめる</button>
+  </div>
+
+  <div id="profileMain" class="hidden">
+    <div class="roomTicket" style="margin-bottom:16px">
+      <div class="roomlabel">あなたのコード</div>
+      <div class="roomcode" id="myCodeDisplay">------</div>
+      <button class="ghost" id="copyCodeBtn" style="margin-top:6px">コードをコピー</button>
+    </div>
+
+    <div style="display:flex;gap:8px;margin-bottom:10px">
+      <input class="codeinput" id="addFriendInput" placeholder="フレンドのコード" maxlength="6"
+             style="letter-spacing:normal;font-size:16px;">
+      <button class="primary" id="addFriendBtn" style="flex:none">追加</button>
+    </div>
+    <div class="err hidden" id="friendsErr" style="margin-bottom:10px"></div>
+
+    <div id="friendsList"></div>
+  </div>
+
+  <button class="back" id="friendsBack">もどる</button>
 </div>
 
 <div id="settingsScreen" class="card hidden">
@@ -453,6 +497,7 @@
 <script src="js/config.js"></script>
 <script src="js/net.js"></script>
 <script src="js/audio.js"></script>
+<script src="js/players.js"></script>
 <script>
 "use strict";
 
@@ -491,10 +536,11 @@ async function boot() {
   bBind();
 }
 
-const SCREENS = ['modeScreen','settingsScreen','levelScreen','radScreen','playScreen','overScreen',
+const SCREENS = ['modeScreen','settingsScreen','friendsScreen','levelScreen','radScreen','playScreen','overScreen',
   'battleSetupScreen','battlePlayScreen','battleOverScreen'];
-const BGM_SCREENS = new Set(['modeScreen','settingsScreen','levelScreen','radScreen',
+const BGM_SCREENS = new Set(['modeScreen','settingsScreen','friendsScreen','levelScreen','radScreen',
   'overScreen','battleSetupScreen','battleOverScreen']);
+const LEVEL_LABEL = { low: '初級', elem: '中級', all: '上級' };
 function show(id) {
   SCREENS.forEach(s => document.getElementById(s).classList.toggle('hidden', s !== id));
   if (BGM_SCREENS.has(id)) KBAudio.playBgm('menu'); else KBAudio.stopBgm();
@@ -825,6 +871,7 @@ function gameOver(reason) {
     title.textContent = reason === 'exhausted' ? '出せる部首がなくなりました' : '時間切れ';
     score.textContent = state.streak;
     unit.textContent = '連続で答えられました';
+    Players.submitScore(state.level, state.streak);
     if (reason === 'timeup') KBAudio.play('timeup');
   }
   renderReveal();
@@ -836,6 +883,56 @@ function renderSettingsUI() {
   document.getElementById('seVolume').value = Math.round(s.se * 100);
   document.getElementById('bgmVolume').value = Math.round(s.bgm * 100);
   document.getElementById('muteAll').checked = s.muted;
+}
+
+function setProfileErr(t) {
+  const el = document.getElementById('profileErr');
+  if (!t) { el.classList.add('hidden'); el.textContent = ''; return; }
+  el.classList.remove('hidden'); el.textContent = t;
+}
+function setFriendsErr(t) {
+  const el = document.getElementById('friendsErr');
+  if (!t) { el.classList.add('hidden'); el.textContent = ''; return; }
+  el.classList.remove('hidden'); el.textContent = t;
+}
+
+function renderFriendsScreen() {
+  const p = Players.getProfile();
+  document.getElementById('profileSetup').classList.toggle('hidden', !!p);
+  document.getElementById('profileMain').classList.toggle('hidden', !p);
+  setProfileErr(''); setFriendsErr('');
+  if (p) {
+    document.getElementById('myCodeDisplay').textContent = p.code;
+    refreshFriendsList();
+  }
+}
+
+async function refreshFriendsList() {
+  const listEl = document.getElementById('friendsList');
+  listEl.innerHTML = '<div class="usedempty" style="padding:14px 2px">読み込み中…</div>';
+  let friends;
+  try { friends = await Players.listFriends(); }
+  catch (e) { listEl.innerHTML = '<div class="usedempty" style="padding:14px 2px">読み込めませんでした</div>'; return; }
+
+  if (!friends.length) {
+    listEl.innerHTML = '<div class="usedempty" style="padding:14px 2px">まだフレンドがいません</div>';
+    return;
+  }
+  listEl.innerHTML = '<div class="friendsList">' + friends.map(f => {
+    const best = ['low', 'elem', 'all']
+      .filter(l => f.best[l] != null)
+      .map(l => `<span>${LEVEL_LABEL[l]} <b>${f.best[l]}</b></span>`)
+      .join('');
+    return `<div class="friendRow">
+      <div><div class="friendName">${f.nickname}</div><div class="friendCode">${f.code}</div></div>
+      <div class="friendBest">${best || 'まだ記録なし'}</div>
+      <button class="friendRemove" data-code="${f.code}">削除</button>
+    </div>`;
+  }).join('') + '</div>';
+
+  listEl.querySelectorAll('.friendRemove').forEach(b => {
+    b.onclick = async () => { await Players.removeFriend(b.dataset.code).catch(() => {}); refreshFriendsList(); };
+  });
 }
 
 function bind() {
@@ -871,6 +968,28 @@ function bind() {
 
   document.getElementById('openSettings').onclick = () => { renderSettingsUI(); show('settingsScreen'); };
   document.getElementById('settingsBack').onclick = () => show('modeScreen');
+
+  document.getElementById('openFriends').onclick = () => { renderFriendsScreen(); show('friendsScreen'); };
+  document.getElementById('friendsBack').onclick = () => show('modeScreen');
+  document.getElementById('createProfileBtn').onclick = async () => {
+    const name = document.getElementById('nicknameInput').value.trim();
+    if (!name) return;
+    setProfileErr('');
+    try { await Players.createProfile(name); renderFriendsScreen(); }
+    catch (e) { setProfileErr(e.message || 'はじめられませんでした'); }
+  };
+  document.getElementById('copyCodeBtn').onclick = () => {
+    const p = Players.getProfile();
+    if (p && navigator.clipboard) navigator.clipboard.writeText(p.code).catch(() => {});
+  };
+  document.getElementById('addFriendBtn').onclick = async () => {
+    const input = document.getElementById('addFriendInput');
+    const code = input.value.trim().toUpperCase();
+    if (!code) return;
+    setFriendsErr('');
+    try { await Players.addFriend(code); input.value = ''; await refreshFriendsList(); }
+    catch (e) { setFriendsErr(e.message || '追加できませんでした'); }
+  };
   document.getElementById('seVolume').oninput = e => KBAudio.setSeVolume(e.target.value / 100);
   document.getElementById('bgmVolume').oninput = e => {
     KBAudio.setBgmVolume(e.target.value / 100);

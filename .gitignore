@@ -23,3 +23,7 @@ venv/
 
 # radicals.json生成用の外部データ（scripts/build_radicals.py冒頭のコメント参照）
 scripts/sources/
+
+# Wranglerのローカル状態（ローカルD1のsqliteファイル等）
+.wrangler/
+node_modules/

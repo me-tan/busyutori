@@ -1,7 +1,18 @@
 {
   "name": "kanjibattle",
   "compatibility_date": "2026-09-04",
+  "main": "workers/src/index.js",
   "assets": {
-    "directory": "frontend"
-  }
+    "directory": "frontend",
+    "binding": "ASSETS"
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "kanjinage-users",
+      // "wrangler d1 create kanjinage-users" 実行後にここへ database_id を記入する。
+      // ローカル開発(wrangler dev --local)ではこの値は使われないのでダミーのままでよい。
+      "database_id": "REPLACE_AFTER_WRANGLER_D1_CREATE"
+    }
+  ]
 }
