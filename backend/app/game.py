@@ -10,7 +10,7 @@ from typing import Literal
 from . import data as gamedata
 
 RADICAL_CHOICES = 5
-ANSWER_SECONDS = 20
+ANSWER_SECONDS = 30
 
 Level = Literal["low", "elem", "all"]
 RejectReason = Literal["used", "out_of_grade", "not_in_radical"]
@@ -39,13 +39,23 @@ def available_radicals(state: BattleState) -> list[str]:
 
 
 def offer_radicals(state: BattleState) -> list[str]:
-    """攻撃側に見せる部首の候補（最大5つ）。直近に投げた部首は避ける。"""
+    """攻撃側に見せる部首の候補（最大5つ）。直近に投げた部首は避ける。
+
+    未使用漢字が多く残っている部首ほど選ばれやすい重み付き抽選（非復元）にする。
+    """
+    grades = gamedata.grades_for(state.level)
     candidates = available_radicals(state)
     fresh = [r for r in candidates if r not in state.recent_radicals]
     pool = fresh if fresh else candidates
-    pool = pool[:]
-    random.shuffle(pool)
-    choices = pool[:RADICAL_CHOICES]
+
+    remaining = pool[:]
+    weights = {r: len([k for k in gamedata.pool_of(r, grades) if k not in state.used]) for r in remaining}
+    choices = []
+    for _ in range(min(RADICAL_CHOICES, len(remaining))):
+        r = random.choices(remaining, weights=[weights[x] for x in remaining], k=1)[0]
+        choices.append(r)
+        remaining.remove(r)
+
     state.last_offer = choices
     return choices
 
