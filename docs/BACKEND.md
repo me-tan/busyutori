@@ -40,6 +40,30 @@
 
 存在しない・満員・すでに開始済みの部屋には `404` を返す。
 
+### `POST /api/quickmatch`
+
+ランダムマッチング。同じ難易度で待っている部屋があれば参加し、なければ
+新しく部屋を作って待つ側になる（部屋コードは画面に出さない）。
+
+リクエスト:
+```json
+{ "level": "low" | "elem" | "all" }
+```
+
+レスポンス:
+```json
+{ "code": "AB3XZ", "player_id": "...", "level": "elem", "is_host": true }
+```
+
+`is_host: true` なら相手を待つ側（`GET /api/health`同様、あとはWebSocketに
+接続して2人揃うのを待つだけ）。`false` なら即マッチ成立（相手は既に接続を待っている）。
+
+### `DELETE /api/rooms/{code}?player_id=...`
+
+ランダムマッチングで一定時間相手が見つからずあきらめた場合の後始末。
+まだ相手がついていない・自分がホストの部屋しか消せない（他人の部屋や
+既にマッチ済みの部屋を消そうとすると `{"ok": false}` を返すだけで何も起きない）。
+
 ## WebSocket
 
 `GET /ws/rooms/{code}?player_id=<REST応答で受け取ったplayer_id>`

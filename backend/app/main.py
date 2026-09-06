@@ -14,7 +14,13 @@ from fastapi.middleware.cors import CORSMiddleware
 from . import data as gamedata
 from . import game as gamerules
 from .rooms import Room, rooms
-from .schemas import CreateRoomRequest, CreateRoomResponse, JoinRoomResponse
+from .schemas import (
+    CreateRoomRequest,
+    CreateRoomResponse,
+    JoinRoomResponse,
+    QuickMatchRequest,
+    QuickMatchResponse,
+)
 
 app = FastAPI(title="ぶしゅとり 対戦API")
 
@@ -45,6 +51,21 @@ def join_room(code: str) -> JoinRoomResponse:
         raise HTTPException(404, "この部屋には入れません（存在しない・満員・開始済み）")
     room, guest_id = result
     return JoinRoomResponse(code=room.code, player_id=guest_id, level=room.level)
+
+
+@app.delete("/api/rooms/{code}")
+def cancel_room(code: str, player_id: str) -> dict:
+    """ランダムマッチングで相手が見つからずあきらめたときの後始末。
+    まだ相手がついていない・自分がホストの部屋しか消せない。"""
+    ok = rooms.cancel_quickmatch(code.upper(), player_id)
+    return {"ok": ok}
+
+
+@app.post("/api/quickmatch", response_model=QuickMatchResponse)
+def quickmatch(req: QuickMatchRequest) -> QuickMatchResponse:
+    """同じ難易度で待っている相手がいれば即マッチ、いなければ新しく待つ側になる。"""
+    room, player_id, is_host = rooms.find_or_create_quickmatch(req.level)
+    return QuickMatchResponse(code=room.code, player_id=player_id, level=room.level, is_host=is_host)
 
 
 async def broadcast(room: Room, message: dict) -> None:
