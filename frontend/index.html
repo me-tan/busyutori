@@ -486,7 +486,7 @@ function renderTimer() {
 
 function judge() {
   if (state.locked) return;
-  const cands = String(KanjiCanvas.recognize('can') || '').trim().split(/\s+/).filter(Boolean).slice(0, 10);
+  const cands = String(KanjiCanvas.recognize('can') || '').trim().split(/\s+/).filter(Boolean).slice(0, 6);
 
   const inLevel = state.mode === 'complete'
     ? new Set(state.target)
@@ -816,7 +816,7 @@ function bTick() {
 
 function bJudge() {
   if (bstate.locked || !bstate.isDefending) return;
-  const cands = String(KanjiCanvas.recognize('canBattle') || '').trim().split(/\s+/).filter(Boolean).slice(0, 10);
+  const cands = String(KanjiCanvas.recognize('canBattle') || '').trim().split(/\s+/).filter(Boolean).slice(0, 6);
   const grades = GRADES[bstate.level];
   const inRange = new Set(poolOf(bstate.radical, grades));
   const usedSet = new Set(bstate.used);
