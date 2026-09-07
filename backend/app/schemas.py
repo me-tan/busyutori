@@ -21,3 +21,14 @@ class JoinRoomResponse(BaseModel):
     code: str
     player_id: str
     level: Level
+
+
+class QuickMatchRequest(BaseModel):
+    level: Level = "elem"
+
+
+class QuickMatchResponse(BaseModel):
+    code: str
+    player_id: str
+    level: Level
+    is_host: bool

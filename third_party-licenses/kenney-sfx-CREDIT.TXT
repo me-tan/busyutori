@@ -1,0 +1,30 @@
+効果音・BGM素材: Kenney (https://kenney.nl)
+
+出典パック（すべてCC0 1.0 Universal。表記義務なし。念のため出典を記録）:
+- UI Audio        https://kenney.nl/assets/ui-audio
+- Interface Sounds https://kenney.nl/assets/interface-sounds
+- Music Jingles   https://kenney.nl/assets/music-jingles
+
+配置場所と元ファイルの対応:
+- frontend/assets/sfx/correct.m4a   <- interface-sounds/confirmation_002.ogg
+- frontend/assets/sfx/incorrect.m4a <- interface-sounds/error_002.ogg
+- frontend/assets/sfx/tick.m4a      <- interface-sounds/tick_002.ogg
+- frontend/assets/sfx/tap.m4a       <- ui-audio/click3.ogg
+- frontend/assets/sfx/start.m4a     <- interface-sounds/open_002.ogg
+- frontend/assets/sfx/victory.m4a   <- music-jingles/Pizzicato jingles/jingles_PIZZI00.ogg
+- frontend/assets/sfx/timeup.m4a    <- music-jingles/Hit jingles/jingles_HIT00.ogg
+
+元はOgg Vorbis形式で配布されているが、Safari非対応のためAAC(.m4a)に変換して同梱している
+（音源そのものはKenneyのオリジナルをそのままエンコードし直したのみで、改変はしていない）。
+
+---
+
+BGM: jkjkke「dream」（OpenGameArt「CC0 - Calm / Relaxing Music」コレクション）
+https://opengameart.org/content/mainmenu-music
+CC0。表記義務なし。
+
+- frontend/assets/bgm/menu.m4a <- 上記mp3をAAC(.m4a, 96kbps)に変換したもの
+
+（旧: Kenney Music Jinglesの1曲を使っていたが、ジングルは1〜2秒の短い
+効果音でありBGMループ用ではないため、ループ再生すると壊れたような音に
+なっていた。ループ前提の長尺トラックに差し替えた）

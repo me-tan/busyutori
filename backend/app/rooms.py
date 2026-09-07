@@ -31,17 +31,18 @@ class Room:
     connections: dict[str, WebSocket] = field(default_factory=dict)
     timeout_task: "asyncio.Task | None" = None
     started: bool = False
+    quickmatch: bool = False
 
 
 class RoomStore:
     def __init__(self) -> None:
         self._rooms: dict[str, Room] = {}
 
-    def create(self, level: str) -> Room:
+    def create(self, level: str, quickmatch: bool = False) -> Room:
         code = _new_code()
         while code in self._rooms:
             code = _new_code()
-        room = Room(code=code, level=level, host_id=secrets.token_urlsafe(8))
+        room = Room(code=code, level=level, host_id=secrets.token_urlsafe(8), quickmatch=quickmatch)
         self._rooms[code] = room
         return room
 
@@ -55,6 +56,27 @@ class RoomStore:
         guest_id = secrets.token_urlsafe(8)
         room.guest_id = guest_id
         return room, guest_id
+
+    def find_or_create_quickmatch(self, level: str) -> tuple[Room, str, bool]:
+        """同じ難易度で相手を待っているランダムマッチの部屋があれば参加し、
+        なければ新しく作って待つ側になる。戻り値は (room, player_id, is_host)。
+        """
+        for room in self._rooms.values():
+            if room.quickmatch and room.level == level and room.guest_id is None and not room.started:
+                guest_id = secrets.token_urlsafe(8)
+                room.guest_id = guest_id
+                return room, guest_id, False
+        room = self.create(level, quickmatch=True)
+        return room, room.host_id, True
+
+    def cancel_quickmatch(self, code: str, player_id: str) -> bool:
+        """待っている間にあきらめた場合の後始末。まだ相手がついていない、
+        自分（ホスト）の部屋である場合だけ削除できる。"""
+        room = self._rooms.get(code)
+        if not room or room.host_id != player_id or room.guest_id is not None:
+            return False
+        self._rooms.pop(code, None)
+        return True
 
     def remove(self, code: str) -> None:
         self._rooms.pop(code, None)

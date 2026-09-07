@@ -1,4 +1,4 @@
-# 部首アタック
+# ぶしゅとり
 
 提示された部首を含む漢字を、手書きで書き出す対戦型の漢字学習ゲーム。
 
@@ -12,7 +12,7 @@
 | モード | 内容 |
 |---|---|
 | タイムアタック | 30秒以内に次々と出題に答える。何連続で書けるか |
-| コンプリート | 1つの部首の漢字を、制限時間なしですべて書き出す |
+| 部首マスター | 1つの部首の漢字を、制限時間なしですべて書き出す |
 | オンライン対戦 | 別々の端末にいる相手と、部首を投げ合う対戦（後述） |
 
 ### 対戦のルール（概要）
@@ -26,7 +26,18 @@
 詳細なルール・データ仕様は [docs/GAME_DESIGN.md](docs/GAME_DESIGN.md)、
 対戦バックエンドのAPI仕様は [docs/BACKEND.md](docs/BACKEND.md) を参照。
 
-対象年齢は小学生〜高校生。学年配当（初級/中級/上級）に応じて出題範囲を切り替える。
+対象年齢は小学生〜高校生。学年配当（初級/中級/上級）は出題する部首の絞り込みに
+使うだけで、答え自体の学年は問わない。
+
+### フレンド機能
+
+ニックネーム＋自動発行コードだけで使える（パスワード・メール不要。起動時に
+ニックネームを決めるまでは他の画面に進めない）。フレンドのコードを追加すると、
+タイムアタックの難易度別ベストストリークを見せ合え、フレンド＋自分だけの
+ランキングも見られる。フレンド一覧から1タップで対戦に誘うこともできる
+（対戦の部屋コードをフレンドに渡すだけの仕組みで、フレンド画面を開いたときに
+確認する。リアルタイムのプッシュ通知ではない）。API仕様は
+[docs/USERS.md](docs/USERS.md) を参照。
 
 ## 技術構成
 
@@ -35,11 +46,12 @@
 | フロントエンド | 静的サイト（HTML/CSS/バニラJS、ビルド不要） |
 | 手書き認識 | [KanjiCanvas](https://github.com/asdfjkl/kanjicanvas)（クライアントサイドJS、MIT） |
 | バックエンド | Python 3.10以上 + [FastAPI](https://fastapi.tiangolo.com/)（対戦のルーム管理・WebSocket） |
+| フレンド機能 | Cloudflare Workers + D1（`workers/`。ニックネーム・フレンド・記録の永続化） |
 | データ | `radicals.json`（CHISE IDS + KANJIDIC2由来、`scripts/build_radicals.py` で生成） |
-| データ永続化 | なし（対戦の状態はサーバーのメモリ上のみ。試合が終われば破棄） |
+| データ永続化 | 対戦の状態はサーバーのメモリ上のみ（試合が終われば破棄）。フレンド機能まわりだけD1に永続化 |
 
-タイムアタック・コンプリートの2モードはサーバー不要で完全にオフラインで動く。
-サーバーが必要なのはオンライン対戦モードのみ。
+タイムアタック・部首マスターの2モードはサーバー不要で完全にオフラインで動く。
+オンライン対戦にはFastAPIサーバーが、フレンド機能にはCloudflare Workers/D1が必要。
 
 ## ディレクトリ構成
 
@@ -52,13 +64,17 @@ kanjibattle/
 ├── docs/
 │   ├── GAME_DESIGN.md             ルール・データ仕様・設計判断の理由
 │   ├── BACKEND.md                 対戦APIのプロトコル仕様
+│   ├── USERS.md                   フレンド・ユーザー機能APIの仕様
 │   └── DEVLOG.md                  既知の課題・未確定事項
 ├── frontend/                      静的サイト（そのままどこにでもデプロイ可能）
 │   ├── index.html                 メイン画面（HTML/CSS/JSの本体）
 │   ├── js/
 │   │   ├── vendor/                外部ライブラリ（KanjiCanvas）
-│   │   ├── config.js              バックエンドAPIのURL設定
-│   │   └── net.js                 オンライン対戦の通信クライアント
+│   │   ├── config.js              対戦バックエンドAPIのURL設定
+│   │   ├── net.js                 オンライン対戦の通信クライアント
+│   │   ├── audio.js               効果音・BGMの再生
+│   │   └── players.js             フレンド機能のクライアント（/api/* は同一オリジン）
+│   ├── assets/                    効果音・BGM（Kenney, CC0）
 │   ├── data/
 │   │   └── radicals.json          部首・漢字データ
 │   └── dev/                       手書き判定ロジックの検証用ページ
@@ -72,6 +88,10 @@ kanjibattle/
 │   ├── tests/
 │   ├── requirements.txt
 │   └── Dockerfile
+├── workers/                       フレンド機能API（Cloudflare Workers + D1）
+│   ├── src/index.js               /api/* のルーティング・認証・D1アクセス
+│   └── migrations/0001_init.sql   D1スキーマ
+├── wrangler.jsonc                 フロント配信+workers/+D1のCloudflare設定
 └── scripts/
     └── build_radicals.py          radicals.json の生成スクリプト
 ```
@@ -110,12 +130,16 @@ python3 -m http.server 5500
 
 ## デプロイ
 
-フロントエンドとバックエンドは別々にデプロイする。詳細は
-[docs/BACKEND.md](docs/BACKEND.md) の「デプロイ」の節を参照。
+対戦のFastAPIサーバーと、フロント+フレンド機能は別々にデプロイする。
 
-- フロントエンド: Cloudflare Pages（静的ファイルをそのまま公開、無料枠が大きい）
-- バックエンド: Render / Railway / Fly.io など、Pythonプロセスを常駐させられるホスト
-  （WebSocketを使うため、Cloudflare WorkersのPythonサポートは現状不向き。理由はdocs/BACKEND.md参照）
+- フロントエンド + フレンド機能: 同じCloudflareプロジェクトにまとめている
+  （`wrangler.jsonc`。静的ファイルは`env.ASSETS`、`/api/*`は`workers/src/index.js`が処理）。
+  `wrangler login`でログイン後、`wrangler d1 create` → マイグレーション適用 →
+  `wrangler deploy`。詳しい手順は[docs/USERS.md](docs/USERS.md)の「セットアップ・デプロイ」を参照
+- 対戦バックエンド: Render / Railway / Fly.io など、Pythonプロセスを常駐させられるホスト
+  （WebSocketを使うため、Cloudflare WorkersのPythonサポートは現状不向き。理由は
+  [docs/BACKEND.md](docs/BACKEND.md)参照。こちらは今回のフレンド機能とは無関係な
+  別サービスのまま）
 
 ## ライセンス
 

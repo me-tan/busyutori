@@ -3,167 +3,446 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>部首アタック</title>
+<title>ぶしゅとり</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@500;700;900&family=BIZ+UDPMincho:wght@700&display=swap">
 <style>
+  :root {
+    --paper: #F7F3EC; --card: #fff; --ink: #262019; --ink-soft: #8A8074; --ink-faint: #B0A691;
+    --border: #E4DCCB; --accent: #B8391F; --accent-dark: #8F2B16;
+    --success: #3F7D53; --success-bg: #EAF3EC; --error: #A8433A;
+    --font-ui: "Zen Maru Gothic", "Hiragino Maru Gothic ProN", "Hiragino Sans", "Noto Sans JP", sans-serif;
+    --font-kanji: "BIZ UDPMincho", "Hiragino Mincho ProN", serif;
+  }
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   body {
-    font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Noto Sans JP", sans-serif;
-    max-width: 480px; margin: 0 auto; padding: 16px;
-    background: #f4f4f6; color: #16161a;
+    font-family: var(--font-ui);
+    max-width: 480px; margin: 0 auto; padding: 22px 18px;
+    background: var(--paper); color: var(--ink);
   }
   .hidden { display: none !important; }
-  .card { background: #fff; border: 1px solid #e2e2e5; border-radius: 12px; padding: 16px; }
+  /* 画面全体を白い角丸カードで囲うのをやめた（ページ背景と別色の箱に収まっている
+     ように見えるのが「作り物っぽい」印象の一因だったため）。各画面はページの
+     背景の上に直接、bodyの余白だけで配置する。 */
+  .navbar { display: flex; align-items: center; gap: 4px; margin-bottom: 20px; min-height: 36px; }
+  .navBack { width: 36px; height: 36px; border-radius: 50%; background: transparent; border: none;
+             color: var(--ink); display: flex; align-items: center; justify-content: center;
+             flex: none; cursor: pointer; padding: 0; }
+  .navBack:active { background: #F1EAD9; }
+  .navTitle { font-size: 16px; font-weight: 900; color: var(--ink); }
 
-  h1 { font-size: 28px; margin: 0 0 4px; text-align: center; }
-  .tag { font-size: 13px; color: #888; margin-bottom: 22px; text-align: center; }
-  .secTitle { font-size: 13px; color: #888; font-weight: 600; margin-bottom: 10px; text-align: center; }
+  h1 { font-size: 24px; font-weight: 900; margin: 0 0 6px; text-align: center; }
+  h1 .accent { color: var(--accent); }
+  .tag { font-size: 12.5px; color: var(--ink-soft); margin-bottom: 30px; text-align: center; }
+  .secTitle { font-size: 12.5px; color: var(--ink-soft); font-weight: 700; margin-bottom: 10px; text-align: center; }
 
   button {
-    padding: 10px 16px; font-size: 14px; font-family: inherit; font-weight: 600;
-    border: none; border-radius: 8px; cursor: pointer; background: #e8e8eb; color: #333;
+    padding: 11px 16px; font-size: 13.5px; font-family: inherit; font-weight: 700;
+    border: none; border-radius: 12px; cursor: pointer; background: #F1EAD9; color: var(--ink);
   }
-  button.primary { background: #2563eb; color: #fff; }
-  .stack { display: flex; flex-direction: column; gap: 10px; }
+  button.primary {
+    background: var(--accent); color: #fff; border-bottom: 3px solid var(--accent-dark);
+    font-size: 15px; padding: 14px;
+  }
+  button.ghost { background: transparent; color: var(--ink-soft); padding: 6px 4px; }
+  button:disabled { opacity: .5; cursor: default; }
+  .back { margin-top: 16px; width: 100%; background: transparent; color: var(--ink-soft); }
+
+  .avatarChip { width: 34px; height: 34px; border-radius: 50%; background: #FDEDE5; color: var(--accent);
+                display: flex; align-items: center; justify-content: center; font-size: 15px; font-weight: 900;
+                flex: none; border: none; cursor: pointer; padding: 0; }
+  .topnav { display: flex; align-items: center; gap: 10px; margin-bottom: 22px; }
+  .topnavName { font-size: 13px; line-height: 1.5; text-align: left; }
+  .topnavName div:first-child { font-weight: 700; color: var(--ink); }
+  .topnavName div:last-child { font-size: 9px; color: var(--ink-faint); letter-spacing: 0.05em; }
+  .iconBtn { width: 36px; height: 36px; border-radius: 50%; background: transparent; border: none;
+             color: var(--ink-soft); display: flex; align-items: center; justify-content: center;
+             flex: none; cursor: pointer; padding: 0; }
+  .iconBtn:active { background: #F1EAD9; }
+
+  /* リストの外枠・角丸はstack自身が持ち、overflow:hiddenで子を切り抜く。
+     行ごとに角丸を出し分ける方式は、真ん中の行だけ既定のborder-radiusが
+     上書きされずに残るミスが起きやすいので採用しない。 */
+  .stack { display: flex; flex-direction: column; gap: 0;
+           border: 1.5px solid var(--border); border-radius: 14px; overflow: hidden; }
   .bigbtn {
-    padding: 18px; font-size: 17px; border-radius: 10px;
-    background: #fff; border: 2px solid #d8d8dc; color: #333; text-align: center;
+    position: relative; display: block; width: 100%; text-align: left; font-family: inherit;
+    background: var(--card); border: none; border-radius: 0; color: var(--ink);
+    padding: 16px 34px 16px 16px; font-size: 16px; font-weight: 700; cursor: pointer;
   }
-  .bigbtn:active { border-color: #2563eb; }
-  .bigbtn small { display: block; font-size: 12px; color: #999; font-weight: 400; margin-top: 3px; }
-  .back { margin-top: 16px; width: 100%; }
+  .stack .bigbtn:not(:last-child) { border-bottom: 1px solid var(--border); }
+  /* アイコン付きの行は、区切り線をアイコン分だけ内側にずらす（iOSの設定リストと同じ見せ方） */
+  .stack .bigbtn.has-icon:not(:last-child) { border-bottom: none; }
+  .stack .bigbtn.has-icon:not(:last-child)::before {
+    content: ""; position: absolute; left: 54px; right: 16px; bottom: 0; height: 1px; background: var(--border);
+  }
+  .bigbtn:active { background: #F7F1E4; }
+  .bigbtn::after {
+    content: ""; position: absolute; right: 18px; top: 50%; width: 7px; height: 7px;
+    border-right: 2px solid var(--ink-faint); border-bottom: 2px solid var(--ink-faint);
+    transform: translateY(-60%) rotate(-45deg);
+  }
+  .bigbtn small { display: block; font-size: 11.5px; color: var(--ink-faint); font-weight: 500; margin-top: 3px; line-height: 1.5; }
+  .bigbtn.has-icon { padding-left: 54px; }
+  .bigbtn .icon { position: absolute; left: 16px; top: 16px; }
+
+  .settingsList { border-top: 1px solid var(--border); }
+  .settingRow {
+    display: flex; align-items: center; justify-content: space-between; gap: 16px;
+    padding: 16px 2px; border-bottom: 1px solid var(--border);
+  }
+  .settingLbl { display: flex; align-items: center; gap: 10px; font-size: 14px; font-weight: 700; color: var(--ink); }
+  .settingLbl svg { color: var(--ink-soft); flex: none; }
+  .settingRow input[type="range"] { width: 120px; }
+
+  .friendsList { border-top: 1px solid var(--border); }
+  .friendRow { display: flex; align-items: center; justify-content: space-between; gap: 10px;
+               padding: 14px 2px; border-bottom: 1px solid var(--border); }
+  .friendName { font-size: 14px; font-weight: 700; color: var(--ink); }
+  .friendCode { font-size: 10px; color: var(--ink-faint); letter-spacing: 0.05em; }
+  .friendBest { display: flex; gap: 8px; font-size: 11px; color: var(--ink-soft); flex: none; }
+  .friendBest b { color: var(--accent); font-size: 13px; }
+  .friendRemove { background: transparent; border: none; color: var(--ink-faint); font-size: 11px;
+                  font-weight: 700; padding: 4px; flex: none; }
+  .friendActions { display: flex; align-items: center; gap: 6px; flex: none; }
+  .inviteBtn { display: flex; align-items: center; gap: 5px; background: #FDEDE5; border: none;
+               border-radius: 10px; padding: 8px 12px; color: var(--accent); font-size: 11px;
+               font-weight: 700; font-family: inherit; }
+
+  .segmented { display: flex; border: 1px solid var(--border); border-radius: 10px; overflow: hidden;
+               margin-bottom: 12px; }
+  .seg { flex: 1; background: var(--card); border: none; border-radius: 0; padding: 9px 4px;
+         font-size: 12.5px; font-weight: 700; color: var(--ink-soft); }
+  .seg:not(:last-child) { border-right: 1px solid var(--border); }
+  .seg.active { background: var(--accent); color: #fff; }
+
+  .rankRow { display: flex; align-items: center; gap: 12px; padding: 12px 2px; border-bottom: 1px solid var(--border); }
+  .rankRow.me { background: #FDF6EC; border-radius: 8px; }
+  .rankBadge { width: 22px; height: 22px; border-radius: 50%; flex: none; font-size: 11px; font-weight: 900;
+               display: flex; align-items: center; justify-content: center; background: var(--border); color: var(--ink-soft); }
+  .rankBadge.gold { background: #F0C75E; color: #7A5A0E; }
+  .rankBadge.silver { background: #D9D2C4; color: #6B6152; }
+  .rankBadge.bronze { background: #EDE4D3; color: #9A9080; }
+  .rankName { flex: 1; font-size: 14px; font-weight: 700; color: var(--ink); }
+  .rankScore { font-size: 17px; font-weight: 900; color: var(--accent); }
+
+  .inviteCard { border: 1.5px solid var(--accent); border-radius: 14px; padding: 14px 16px;
+                display: flex; align-items: center; justify-content: space-between; gap: 12px; background: #FDF3EE; }
 
   .radgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(84px,1fr)); gap: 9px; }
   .radbtn {
-    background: #fff; border: 2px solid #d8d8dc; border-radius: 10px;
+    background: var(--card); border: 1px solid var(--border); border-radius: 12px;
     padding: 10px 4px 8px; text-align: center; cursor: pointer;
   }
-  .radbtn:active { border-color: #2563eb; }
-  .radbtn.done { border-color: #0a7d32; background: #f2fbf5; }
-  .radbtn .r { font-size: 30px; line-height: 1.1; }
-  .radbtn .n { font-size: 10px; color: #999; }
-  .radbtn .c { font-size: 11px; color: #2563eb; font-weight: 700; }
-  .radbtn.done .c { color: #0a7d32; }
+  .radbtn:active { border-color: var(--accent); }
+  .radbtn.done { border-color: var(--success); background: var(--success-bg); }
+  .radbtn .r { font-family: var(--font-kanji); font-size: 28px; line-height: 1.1; }
+  .radbtn .n { font-size: 10px; color: var(--ink-faint); }
+  .radbtn .c { font-size: 11px; color: var(--accent); font-weight: 700; }
+  .radbtn.done .c { color: var(--success); }
 
   .topbar {
     display: flex; align-items: center; justify-content: space-between;
-    background: #fff; border: 1px solid #e2e2e5; border-radius: 12px;
-    padding: 12px 16px; margin-bottom: 12px;
+    background: var(--card); border: 1px solid var(--border); border-radius: 14px;
+    padding: 12px 18px; margin-bottom: 14px;
   }
-  .lbl { font-size: 11px; color: #999; font-weight: 600; }
-  .streak { font-size: 28px; font-weight: 700; font-variant-numeric: tabular-nums; }
-  .timer { font-size: 34px; font-weight: 700; font-variant-numeric: tabular-nums; color: #2563eb; }
-  .timer.low { color: #d33; }
+  .lbl { font-size: 10.5px; color: var(--ink-soft); font-weight: 700; }
+  .streak { font-size: 24px; font-weight: 900; font-variant-numeric: tabular-nums; }
 
-  .quest { background: #fff; border: 1px solid #e2e2e5; border-radius: 12px;
-           padding: 14px; margin-bottom: 12px; text-align: center; }
-  .radical { font-size: 66px; line-height: 1; font-weight: 700; }
-  .rad-name { font-size: 14px; color: #666; margin-top: 4px; }
-  .rad-meaning { font-size: 12px; color: #aaa; }
+  .timerWrap { position: relative; width: 52px; height: 52px; flex: none; }
+  .timerWrap .ring { position: absolute; inset: 0; transform: rotate(-90deg); }
+  .timerWrap .ringBg { fill: none; stroke: var(--border); stroke-width: 4; }
+  .timerWrap .ringFg {
+    fill: none; stroke: var(--accent); stroke-width: 4; stroke-linecap: round;
+    stroke-dasharray: 138; stroke-dashoffset: 0; transition: stroke-dashoffset .2s linear, stroke .2s ease;
+  }
+  .timerWrap .ringFg.low { stroke: var(--error); }
+  .timer {
+    position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+    font-size: 17px; font-weight: 900; font-variant-numeric: tabular-nums; color: var(--ink);
+  }
+  .timer.low { color: var(--error); }
 
-  .boxwrap { background: #fff; border: 1px solid #e2e2e5; border-radius: 12px;
-             padding: 14px; margin-bottom: 12px; }
+  .quest { background: var(--card); border: 1px solid var(--border); border-radius: 14px;
+           padding: 18px; margin-bottom: 14px; text-align: center; }
+  /* タイマー行と部首カードを1枚の続いたカードに見せる（箱の重なりを減らす） */
+  #topbarTime, #battlePlayScreen > .topbar {
+    border-radius: 14px 14px 0 0; border-bottom: none; margin-bottom: 0;
+  }
+  #playScreen > .quest, #battlePlayScreen > .quest {
+    border-radius: 0 0 14px 14px; border-top: 1px dashed var(--border); padding-top: 16px;
+  }
+  .radical { font-family: var(--font-kanji); font-size: 58px; line-height: 1; font-weight: 700; }
+  .rad-name { font-size: 13px; color: #6B6152; font-weight: 700; margin-top: 8px; }
+  .rad-meaning { font-size: 11px; color: var(--ink-faint); }
+
+  .boxwrap { border-top: 1px solid var(--border); padding: 14px 2px 0; margin-bottom: 14px; }
   .boxhead { display:flex; justify-content:space-between; align-items:baseline;
-             font-size: 11px; color:#999; font-weight:600; margin-bottom:8px; }
-  .boxhead b { font-size: 15px; color:#2563eb; }
+             font-size: 10.5px; color: var(--ink-soft); font-weight:700; margin-bottom:10px; }
+  .boxhead b { font-size: 15px; color: var(--accent); }
   .boxgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(42px,1fr)); gap: 6px; }
   .box {
-    aspect-ratio: 1; border: 2px dashed #dcdce0; border-radius: 6px;
+    aspect-ratio: 1; border: 1.5px dashed var(--border); border-radius: 8px;
     display: flex; align-items: center; justify-content: center;
-    font-size: 24px; background: #fbfbfc; color: #16161a;
+    font-family: var(--font-kanji); font-size: 22px; background: #FBF8F2; color: var(--ink);
   }
-  .box.filled { border: 2px solid #0a7d32; background: #f2fbf5; }
+  .box.filled { border: 1.5px solid var(--success); background: var(--success-bg); }
 
-  .board { background: #fff; border: 1px solid #e2e2e5; border-radius: 12px;
-           padding: 14px; margin-bottom: 12px; }
-  #can { border: 2px solid #333; border-radius: 8px; background: #fff;
-         touch-action: none; display: block; margin: 0 auto; cursor: crosshair; }
-  .btns { display: flex; gap: 8px; margin-top: 12px; justify-content: center; }
-  .btns .primary { flex: 1; }
+  .board { margin-bottom: 14px; }
+  #can, #canBattle {
+    border: 1.5px solid var(--ink); border-radius: 6px; background-color: #FFFEFB;
+    background-image:
+      linear-gradient(to right, var(--border) 1px, transparent 1px),
+      linear-gradient(to bottom, var(--border) 1px, transparent 1px);
+    background-size: 1px 100%, 100% 1px; background-position: center, center; background-repeat: no-repeat;
+    touch-action: none; display: block; margin: 0 auto; cursor: crosshair;
+  }
+  .btns-secondary { display: flex; gap: 22px; justify-content: center; margin-top: 14px; }
+  .btn-block { display: block; width: 100%; margin-top: 10px; }
 
   .picker { margin-top: 14px; }
-  .picker-label { font-size: 12px; color: #777; font-weight: 600; margin-bottom: 8px; text-align: center; }
+  .picker-label { font-size: 11.5px; color: var(--ink-soft); font-weight: 700; margin-bottom: 8px; text-align: center; }
   .pick-row { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
-  .pick { font-size: 34px; padding: 8px 16px; border: 2px solid #ccc; border-radius: 10px;
-          background: #fff; cursor: pointer; line-height: 1.2; font-weight: 400; }
-  .pick:active { background: #eef4ff; }
-  .pick small { display: block; font-size: 11px; color: #999; font-weight: 600; }
+  .pick { font-family: var(--font-kanji); font-size: 32px; padding: 8px 16px; border: 1px solid var(--border);
+          border-radius: 12px; background: var(--card); cursor: pointer; line-height: 1.2; font-weight: 700; }
+  .pick:active { background: #FBF3E9; border-color: var(--accent); }
+  .pick small { display: block; font-family: var(--font-ui); font-size: 11px; color: var(--ink-faint); font-weight: 700; }
 
-  .msg { text-align: center; font-size: 17px; font-weight: 700; margin-top: 12px; min-height: 24px; }
-  .msg.ok { color: #0a7d32; } .msg.ng { color: #c22; }
+  .msg { text-align: center; font-size: 16px; font-weight: 900; margin-top: 14px; min-height: 24px; }
+  .msg.ok { color: var(--success); } .msg.ng { color: var(--error); }
+  .msg.ok::before { content: "✓ "; } .msg.ng::before { content: "✕ "; }
 
-  .usedbox { background:#fff; border:1px solid #e2e2e5; border-radius:12px;
-             padding:12px 14px; margin-bottom:12px; }
+  .usedbox { border-top: 1px solid var(--border); padding: 14px 2px 0; margin-bottom: 14px; }
   .usedbox .head { display:flex; justify-content:space-between; align-items:baseline;
-                   font-size:11px; color:#999; font-weight:600; margin-bottom:6px; }
-  .usedlist { font-size:20px; line-height:1.6; word-break:break-all; max-height:96px; overflow-y:auto; }
-  .usedlist span { margin-right:4px; color:#bbb; }
-  .usedlist span.cur { color:#16161a; font-weight:700; }
-  .usedempty { font-size:12px; color:#ccc; }
+                   font-size:10.5px; color: var(--ink-soft); font-weight:700; margin-bottom:8px; }
+  .usedlist { font-family: var(--font-kanji); font-size:19px; line-height:1.7; word-break:break-all;
+              max-height:96px; overflow-y:auto; }
+  .usedlist span { margin-right:6px; color: var(--ink-faint); }
+  .usedlist span.cur { color: var(--ink); font-weight:700; }
+  .usedempty { font-family: var(--font-ui); font-size:12px; color: var(--ink-faint); }
 
-  .over { text-align: center; padding: 26px 16px; }
-  .over h2 { font-size: 22px; margin: 0 0 8px; }
-  .over .score { font-size: 60px; font-weight: 700; color: #2563eb; line-height: 1; }
-  .over .score.gold { color: #0a7d32; }
-  .over .unit { font-size: 15px; color: #666; margin-top: 4px; }
+  .over { text-align: center; padding: 8px 4px; }
+  .over h2 { font-size: 15px; font-weight: 700; color: var(--ink-soft); margin: 0 0 4px; }
+  .over .score { font-size: 58px; font-weight: 900; color: var(--accent); line-height: 1; }
+  .over .score.gold { color: var(--success); }
+  .over .unit { font-size: 12.5px; color: var(--ink-soft); font-weight: 700; margin-top: 2px; }
 
-  .reveal { margin-top: 26px; padding-top: 20px; border-top: 1px solid #ececef; }
-  .reveal-rad { font-size: 42px; font-weight: 700; line-height: 1; }
-  .reveal-name { font-size: 12px; color: #999; margin-top: 2px; }
-  .reveal-lead { font-size: 15px; margin: 14px 0 4px; }
-  .reveal-lead b { font-size: 26px; color: #d33; }
-  .reveal-sub { font-size: 12px; color: #aaa; margin-bottom: 14px; }
+  .reveal { margin-top: 22px; padding-top: 20px; border-top: 1px solid var(--border); }
+  .reveal-rad { font-family: var(--font-kanji); font-size: 34px; font-weight: 700; line-height: 1; }
+  .reveal-name { font-size: 11.5px; color: var(--ink-faint); margin-top: 4px; }
+  .reveal-lead { font-size: 13.5px; margin: 14px 0 4px; }
+  .reveal-lead b { font-size: 20px; color: var(--accent); }
+  .reveal-sub { font-size: 11px; color: var(--ink-faint); margin-bottom: 14px; }
+  .reveal-origin { font-size: 11.5px; color: var(--ink-soft); line-height: 1.7; margin-bottom: 14px; text-align: left; }
   .kgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(58px,1fr)); gap: 8px; text-align:center; }
-  .kcell { background:#fafafb; border:1px solid #ececef; border-radius:8px; padding:7px 2px 5px; }
-  .kcell .k { font-size: 26px; line-height: 1.15; }
-  .kcell .r { font-size: 10px; color:#999; margin-top:2px; }
-  .kcell .g { font-size: 9px; color:#c4c4c8; }
-  .more { font-size: 12px; color:#aaa; margin-top:10px; }
-  .gotbox { margin-top: 18px; font-size: 12px; color:#999; }
-  .gotbox .gk { font-size: 19px; color:#0a7d32; margin-right:4px; }
+  .kcell { background: var(--card); border:1px dashed var(--border); border-radius:10px; padding:8px 2px 6px; }
+  .kcell .k { font-family: var(--font-kanji); font-size: 22px; line-height: 1.2; }
+  .kcell .r { font-size: 9px; color: var(--ink-soft); margin-top:2px; }
+  .kcell .g { font-size: 8px; color: var(--ink-faint); }
+  .more { font-size: 11.5px; color: var(--ink-faint); margin-top:10px; }
+  .gotbox { margin-top: 18px; font-size: 11.5px; color: var(--ink-soft); }
+  .gotbox .gk { font-family: var(--font-kanji); font-size: 18px; color: var(--success); font-weight:700; margin-right:4px; }
 
-  .err { color:#c22; font-size:13px; line-height:1.8; }
+  .err { color: var(--error); font-size:13px; line-height:1.8; }
 
-  .roomcode { font-size: 40px; font-weight: 700; letter-spacing: 6px; text-align:center; }
-  .codeinput { width:100%; padding:12px; font-size:20px; text-align:center; letter-spacing:6px;
-               border:2px solid #d8d8dc; border-radius:8px; box-sizing:border-box; }
-  .waitmsg { margin-top:10px; color:#888; font-size:14px; text-align:center; }
-  .turnstatus { font-size:15px; font-weight:600; color:#2563eb; margin-bottom:8px; text-align:center; }
-  .roomlabel { font-size:13px; color:#999; text-align:center; }
+  .roomTicket { border: 1.5px dashed var(--accent); border-radius: 14px; padding: 18px; text-align: center; }
+  .roomcode { font-size: 36px; font-weight: 900; letter-spacing: 8px; color: var(--accent); }
+  .codeinput { width:100%; padding:12px; font-size:19px; text-align:center; letter-spacing:6px;
+               font-family: inherit; border:1.5px dashed var(--border); border-radius:12px; box-sizing:border-box; }
+  .waitmsg { margin-top:10px; color: var(--ink-soft); font-size:13px; text-align:center; }
+  .turnstatus { font-size:14px; font-weight:700; color: var(--ink); margin-bottom:10px; text-align:center; }
+  .roomlabel { font-size:11px; color: var(--ink-faint); font-weight:700; text-align:center; }
+
+  input[type="range"], input[type="checkbox"] { accent-color: var(--accent); }
+
+  @media (min-width: 900px) {
+    body { max-width: none; padding: 0 32px 48px; }
+    #loginScreen, #modeScreen, #soloScreen, #settingsScreen, #friendsScreen, #levelScreen, #radScreen, #battleSetupScreen,
+    #overScreen, #battleOverScreen {
+      max-width: 560px; margin: 64px auto 0;
+    }
+
+    #playScreen, #battlePlayScreen {
+      display: grid; grid-template-columns: 1fr 340px; column-gap: 32px; align-items: start;
+      max-width: 1040px; margin: 48px auto 0;
+    }
+    #playScreen > .board, #battlePlayScreen > #bOfferBox, #battlePlayScreen > #bBoard {
+      grid-area: board; margin-bottom: 0;
+    }
+    #playScreen > #topbarTime, #battlePlayScreen > .topbar { grid-area: top; margin-bottom: 0; }
+    #playScreen > .quest, #battlePlayScreen > .quest { grid-area: quest; margin-bottom: 0; }
+    #playScreen > #boxwrap, #playScreen > #usedbox, #battlePlayScreen > .usedbox { grid-area: info; margin-bottom: 0; }
+    #playScreen > #giveup, #battlePlayScreen > #bGiveUp { grid-area: giveup; margin-top: 0; }
+    #playScreen { grid-template-areas: "board top" "board quest" "board info" "board giveup"; }
+    #battlePlayScreen { grid-template-areas: "board top" "board quest" "board info" "board giveup"; }
+
+    #can, #canBattle { max-width: 480px; }
+  }
 </style>
 </head>
 <body>
 
-<div id="modeScreen" class="card">
-  <h1>部首アタック</h1>
-  <div class="tag">提示された部首を含む漢字を書く</div>
+<div id="loginScreen">
+  <h1 style="text-align:center"><span class="accent">ぶしゅ</span>とり</h1>
+  <div class="tag">部首をつないで、漢字をつぎつぎ書くゲーム</div>
   <div id="loadErr" class="err hidden"></div>
-  <div class="stack" id="modes">
-    <button class="bigbtn" data-mode="time">タイムアタック<small>30秒以内に次々と答える。何連続できるか</small></button>
-    <button class="bigbtn" data-mode="complete">コンプリート<small>ひとつの部首の漢字を、すべて書き出す</small></button>
-    <button class="bigbtn" id="toBattle">オンライン対戦<small>別の端末にいる相手と部首を投げ合う</small></button>
+  <div class="secTitle" style="text-align:left">ニックネームをきめてね</div>
+  <input class="codeinput" id="nicknameInput" placeholder="れい: たろう" maxlength="20"
+         style="letter-spacing:normal;font-size:16px;text-align:left;">
+  <div class="err hidden" id="profileErr" style="margin-top:10px"></div>
+  <button class="primary btn-block" id="createProfileBtn" style="margin-top:10px">はじめる</button>
+  <div style="font-size:10.5px;color:var(--ink-faint);margin-top:12px;line-height:1.6;text-align:center;">
+    はじめると、あなた専用の合言葉コードが発行されます。<br>フレンドに教えて対戦・記録くらべができます。
   </div>
 </div>
 
-<div id="levelScreen" class="card hidden">
-  <div class="secTitle">難易度をえらぶ</div>
+<div id="modeScreen" class="hidden">
+  <div class="topnav">
+    <button class="avatarChip" id="avatarChip" title="ニックネームを変更">?</button>
+    <div class="topnavName">
+      <div id="myNickname">-</div>
+      <div id="myCodeSmall">------</div>
+    </div>
+    <div style="flex:1"></div>
+    <button class="iconBtn" id="openFriends" title="フレンド">
+      <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="9" r="2.8"/><path d="M2.5 19c0-3 2.5-5 5.5-5s5.5 2 5.5 5"/><circle cx="17.5" cy="8.5" r="2.3"/><path d="M14.7 13.7c2.6.3 4.3 2 4.3 4.8"/></svg>
+    </button>
+    <button class="iconBtn" id="openSettings" title="設定">
+      <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="3"/>
+        <path d="M19.4 15a1.7 1.7 0 00.3 1.9l.1.1a2 2 0 11-2.8 2.8l-.1-.1a1.7 1.7 0 00-1.9-.3 1.7 1.7 0 00-1 1.5V21a2 2 0 11-4 0v-.1a1.7 1.7 0 00-1-1.6 1.7 1.7 0 00-1.9.3l-.1.1a2 2 0 11-2.8-2.8l.1-.1a1.7 1.7 0 00.3-1.9 1.7 1.7 0 00-1.5-1H3a2 2 0 110-4h.1a1.7 1.7 0 001.5-1 1.7 1.7 0 00-.3-1.9l-.1-.1a2 2 0 112.8-2.8l.1.1a1.7 1.7 0 001.9.3H9a1.7 1.7 0 001-1.5V3a2 2 0 114 0v.1a1.7 1.7 0 001 1.5 1.7 1.7 0 001.9-.3l.1-.1a2 2 0 112.8 2.8l-.1.1a1.7 1.7 0 00-.3 1.9V9a1.7 1.7 0 001.5 1h.1a2 2 0 110 4h-.1a1.7 1.7 0 00-1.5 1z"/>
+      </svg>
+    </button>
+  </div>
+  <h1><span class="accent">ぶしゅ</span>とり</h1>
+  <div class="tag">部首をつないで、漢字をつぎつぎ書くゲーム</div>
+  <div class="stack">
+    <button class="bigbtn has-icon" id="toBattle">
+      <svg class="icon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="9" r="2.6"/><path d="M2.8 18.5c0-2.7 2.3-4.5 5.2-4.5s5.2 1.8 5.2 4.5"/><circle cx="17.5" cy="8.5" r="2.2"/><path d="M14.7 13.4c2.3.3 3.8 1.8 3.8 4.3"/></svg>
+      だれかと対戦する
+    </button>
+    <button class="bigbtn has-icon" id="toSolo">
+      <svg class="icon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+      ひとりで練習する
+    </button>
+  </div>
+</div>
+
+<div id="soloScreen" class="hidden">
+  <div class="navbar">
+    <button class="navBack" id="soloBack">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg>
+    </button>
+    <div class="navTitle">ひとりで練習する</div>
+  </div>
+  <div class="stack" id="modes">
+    <button class="bigbtn has-icon" data-mode="time">
+      <svg class="icon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+      タイムアタック<small>30秒以内に次々と答える。何連続できるか</small>
+    </button>
+    <button class="bigbtn has-icon" data-mode="complete">
+      <svg class="icon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="7" height="7" rx="1"/><rect x="13" y="4" width="7" height="7" rx="1"/><rect x="4" y="13" width="7" height="7" rx="1"/><path d="M15 17l2 2 4-4"/></svg>
+      部首マスター<small>ひとつの部首の漢字を、すべて書き出す</small>
+    </button>
+  </div>
+</div>
+
+<div id="friendsScreen" class="hidden">
+  <div class="navbar">
+    <button class="navBack" id="friendsBack">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg>
+    </button>
+    <div class="navTitle">フレンド</div>
+  </div>
+
+  <div id="inviteBanner" class="hidden" style="margin-bottom:16px"></div>
+
+  <div class="roomTicket" style="margin-bottom:16px">
+    <div class="roomlabel">あなたの合言葉コード</div>
+    <div class="roomcode" id="myCodeDisplay">------</div>
+    <button class="ghost" id="copyCodeBtn" style="margin-top:6px">コードをコピー</button>
+  </div>
+
+  <div style="display:flex;gap:8px;margin-bottom:10px">
+    <input class="codeinput" id="addFriendInput" placeholder="フレンドのコード" maxlength="6"
+           style="letter-spacing:normal;font-size:16px;">
+    <button class="primary" id="addFriendBtn" style="flex:none">追加</button>
+  </div>
+  <div class="err hidden" id="friendsErr" style="margin-bottom:10px"></div>
+
+  <div id="friendsList"></div>
+
+  <div class="secTitle" style="margin:26px 0 10px">ランキング（タイムアタック）</div>
+  <div class="segmented" id="rankLevelSeg">
+    <button class="seg" data-ranklevel="low">初級</button>
+    <button class="seg active" data-ranklevel="elem">中級</button>
+    <button class="seg" data-ranklevel="all">上級</button>
+  </div>
+  <div id="rankingList"></div>
+</div>
+
+<div id="settingsScreen" class="hidden">
+  <div class="navbar">
+    <button class="navBack" id="settingsBack">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg>
+    </button>
+    <div class="navTitle">設定</div>
+  </div>
+  <div class="settingsList">
+    <div class="settingRow">
+      <div class="settingLbl">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10v4h4l5 5V5L7 10H3z"/><path d="M16 8a5 5 0 010 8"/></svg>
+        効果音の音量
+      </div>
+      <input type="range" id="seVolume" min="0" max="100">
+    </div>
+    <div class="settingRow">
+      <div class="settingLbl">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+        BGMの音量
+      </div>
+      <input type="range" id="bgmVolume" min="0" max="100">
+    </div>
+    <label class="settingRow" style="cursor:pointer">
+      <div class="settingLbl">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10v4h4l5 5V5L7 10H3z"/><path d="M17 9l5 6M22 9l-5 6"/></svg>
+        すべての音を消す
+      </div>
+      <input type="checkbox" id="muteAll">
+    </label>
+  </div>
+</div>
+
+<div id="levelScreen" class="hidden">
+  <div class="navbar">
+    <button class="navBack" id="lvBack">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg>
+    </button>
+    <div class="navTitle">難易度をえらぶ</div>
+  </div>
   <div class="stack">
     <button class="bigbtn" data-level="low">初級<small>小1〜小3で習う漢字</small></button>
     <button class="bigbtn" data-level="elem">中級<small>小1〜小6で習う漢字</small></button>
     <button class="bigbtn" data-level="all">上級<small>常用漢字すべて</small></button>
   </div>
-  <button class="back" id="lvBack">もどる</button>
 </div>
 
-<div id="radScreen" class="card hidden">
-  <div class="secTitle">部首をえらぶ</div>
+<div id="radScreen" class="hidden">
+  <div class="navbar">
+    <button class="navBack" id="radBack">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg>
+    </button>
+    <div class="navTitle">部首をえらぶ</div>
+  </div>
   <div class="radgrid" id="radGrid"></div>
-  <button class="back" id="radBack">もどる</button>
 </div>
 
 <div id="playScreen" class="hidden">
   <div class="topbar" id="topbarTime">
     <div><div class="lbl">連続</div><div class="streak" id="streak">0</div></div>
-    <div class="timer" id="timer">30</div>
+    <div class="timerWrap">
+      <svg class="ring" viewBox="0 0 52 52"><circle class="ringBg" cx="26" cy="26" r="22"/><circle class="ringFg" id="timerRingFg" cx="26" cy="26" r="22"/></svg>
+      <div class="timer" id="timer">30</div>
+    </div>
   </div>
 
   <div class="quest">
@@ -182,16 +461,17 @@
 
   <div class="board">
     <canvas id="can" width="300" height="300"></canvas>
-    <div class="btns">
-      <button id="undo">一画戻す</button>
-      <button id="erase">消す</button>
-      <button id="rec" class="primary">これでいく</button>
+    <div class="btns-secondary">
+      <button id="undo" class="ghost">一画戻す</button>
+      <button id="erase" class="ghost">ぜんぶ消す</button>
     </div>
+    <button id="rec" class="primary btn-block">これでいく</button>
     <div class="picker hidden" id="picker">
       <div class="picker-label">書いた漢字を選んでください</div>
       <div class="pick-row" id="pickRow"></div>
     </div>
     <div class="msg" id="msg"></div>
+    <button class="back hidden" id="passBtn">パス</button>
   </div>
 
   <div class="usedbox" id="usedbox">
@@ -202,7 +482,7 @@
   <button class="back hidden" id="giveup">ここでやめる</button>
 </div>
 
-<div id="overScreen" class="card over hidden">
+<div id="overScreen" class="over hidden">
   <h2 id="overTitle">時間切れ</h2>
   <div class="score" id="finalScore">0</div>
   <div class="unit" id="finalUnit">連続で答えられました</div>
@@ -212,6 +492,7 @@
     <div class="reveal-name" id="revName"></div>
     <div class="reveal-lead" id="revLead"></div>
     <div class="reveal-sub" id="revSub"></div>
+    <div class="reveal-origin" id="revOrigin"></div>
     <div class="kgrid" id="revGrid"></div>
     <div class="more" id="revMore"></div>
     <div class="gotbox" id="revGot"></div>
@@ -221,47 +502,73 @@
   <div style="margin-top:10px"><button id="toTitle" style="width:100%">最初の画面へ</button></div>
 </div>
 
-<div id="battleSetupScreen" class="card hidden">
-  <div class="secTitle">オンライン対戦</div>
+<div id="battleSetupScreen" class="hidden">
+  <div class="navbar">
+    <button class="navBack" id="battleBack">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg>
+    </button>
+    <div class="navTitle" id="battleSetupTitle">だれかと対戦する</div>
+  </div>
   <div class="err hidden" id="battleErr"></div>
+  <div class="waitmsg hidden" id="battleBusy"></div>
 
   <div class="stack" id="battleChoice">
+    <button class="bigbtn" data-battle="quick">ランダムマッチング<small>だれかとすぐに対戦する</small></button>
+    <button class="bigbtn" data-battle="friend">フレンド対戦<small>部屋コードで友だちと対戦する</small></button>
+  </div>
+
+  <div class="stack hidden" id="battleFriendPanel">
     <button class="bigbtn" data-battle="create">部屋を作る<small>相手に伝えるコードが発行されます</small></button>
     <button class="bigbtn" data-battle="join">部屋に入る<small>相手から聞いたコードを入力します</small></button>
   </div>
 
-  <div class="stack hidden" id="battleCreatePanel" style="margin-top:14px">
-    <div class="secTitle">難易度をえらぶ</div>
+  <div class="stack hidden" id="battleQuickPanel">
+    <button class="bigbtn" data-qlevel="low">初級<small>小1〜小3で習う漢字</small></button>
+    <button class="bigbtn" data-qlevel="elem">中級<small>小1〜小6で習う漢字</small></button>
+    <button class="bigbtn" data-qlevel="all">上級<small>常用漢字すべて</small></button>
+  </div>
+
+  <div class="stack hidden" id="battleCreatePanel">
     <button class="bigbtn" data-blevel="low">初級<small>小1〜小3で習う漢字</small></button>
     <button class="bigbtn" data-blevel="elem">中級<small>小1〜小6で習う漢字</small></button>
     <button class="bigbtn" data-blevel="all">上級<small>常用漢字すべて</small></button>
   </div>
 
-  <div class="hidden" id="battleJoinPanel" style="margin-top:14px">
+  <div class="hidden" id="battleJoinPanel">
     <input class="codeinput" id="joinCodeInput" placeholder="部屋コード" maxlength="8">
     <button class="primary" id="joinCodeBtn" style="width:100%;margin-top:10px">入る</button>
   </div>
 
   <div class="hidden" id="battleWaiting" style="margin-top:18px">
-    <div class="roomlabel">部屋コード</div>
-    <div class="roomcode" id="roomCodeDisplay">----</div>
+    <div class="roomTicket">
+      <div class="roomlabel">部屋コード</div>
+      <div class="roomcode" id="roomCodeDisplay">----</div>
+    </div>
     <div class="waitmsg" id="waitingMsg">相手を待っています…</div>
   </div>
 
-  <button class="back" id="battleBack">もどる</button>
+  <div class="hidden" id="quickWaiting" style="margin-top:18px;text-align:center">
+    <div class="waitmsg" id="quickWaitingMsg">対戦相手をさがしています…</div>
+    <button class="back" id="quickCancelBtn">あきらめる</button>
+  </div>
 </div>
 
 <div id="battlePlayScreen" class="hidden">
   <div class="topbar">
     <div><div class="lbl">部屋</div><div class="streak" id="bRoomCode">----</div></div>
-    <div class="timer" id="bTimer">-</div>
+    <div class="timerWrap">
+      <svg class="ring" viewBox="0 0 52 52"><circle class="ringBg" cx="26" cy="26" r="22"/><circle class="ringFg" id="bTimerRingFg" cx="26" cy="26" r="22"/></svg>
+      <div class="timer" id="bTimer">-</div>
+    </div>
   </div>
 
   <div class="quest">
     <div class="turnstatus" id="bStatus">-</div>
-    <div class="radical" id="bRadical">—</div>
-    <div class="rad-name" id="bRadName"></div>
-    <div class="rad-meaning" id="bRadMeaning"></div>
+    <div id="bRadicalBox" class="hidden">
+      <div class="radical" id="bRadical">—</div>
+      <div class="rad-name" id="bRadName"></div>
+      <div class="rad-meaning" id="bRadMeaning"></div>
+    </div>
   </div>
 
   <div class="boxwrap hidden" id="bOfferBox">
@@ -271,11 +578,11 @@
 
   <div class="board hidden" id="bBoard">
     <canvas id="canBattle" width="300" height="300"></canvas>
-    <div class="btns">
-      <button id="bUndo">一画戻す</button>
-      <button id="bErase">消す</button>
-      <button id="bRec" class="primary">これでいく</button>
+    <div class="btns-secondary">
+      <button id="bUndo" class="ghost">一画戻す</button>
+      <button id="bErase" class="ghost">ぜんぶ消す</button>
     </div>
+    <button id="bRec" class="primary btn-block">これでいく</button>
     <div class="picker hidden" id="bPicker">
       <div class="picker-label">書いた漢字を選んでください</div>
       <div class="pick-row" id="bPickRow"></div>
@@ -291,7 +598,7 @@
   <button class="back hidden" id="bGiveUp">こうさんする</button>
 </div>
 
-<div id="battleOverScreen" class="card over hidden">
+<div id="battleOverScreen" class="over hidden">
   <h2 id="bOverTitle">-</h2>
   <div class="unit" id="bOverUnit"></div>
 
@@ -299,6 +606,7 @@
     <div class="reveal-rad" id="bRevRad">—</div>
     <div class="reveal-name" id="bRevName"></div>
     <div class="reveal-lead" id="bRevLead"></div>
+    <div class="reveal-origin" id="bRevOrigin"></div>
     <div class="kgrid" id="bRevGrid"></div>
     <div class="more" id="bRevMore"></div>
     <div class="gotbox" id="bRevGot"></div>
@@ -311,11 +619,15 @@
 <script src="js/vendor/ref-patterns.js"></script>
 <script src="js/config.js"></script>
 <script src="js/net.js"></script>
+<script src="js/audio.js"></script>
+<script src="js/players.js"></script>
 <script>
 "use strict";
 
 const TIME_LIMIT = 30;
 const MAX_REVEAL = 24;
+const PASS_LIMIT = 3;
+const OCR_SCORE_THRESHOLD = 1.35; // 最良候補の距離の何倍まで許容するか（実機でチューニングする）
 const ALL_GRADES = ['1','2','3','4','5','6','8'];
 const GRADES = { low:['1','2','3'], elem:['1','2','3','4','5','6'], all:ALL_GRADES };
 const GLABEL = {1:'小1',2:'小2',3:'小3',4:'小4',5:'小5',6:'小6',8:'中学'};
@@ -326,7 +638,7 @@ const state = {
   used: new Set(), streak: 0,
   radical: null, recent: [],
   timeLeft: TIME_LIMIT, timerId: null, locked: false,
-  target: [], startedAt: 0
+  target: [], startedAt: 0, passesLeft: PASS_LIMIT
 };
 const cleared = new Set();
 
@@ -338,19 +650,34 @@ async function boot() {
     el.innerHTML = 'data/radicals.json が読み込めません。<br>' +
       'frontend/ ディレクトリで <code>python3 -m http.server 8000</code> を実行し、<br>' +
       '<code>http://localhost:8000/</code> を開いてください。';
-    document.getElementById('modes').classList.add('hidden');
+    document.getElementById('createProfileBtn').disabled = true;
     return;
   }
   KanjiCanvas.init('can');
   KanjiCanvas.init('canBattle');
   bind();
   bBind();
+
+  if (Players.getProfile()) { renderModeScreen(); show('modeScreen'); }
+  else { show('loginScreen'); }
 }
 
-const SCREENS = ['modeScreen','levelScreen','radScreen','playScreen','overScreen',
+function renderModeScreen() {
+  const p = Players.getProfile();
+  if (!p) return;
+  document.getElementById('avatarChip').textContent = p.nickname.slice(0, 1);
+  document.getElementById('myNickname').textContent = p.nickname;
+  document.getElementById('myCodeSmall').textContent = 'コード ' + p.code;
+}
+
+const SCREENS = ['loginScreen','modeScreen','soloScreen','settingsScreen','friendsScreen','levelScreen','radScreen','playScreen','overScreen',
   'battleSetupScreen','battlePlayScreen','battleOverScreen'];
+const BGM_SCREENS = new Set(['loginScreen','modeScreen','soloScreen','settingsScreen','friendsScreen','levelScreen','radScreen',
+  'overScreen','battleSetupScreen','battleOverScreen']);
+const LEVEL_LABEL = { low: '初級', elem: '中級', all: '上級' };
 function show(id) {
   SCREENS.forEach(s => document.getElementById(s).classList.toggle('hidden', s !== id));
+  if (BGM_SCREENS.has(id)) KBAudio.playBgm('menu'); else KBAudio.stopBgm();
 }
 
 function poolOf(rad, grades) {
@@ -388,15 +715,27 @@ function renderRadicalList() {
   });
 }
 
+function weightedPick(items, weights) {
+  const total = weights.reduce((a, b) => a + b, 0);
+  let r = Math.random() * total;
+  for (let i = 0; i < items.length; i++) {
+    r -= weights[i];
+    if (r <= 0) return items[i];
+  }
+  return items[items.length - 1];
+}
+
 function pickRadical() {
   const g = gradesNow();
   let list = Object.keys(DATA.radicals)
-    .filter(r => poolOf(r, g).filter(k => !state.used.has(k)).length >= 5);
-  const fresh = list.filter(r => !state.recent.includes(r));
+    .map(r => ({ r, n: poolOf(r, g).filter(k => !state.used.has(k)).length }))
+    .filter(x => x.n >= 5);
+  const fresh = list.filter(x => !state.recent.includes(x.r));
   if (fresh.length) list = fresh;
   if (!list.length) return null;
 
-  const rad = list[Math.floor(Math.random() * list.length)];
+  // 残り字数が多い部首ほど出やすくする（少ない部首は早めに使い切られて選択肢から消えていく）
+  const rad = weightedPick(list.map(x => x.r), list.map(x => x.n));
   setRadical(rad);
   state.recent.push(rad);
   if (state.recent.length > 2) state.recent.shift();
@@ -414,11 +753,14 @@ function setRadical(rad) {
 function startTime(level) {
   state.mode = 'time'; state.level = level;
   state.used = new Set(); state.streak = 0; state.recent = [];
+  state.passesLeft = PASS_LIMIT;
   document.getElementById('streak').textContent = '0';
   document.getElementById('topbarTime').classList.remove('hidden');
   document.getElementById('boxwrap').classList.add('hidden');
   document.getElementById('usedbox').classList.remove('hidden');
   document.getElementById('giveup').classList.add('hidden');
+  document.getElementById('passBtn').classList.remove('hidden');
+  renderPassBtn();
   renderUsed();
   show('playScreen');
   nextTurn();
@@ -435,6 +777,7 @@ function startComplete(rad) {
   document.getElementById('boxwrap').classList.remove('hidden');
   document.getElementById('usedbox').classList.add('hidden');
   document.getElementById('giveup').classList.remove('hidden');
+  document.getElementById('passBtn').classList.add('hidden');
   document.getElementById('boxTotal').textContent = state.target.length;
   renderBoxes();
   state.locked = false;
@@ -448,6 +791,19 @@ function renderBoxes() {
     const got = state.used.has(k);
     return `<div class="box ${got ? 'filled' : ''}">${got ? k : ''}</div>`;
   }).join('');
+}
+
+function renderPassBtn() {
+  const btn = document.getElementById('passBtn');
+  btn.textContent = `パス（残り${state.passesLeft}）`;
+  btn.disabled = state.passesLeft <= 0;
+}
+
+function doPass() {
+  if (state.mode !== 'time' || state.locked || state.passesLeft <= 0) return;
+  state.passesLeft--;
+  renderPassBtn();
+  nextTurn();
 }
 
 function nextTurn() {
@@ -467,6 +823,7 @@ function clearBoard() {
 function setMsg(t, c) {
   const el = document.getElementById('msg');
   el.textContent = t; el.className = 'msg' + (c ? ' ' + c : '');
+  if (c === 'ng') KBAudio.play('incorrect');
 }
 
 function startTimer() {
@@ -475,23 +832,38 @@ function startTimer() {
   renderTimer();
   state.timerId = setInterval(() => {
     state.timeLeft--; renderTimer();
+    if (state.timeLeft > 0 && state.timeLeft <= 5) KBAudio.play('tick');
     if (state.timeLeft <= 0) { clearInterval(state.timerId); gameOver('timeup'); }
   }, 1000);
 }
+const RING_CIRCUMFERENCE = 138;
+function updateRing(ringEl, frac, low) {
+  ringEl.style.strokeDashoffset = (RING_CIRCUMFERENCE * (1 - Math.max(0, Math.min(1, frac)))).toFixed(1);
+  ringEl.classList.toggle('low', low);
+}
+
 function renderTimer() {
   const el = document.getElementById('timer');
   el.textContent = state.timeLeft;
-  el.classList.toggle('low', state.timeLeft <= 5);
+  const low = state.timeLeft <= 5;
+  el.classList.toggle('low', low);
+  updateRing(document.getElementById('timerRingFg'), state.timeLeft / TIME_LIMIT, low);
+}
+
+function scoredCandidates(id) {
+  KanjiCanvas.recognize(id);
+  const scored = KanjiCanvas.lastScored || [];
+  if (!scored.length) return [];
+  const best = scored[0][1];
+  return scored.filter(([, dist]) => dist <= best * OCR_SCORE_THRESHOLD).slice(0, 4).map(([k]) => k);
 }
 
 function judge() {
   if (state.locked) return;
-  const cands = String(KanjiCanvas.recognize('can') || '').trim().split(/\s+/).filter(Boolean).slice(0, 6);
+  const cands = scoredCandidates('can');
 
-  const inLevel = state.mode === 'complete'
-    ? new Set(state.target)
-    : new Set(poolOf(state.radical, gradesNow()));
   const allPool = new Set(poolOf(state.radical, ALL_GRADES));
+  const inLevel = state.mode === 'complete' ? new Set(state.target) : allPool;
 
   const valid = [], dupes = [], over = [];
   for (const c of cands) {
@@ -518,6 +890,7 @@ function judge() {
   }
 
   setMsg('', '');
+  if (valid.length === 1) { accept(valid[0]); return; } // 候補が1つに絞れているならタップさせずに確定する
   picker.classList.remove('hidden');
   for (const k of valid) {
     const b = document.createElement('button');
@@ -536,6 +909,7 @@ function accept(k) {
   state.used.add(k);
   document.getElementById('picker').classList.add('hidden');
   setMsg(k + '  正解', 'ok');
+  KBAudio.play('correct');
 
   if (state.mode === 'complete') {
     renderBoxes();
@@ -575,13 +949,14 @@ function renderReveal() {
   box.classList.remove('hidden');
 
   const d = DATA.radicals[rad];
-  const pool = state.mode === 'complete' ? state.target : poolOf(rad, gradesNow());
+  const pool = state.mode === 'complete' ? state.target : poolOf(rad, ALL_GRADES);
   const unused = pool.filter(k => !state.used.has(k));
   const got = pool.filter(k => state.used.has(k));
 
   document.getElementById('revRad').textContent = rad;
   document.getElementById('revName').textContent = d.name;
   document.getElementById('revSub').textContent = d.meaning;
+  document.getElementById('revOrigin').textContent = d.origin ? `なりたち: ${d.origin}` : '';
 
   if (!unused.length) {
     document.getElementById('revLead').innerHTML = `${rad}を含む漢字を、すべて書き出しました`;
@@ -617,10 +992,11 @@ function gameOver(reason) {
     if (reason === 'complete') {
       const sec = Math.round((Date.now() - state.startedAt) / 1000);
       const m = Math.floor(sec / 60), s = sec % 60;
-      title.textContent = 'コンプリート';
+      title.textContent = '部首マスター';
       score.textContent = state.target.length;
       score.classList.add('gold');
       unit.textContent = `字すべて書けました（${m}分${s}秒）`;
+      KBAudio.play('victory');
     } else {
       title.textContent = 'とちゅうでやめました';
       score.textContent = state.used.size;
@@ -630,9 +1006,151 @@ function gameOver(reason) {
     title.textContent = reason === 'exhausted' ? '出せる部首がなくなりました' : '時間切れ';
     score.textContent = state.streak;
     unit.textContent = '連続で答えられました';
+    Players.submitScore(state.level, state.streak);
+    if (reason === 'timeup') KBAudio.play('timeup');
   }
   renderReveal();
   show('overScreen');
+}
+
+function renderSettingsUI() {
+  const s = KBAudio.getSettings();
+  document.getElementById('seVolume').value = Math.round(s.se * 100);
+  document.getElementById('bgmVolume').value = Math.round(s.bgm * 100);
+  document.getElementById('muteAll').checked = s.muted;
+}
+
+function setProfileErr(t) {
+  const el = document.getElementById('profileErr');
+  if (!t) { el.classList.add('hidden'); el.textContent = ''; return; }
+  el.classList.remove('hidden'); el.textContent = t;
+}
+function setFriendsErr(t) {
+  const el = document.getElementById('friendsErr');
+  if (!t) { el.classList.add('hidden'); el.textContent = ''; return; }
+  el.classList.remove('hidden'); el.textContent = t;
+}
+
+function renderFriendsScreen() {
+  const p = Players.getProfile();
+  if (!p) return;
+  setFriendsErr('');
+  document.getElementById('myCodeDisplay').textContent = p.code;
+  refreshInvites();
+  refreshFriendsList();
+  refreshRanking('elem');
+}
+
+async function refreshInvites() {
+  const el = document.getElementById('inviteBanner');
+  let invites;
+  try { invites = await Players.listInvites(); }
+  catch (e) { el.classList.add('hidden'); el.innerHTML = ''; return; }
+  if (!invites.length) { el.classList.add('hidden'); el.innerHTML = ''; return; }
+  el.classList.remove('hidden');
+  el.innerHTML = invites.map(inv => `
+    <div class="inviteCard" style="margin-bottom:8px">
+      <div>
+        <div style="font-size:13px;font-weight:700;color:var(--ink)">${inv.from_nickname}さんから対戦の誘い</div>
+        <div style="font-size:10.5px;color:var(--ink-soft)">難易度: ${LEVEL_LABEL[inv.level] || inv.level}</div>
+      </div>
+      <div style="display:flex;gap:6px">
+        <button class="primary" data-accept="${inv.id}" data-room="${inv.room_code}" style="padding:9px 14px;font-size:12.5px">参加する</button>
+        <button class="ghost" data-dismiss="${inv.id}">断る</button>
+      </div>
+    </div>`).join('');
+  el.querySelectorAll('[data-accept]').forEach(b => {
+    b.onclick = () => acceptInvite(Number(b.dataset.accept), b.dataset.room);
+  });
+  el.querySelectorAll('[data-dismiss]').forEach(b => {
+    b.onclick = async () => { await Players.dismissInvite(Number(b.dataset.dismiss)).catch(() => {}); refreshInvites(); };
+  });
+}
+
+async function acceptInvite(id, roomCode) {
+  await Players.dismissInvite(id).catch(() => {});
+  bReset();
+  try {
+    const room = await Net.joinRoom(roomCode);
+    bstate.code = room.code; bstate.myId = room.player_id; bstate.level = room.level;
+    bEnterWaiting('対戦を開始しています…');
+    bConnect();
+  } catch (e) {
+    setFriendsErr('その部屋にはもう入れませんでした（相手が先に始めたかもしれません）。');
+  }
+}
+
+async function inviteFriend(code, btn) {
+  setFriendsErr('');
+  const original = btn.textContent;
+  btn.disabled = true; btn.textContent = '誘っています…';
+  bReset();
+  try {
+    const level = state.level || 'elem';
+    const room = await Net.createRoom(level);
+    await Players.sendInvite(code, room.code, level);
+    bstate.code = room.code; bstate.myId = room.player_id; bstate.level = level;
+    bEnterWaiting('相手を待っています…');
+    bConnect();
+  } catch (e) {
+    setFriendsErr('誘えませんでした。通信環境を確認してください。');
+    btn.disabled = false; btn.textContent = original;
+  }
+}
+
+async function refreshFriendsList() {
+  const listEl = document.getElementById('friendsList');
+  listEl.innerHTML = '<div class="usedempty" style="padding:14px 2px">読み込み中…</div>';
+  let friends;
+  try { friends = await Players.listFriends(); }
+  catch (e) { listEl.innerHTML = '<div class="usedempty" style="padding:14px 2px">読み込めませんでした</div>'; return; }
+
+  if (!friends.length) {
+    listEl.innerHTML = '<div class="usedempty" style="padding:14px 2px">まだフレンドがいません</div>';
+    return;
+  }
+  listEl.innerHTML = '<div class="friendsList">' + friends.map(f => {
+    const best = ['low', 'elem', 'all']
+      .filter(l => f.best[l] != null)
+      .map(l => `<span>${LEVEL_LABEL[l]} <b>${f.best[l]}</b></span>`)
+      .join('');
+    return `<div class="friendRow">
+      <div><div class="friendName">${f.nickname}</div><div class="friendCode">${f.code}</div></div>
+      <div class="friendBest">${best || 'まだ記録なし'}</div>
+      <div class="friendActions">
+        <button class="inviteBtn" data-invite="${f.code}">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4 20-7z"/></svg>
+          対戦に誘う
+        </button>
+        <button class="friendRemove" data-code="${f.code}">削除</button>
+      </div>
+    </div>`;
+  }).join('') + '</div>';
+
+  listEl.querySelectorAll('.friendRemove').forEach(b => {
+    b.onclick = async () => { await Players.removeFriend(b.dataset.code).catch(() => {}); refreshFriendsList(); };
+  });
+  listEl.querySelectorAll('.inviteBtn').forEach(b => {
+    b.onclick = () => inviteFriend(b.dataset.invite, b);
+  });
+}
+
+async function refreshRanking(level) {
+  const el = document.getElementById('rankingList');
+  el.innerHTML = '<div class="usedempty" style="padding:14px 2px">読み込み中…</div>';
+  let ranking;
+  try { ranking = await Players.listRanking(level); }
+  catch (e) { el.innerHTML = '<div class="usedempty" style="padding:14px 2px">読み込めませんでした</div>'; return; }
+  if (!ranking.length) { el.innerHTML = '<div class="usedempty" style="padding:14px 2px">まだ記録がありません</div>'; return; }
+  el.innerHTML = ranking.map((r, i) => {
+    const rank = i + 1;
+    const badgeClass = rank === 1 ? 'gold' : rank === 2 ? 'silver' : rank === 3 ? 'bronze' : '';
+    return `<div class="rankRow ${r.isMe ? 'me' : ''}">
+      <div class="rankBadge ${badgeClass}">${rank}</div>
+      <div class="rankName">${r.nickname}${r.isMe ? '（あなた）' : ''}</div>
+      <div class="rankScore">${r.best}</div>
+    </div>`;
+  }).join('');
 }
 
 function bind() {
@@ -640,6 +1158,8 @@ function bind() {
     b.onclick = () => { state.mode = b.dataset.mode; show('levelScreen'); };
   });
   document.getElementById('toBattle').onclick = () => { bReset(); show('battleSetupScreen'); };
+  document.getElementById('toSolo').onclick = () => show('soloScreen');
+  document.getElementById('soloBack').onclick = () => show('modeScreen');
   document.querySelectorAll('#levelScreen .bigbtn').forEach(b => {
     b.onclick = () => {
       state.level = b.dataset.level;
@@ -647,7 +1167,7 @@ function bind() {
       else startTime(state.level);
     };
   });
-  document.getElementById('lvBack').onclick  = () => show('modeScreen');
+  document.getElementById('lvBack').onclick  = () => show('soloScreen');
   document.getElementById('radBack').onclick = () => show('levelScreen');
 
   document.getElementById('rec').onclick = judge;
@@ -658,32 +1178,110 @@ function bind() {
   };
   document.getElementById('undo').onclick = () => KanjiCanvas.deleteLast('can');
   document.getElementById('giveup').onclick = () => gameOver('giveup');
+  document.getElementById('passBtn').onclick = doPass;
 
   document.getElementById('retry').onclick = () => {
     if (state.mode === 'complete') startComplete(state.radical);
     else startTime(state.level);
   };
   document.getElementById('toTitle').onclick = () => show('modeScreen');
+
+  document.getElementById('avatarChip').onclick = async () => {
+    const p = Players.getProfile();
+    if (!p) return;
+    const name = window.prompt('ニックネームを変更', p.nickname);
+    if (!name || !name.trim() || name.trim() === p.nickname) return;
+    try { await Players.renameProfile(name.trim()); renderModeScreen(); }
+    catch (e) { window.alert(e.message || '変更できませんでした'); }
+  };
+
+  document.getElementById('openSettings').onclick = () => { renderSettingsUI(); show('settingsScreen'); };
+  document.getElementById('settingsBack').onclick = () => show('modeScreen');
+
+  document.getElementById('openFriends').onclick = () => { renderFriendsScreen(); show('friendsScreen'); };
+  document.getElementById('friendsBack').onclick = () => show('modeScreen');
+  document.getElementById('createProfileBtn').onclick = async () => {
+    const name = document.getElementById('nicknameInput').value.trim();
+    if (!name) return;
+    setProfileErr('');
+    try { await Players.createProfile(name); renderModeScreen(); show('modeScreen'); }
+    catch (e) { setProfileErr(e.message || 'はじめられませんでした'); }
+  };
+  document.getElementById('copyCodeBtn').onclick = () => {
+    const p = Players.getProfile();
+    if (p && navigator.clipboard) navigator.clipboard.writeText(p.code).catch(() => {});
+  };
+  document.getElementById('addFriendBtn').onclick = async () => {
+    const input = document.getElementById('addFriendInput');
+    const code = input.value.trim().toUpperCase();
+    if (!code) return;
+    setFriendsErr('');
+    try { await Players.addFriend(code); input.value = ''; await refreshFriendsList(); }
+    catch (e) { setFriendsErr(e.message || '追加できませんでした'); }
+  };
+  document.querySelectorAll('#rankLevelSeg .seg').forEach(b => {
+    b.onclick = () => {
+      document.querySelectorAll('#rankLevelSeg .seg').forEach(x => x.classList.toggle('active', x === b));
+      refreshRanking(b.dataset.ranklevel);
+    };
+  });
+  document.getElementById('seVolume').oninput = e => KBAudio.setSeVolume(e.target.value / 100);
+  document.getElementById('bgmVolume').oninput = e => {
+    KBAudio.setBgmVolume(e.target.value / 100);
+  };
+  document.getElementById('muteAll').onchange = e => KBAudio.setMuted(e.target.checked);
+
+  document.addEventListener('click', e => {
+    if (e.target.closest('button')) KBAudio.play('tap');
+  });
 }
 
 /* ---------------- オンライン対戦 ---------------- */
 
 const bstate = {
   code: null, myId: null, level: null,
-  radical: null, deadline: 0, tickId: null,
-  isDefending: false, used: [], locked: false,
+  radical: null, deadline: 0, totalSeconds: 0, tickId: null, quickTimeoutId: null,
+  isDefending: false, used: [], locked: false, setupStep: 'battleChoice',
 };
+const QUICKMATCH_TIMEOUT_SECONDS = 20;
+
+const BATTLE_STEPS = ['battleChoice', 'battleFriendPanel', 'battleQuickPanel', 'battleCreatePanel', 'battleJoinPanel', 'battleWaiting', 'quickWaiting'];
+const BATTLE_PARENT_STEP = {
+  battleFriendPanel: 'battleChoice', battleQuickPanel: 'battleChoice',
+  battleCreatePanel: 'battleFriendPanel', battleJoinPanel: 'battleFriendPanel',
+};
+
+const BATTLE_STEP_TITLE = {
+  battleChoice: 'だれかと対戦する', battleFriendPanel: 'フレンド対戦',
+  battleQuickPanel: '難易度をえらぶ', battleCreatePanel: '難易度をえらぶ',
+  battleJoinPanel: '部屋に入る', battleWaiting: 'フレンド対戦', quickWaiting: 'ランダムマッチング',
+};
+
+function battleShowStep(step) {
+  BATTLE_STEPS.forEach(id => document.getElementById(id).classList.toggle('hidden', id !== step));
+  bstate.setupStep = step;
+  document.getElementById('battleSetupTitle').textContent = BATTLE_STEP_TITLE[step];
+}
+
+function battleBackStep() {
+  if (bstate.setupStep === 'quickWaiting' && bstate.code && bstate.myId) {
+    Net.cancelRoom(bstate.code, bstate.myId);
+  }
+  if (bstate.setupStep === 'battleWaiting' || bstate.setupStep === 'quickWaiting') { bReset(); return; }
+  const parent = BATTLE_PARENT_STEP[bstate.setupStep];
+  if (parent) { battleShowStep(parent); bSetErr(''); }
+  else { bReset(); show('modeScreen'); }
+}
 
 function bReset() {
   Net.close();
   bstate.code = null; bstate.myId = null; bstate.level = null;
   bstate.radical = null; bstate.deadline = 0; bstate.used = []; bstate.locked = false;
   clearInterval(bstate.tickId);
-  document.getElementById('battleChoice').classList.remove('hidden');
-  document.getElementById('battleCreatePanel').classList.add('hidden');
-  document.getElementById('battleJoinPanel').classList.add('hidden');
-  document.getElementById('battleWaiting').classList.add('hidden');
+  clearTimeout(bstate.quickTimeoutId);
+  battleShowStep('battleChoice');
   bSetErr('');
+  bSetBusy('');
 }
 
 function bSetErr(t) {
@@ -692,35 +1290,79 @@ function bSetErr(t) {
   el.classList.remove('hidden'); el.textContent = t;
 }
 
+let battleBusyTimer = null;
+function bSetBusy(t) {
+  clearTimeout(battleBusyTimer);
+  const el = document.getElementById('battleBusy');
+  document.querySelectorAll('#battleSetupScreen button').forEach(b => { b.disabled = !!t; });
+  if (!t) { el.classList.add('hidden'); el.textContent = ''; return; }
+  el.classList.remove('hidden'); el.textContent = t;
+}
+
 async function bCreateRoom(level) {
   bSetErr('');
+  bSetBusy('部屋を作っています…');
+  battleBusyTimer = setTimeout(
+    () => bSetBusy('部屋を作っています…（サーバーが起動中の場合があります。もう少しお待ちください）'), 6000);
   try {
     const room = await Net.createRoom(level);
     bstate.code = room.code; bstate.myId = room.player_id; bstate.level = level;
+    bSetBusy('');
     bEnterWaiting('相手を待っています…');
     bConnect();
   } catch (e) {
+    bSetBusy('');
     bSetErr('部屋を作れませんでした。通信環境を確認してください。');
   }
 }
 
 async function bJoinRoom(code) {
   bSetErr('');
+  bSetBusy('部屋に入っています…');
+  battleBusyTimer = setTimeout(
+    () => bSetBusy('部屋に入っています…（サーバーが起動中の場合があります。もう少しお待ちください）'), 6000);
   try {
     const room = await Net.joinRoom(code);
     bstate.code = room.code; bstate.myId = room.player_id; bstate.level = room.level;
+    bSetBusy('');
     bEnterWaiting('対戦を開始しています…');
     bConnect();
   } catch (e) {
+    bSetBusy('');
     bSetErr('その部屋には入れませんでした。コードを確認してください。');
   }
 }
 
+async function bQuickMatch(level) {
+  bSetErr('');
+  bSetBusy('対戦相手をさがしています…');
+  battleBusyTimer = setTimeout(
+    () => bSetBusy('対戦相手をさがしています…（サーバーが起動中の場合があります）'), 6000);
+  try {
+    const room = await Net.quickMatch(level);
+    bstate.code = room.code; bstate.myId = room.player_id; bstate.level = level;
+    bSetBusy('');
+    bEnterQuickWaiting();
+    bConnect();
+    if (room.is_host) {
+      bstate.quickTimeoutId = setTimeout(() => {
+        Net.cancelRoom(bstate.code, bstate.myId);
+        bReset();
+        bSetErr('対戦相手が見つかりませんでした。もう一度お試しください。');
+      }, QUICKMATCH_TIMEOUT_SECONDS * 1000);
+    }
+  } catch (e) {
+    bSetBusy('');
+    bSetErr('マッチングできませんでした。通信環境を確認してください。');
+  }
+}
+
+function bEnterQuickWaiting() {
+  battleShowStep('quickWaiting');
+}
+
 function bEnterWaiting(msg) {
-  document.getElementById('battleChoice').classList.add('hidden');
-  document.getElementById('battleCreatePanel').classList.add('hidden');
-  document.getElementById('battleJoinPanel').classList.add('hidden');
-  document.getElementById('battleWaiting').classList.remove('hidden');
+  battleShowStep('battleWaiting');
   document.getElementById('roomCodeDisplay').textContent = bstate.code;
   document.getElementById('waitingMsg').textContent = msg;
 }
@@ -737,10 +1379,12 @@ function bConnect() {
 }
 
 function onBStart() {
+  clearTimeout(bstate.quickTimeoutId);
   document.getElementById('bRoomCode').textContent = bstate.code;
   document.getElementById('bGiveUp').classList.add('hidden');
   bRenderUsed();
   show('battlePlayScreen');
+  KBAudio.play('start');
 }
 
 function onBOffer(msg) {
@@ -755,9 +1399,7 @@ function onBOffer(msg) {
   const iAmAttacker = msg.attacker === bstate.myId;
   document.getElementById('bOfferBox').classList.toggle('hidden', !iAmAttacker);
   document.getElementById('bBoard').classList.add('hidden');
-  document.getElementById('bRadical').textContent = '—';
-  document.getElementById('bRadName').textContent = '';
-  document.getElementById('bRadMeaning').textContent = '';
+  document.getElementById('bRadicalBox').classList.add('hidden');
   document.getElementById('bTimer').textContent = '-';
 
   if (iAmAttacker) {
@@ -782,15 +1424,17 @@ function onBDefend(msg) {
   bstate.radical = msg.radical;
   bstate.isDefending = msg.defender === bstate.myId;
   bstate.deadline = Date.now() + msg.seconds * 1000;
+  bstate.totalSeconds = msg.seconds;
 
   const d = DATA.radicals[msg.radical];
+  document.getElementById('bRadicalBox').classList.remove('hidden');
   document.getElementById('bRadical').textContent = msg.radical;
   document.getElementById('bRadName').textContent = d.name;
   document.getElementById('bRadMeaning').textContent = d.meaning;
   document.getElementById('bOfferBox').classList.add('hidden');
 
   if (bstate.isDefending) {
-    document.getElementById('bStatus').textContent = '20秒以内に、この部首を含む漢字を書いてください';
+    document.getElementById('bStatus').textContent = `${msg.seconds}秒以内に、この部首を含む漢字を書いてください`;
     document.getElementById('bBoard').classList.remove('hidden');
     document.getElementById('bGiveUp').classList.remove('hidden');
     KanjiCanvas.erase('canBattle');
@@ -803,11 +1447,14 @@ function onBDefend(msg) {
 
 function bTick() {
   clearInterval(bstate.tickId);
+  const ring = document.getElementById('bTimerRingFg');
   const render = () => {
     const left = Math.max(0, Math.ceil((bstate.deadline - Date.now()) / 1000));
     const el = document.getElementById('bTimer');
     el.textContent = left;
-    el.classList.toggle('low', left <= 5);
+    const low = left <= 5;
+    el.classList.toggle('low', low);
+    updateRing(ring, left / bstate.totalSeconds, low);
     if (left <= 0) clearInterval(bstate.tickId);
   };
   render();
@@ -816,9 +1463,8 @@ function bTick() {
 
 function bJudge() {
   if (bstate.locked || !bstate.isDefending) return;
-  const cands = String(KanjiCanvas.recognize('canBattle') || '').trim().split(/\s+/).filter(Boolean).slice(0, 6);
-  const grades = GRADES[bstate.level];
-  const inRange = new Set(poolOf(bstate.radical, grades));
+  const cands = scoredCandidates('canBattle');
+  const inRange = new Set(poolOf(bstate.radical, ALL_GRADES));
   const usedSet = new Set(bstate.used);
 
   const valid = [], dupes = [], other = [];
@@ -843,6 +1489,7 @@ function bJudge() {
   }
 
   bSetMsg('', '');
+  if (valid.length === 1) { bSubmit(valid[0]); return; } // 候補が1つに絞れているならタップさせずに送信する
   picker.classList.remove('hidden');
   for (const k of valid) {
     const b = document.createElement('button');
@@ -864,7 +1511,7 @@ function bSubmit(kanji) {
 
 function onBRejected(msg) {
   bstate.locked = false;
-  const why = { used: 'もう使われています', out_of_grade: '選んだ難易度の範囲外です', not_in_radical: 'その部首を含みません' };
+  const why = { used: 'もう使われています', not_in_radical: 'その部首を含みません' };
   bSetMsg(`「${msg.kanji}」は${why[msg.reason] || '認められませんでした'}`, 'ng');
 }
 
@@ -872,6 +1519,7 @@ function onBTurnResult(msg) {
   clearInterval(bstate.tickId);
   bstate.used = msg.used || [];
   bRenderUsed();
+  KBAudio.play('correct');
 }
 
 function onBGameOver(msg) {
@@ -889,6 +1537,9 @@ function onBGameOver(msg) {
   };
   title.textContent = REASON_TEXT[msg.reason] || '対戦終了';
   unit.textContent = '';
+  if (msg.reason === 'timeout' || msg.reason === 'give_up') {
+    KBAudio.play(iLost ? 'timeup' : 'victory');
+  }
 
   const box = document.getElementById('bReveal');
   if (!msg.reveal) {
@@ -899,6 +1550,7 @@ function onBGameOver(msg) {
     const d = DATA.radicals[radical];
     document.getElementById('bRevRad').textContent = radical;
     document.getElementById('bRevName').textContent = d.name;
+    document.getElementById('bRevOrigin').textContent = d.origin ? `なりたち: ${d.origin}` : '';
 
     if (!unused.length) {
       document.getElementById('bRevLead').innerHTML = `${radical}を含む漢字は、すべて使われました`;
@@ -925,6 +1577,7 @@ function onBGameOver(msg) {
 function bSetMsg(t, c) {
   const el = document.getElementById('bMsg');
   el.textContent = t; el.className = 'msg' + (c ? ' ' + c : '');
+  if (c === 'ng') KBAudio.play('incorrect');
 }
 
 function bRenderUsed() {
@@ -935,13 +1588,17 @@ function bRenderUsed() {
 }
 
 function bBind() {
-  document.querySelectorAll('#battleChoice .bigbtn').forEach(b => {
-    b.onclick = () => {
-      document.getElementById('battleChoice').classList.add('hidden');
-      document.getElementById(b.dataset.battle === 'create' ? 'battleCreatePanel' : 'battleJoinPanel')
-        .classList.remove('hidden');
-    };
+  const BATTLE_PANEL = { friend: 'battleFriendPanel', quick: 'battleQuickPanel', create: 'battleCreatePanel', join: 'battleJoinPanel' };
+  document.querySelectorAll('#battleChoice .bigbtn, #battleFriendPanel .bigbtn').forEach(b => {
+    b.onclick = () => battleShowStep(BATTLE_PANEL[b.dataset.battle]);
   });
+  document.querySelectorAll('#battleQuickPanel .bigbtn').forEach(b => {
+    b.onclick = () => bQuickMatch(b.dataset.qlevel);
+  });
+  document.getElementById('quickCancelBtn').onclick = () => {
+    if (bstate.code && bstate.myId) Net.cancelRoom(bstate.code, bstate.myId);
+    bReset();
+  };
   document.querySelectorAll('#battleCreatePanel .bigbtn').forEach(b => {
     b.onclick = () => bCreateRoom(b.dataset.blevel);
   });
@@ -949,7 +1606,7 @@ function bBind() {
     const code = document.getElementById('joinCodeInput').value.trim();
     if (code) bJoinRoom(code);
   };
-  document.getElementById('battleBack').onclick = () => { bReset(); show('modeScreen'); };
+  document.getElementById('battleBack').onclick = battleBackStep;
 
   document.getElementById('bRec').onclick = bJudge;
   document.getElementById('bErase').onclick = () => {

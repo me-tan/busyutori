@@ -40,6 +40,30 @@
 
 存在しない・満員・すでに開始済みの部屋には `404` を返す。
 
+### `POST /api/quickmatch`
+
+ランダムマッチング。同じ難易度で待っている部屋があれば参加し、なければ
+新しく部屋を作って待つ側になる（部屋コードは画面に出さない）。
+
+リクエスト:
+```json
+{ "level": "low" | "elem" | "all" }
+```
+
+レスポンス:
+```json
+{ "code": "AB3XZ", "player_id": "...", "level": "elem", "is_host": true }
+```
+
+`is_host: true` なら相手を待つ側（`GET /api/health`同様、あとはWebSocketに
+接続して2人揃うのを待つだけ）。`false` なら即マッチ成立（相手は既に接続を待っている）。
+
+### `DELETE /api/rooms/{code}?player_id=...`
+
+ランダムマッチングで一定時間相手が見つからずあきらめた場合の後始末。
+まだ相手がついていない・自分がホストの部屋しか消せない（他人の部屋や
+既にマッチ済みの部屋を消そうとすると `{"ok": false}` を返すだけで何も起きない）。
+
 ## WebSocket
 
 `GET /ws/rooms/{code}?player_id=<REST応答で受け取ったplayer_id>`
@@ -53,8 +77,8 @@
 |---|---|
 | `start` | 試合開始。`attacker`, `defender`（player_id）, `level` |
 | `offer` | 攻撃側への部首候補。`attacker`, `choices: [{radical, name, meaning}]`（最大5件）, `used`（使用済み漢字の一覧） |
-| `defend` | 攻撃側が部首を投げた。`radical`, `defender`, `seconds`（制限時間、20固定） |
-| `answer_rejected` | 防御側にだけ送る、不正解の通知。`reason: "used" \| "out_of_grade" \| "not_in_radical"`, `kanji` |
+| `defend` | 攻撃側が部首を投げた。`radical`, `defender`, `seconds`（制限時間、30固定） |
+| `answer_rejected` | 防御側にだけ送る、不正解の通知。`reason: "used" \| "not_in_radical"`, `kanji` |
 | `turn_result` | 正解が確定した。`radical`, `kanji`, `next_attacker`, `used` |
 | `game_over` | 試合終了。`reason: "timeout" \| "give_up" \| "disconnect" \| "exhausted"`, `loser`（player_idまたはnull）, `reveal: {radical, unused, got} \| null` |
 
@@ -71,10 +95,11 @@
 `answer` を受け取ったら、サーバーは以下の順で判定する（`backend/app/game.py` の
 `is_valid_answer`）。
 
-1. 出題された部首を含む漢字プールに入っているか
-2. 選択中の学年範囲（`low`/`elem`/`all`）に入っているか（外れていれば `out_of_grade`）
-3. その部首の対象にすら入っていなければ `not_in_radical`
-4. 範囲内でも既に使われていれば `used`
+1. 出題された部首を含む漢字プールに入っているか（学年は問わない。入っていなければ `not_in_radical`）
+2. 既に使われていれば `used`
+
+難易度（`low`/`elem`/`all`）は出題する部首の絞り込みにのみ使う。選んだ難易度より
+上の学年の字で答えても、その部首を含んでいて未使用なら正解になる。
 
 クライアント側（`frontend/`）でも同じロジックのミニ版で候補を絞り込んで見せて
 いるが、それはあくまでUXのため。**改造されたクライアントから不正な `answer`
@@ -82,7 +107,7 @@
 
 ### タイマーはサーバー側が管理する
 
-`throw` を受けてからサーバーが20秒（`ANSWER_SECONDS`）のタイマーを起動する。
+`throw` を受けてからサーバーが30秒（`ANSWER_SECONDS`）のタイマーを起動する。
 時間内に正しい `answer` が来なければ `game_over(reason="timeout")` を送る。
 クライアント側のカウントダウン表示はあくまで見た目で、判定には使わない。
 
@@ -112,7 +137,7 @@ Pythonホストを使う。`backend/Dockerfile` を使ってデプロイでき�
 - Cloudflare WorkersのPythonランタイムはPyodide（WebAssembly）ベースで、
   対応しているpipパッケージが限定されている。FastAPI + Uvicornのような
   ASGIサーバーをそのまま動かす想定の作りになっていない
-- 本APIはルームごとに20秒タイマーの `asyncio.Task` を張り続ける常駐処理が
+- 本APIはルームごとに30秒タイマーの `asyncio.Task` を張り続ける常駐処理が
   前提。Workersのようなリクエスト単位の実行モデルとは相性が悪い
 - 2026年時点でまだベータ段階であり、実運用のWebSocketゲームサーバーとしての
   実績が薄い

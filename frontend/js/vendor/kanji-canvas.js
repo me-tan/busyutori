@@ -885,6 +885,12 @@
 	   }
 	   }
 	   candidates.sort(function(a, b){return a[1]-b[1]});
+
+	   // 各候補の実際の距離スコアを外部から参照できるようにする（呼び出し順を変えないための副チャンネル）
+	   KanjiCanvas.lastScored = candidates.map(function(c) {
+	       return [KanjiCanvas.refPatterns[c[0]][0], c[1]];
+	   });
+
 	   var outStr = "";
 	   for(var i=0;i<Math.min(candidates.length, 10);i++) {
 	       //outStr += candidates[i][0];

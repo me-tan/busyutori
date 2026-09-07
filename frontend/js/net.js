@@ -24,6 +24,23 @@ const Net = (() => {
     return res.json(); // { code, player_id, level }
   }
 
+  async function quickMatch(level) {
+    const res = await fetch(`${API_BASE}/api/quickmatch`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ level }),
+    });
+    if (!res.ok) throw new Error("failed to quickmatch");
+    return res.json(); // { code, player_id, level, is_host }
+  }
+
+  function cancelRoom(code, playerId) {
+    // あきらめて離脱するときの後始末。失敗しても気にしない（ページを離れるだけなので）。
+    fetch(`${API_BASE}/api/rooms/${encodeURIComponent(code)}?player_id=${encodeURIComponent(playerId)}`, {
+      method: "DELETE",
+    }).catch(() => {});
+  }
+
   function connect(code, playerId) {
     close();
     const wsBase = API_BASE.replace(/^http/, "ws");
@@ -53,5 +70,5 @@ const Net = (() => {
     handlers = {};
   }
 
-  return { createRoom, joinRoom, connect, on, send, close };
+  return { createRoom, joinRoom, quickMatch, cancelRoom, connect, on, send, close };
 })();
