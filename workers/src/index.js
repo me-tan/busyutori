@@ -20,6 +20,7 @@ const MAX_STREAK = 100000; // 異常値の投稿を弾くための上限
 const INVITE_TTL_MS = 10 * 60 * 1000; // 対戦の誘いを表示する期限（ポーリング前提の簡易メールボックス）
 const REMOVAL_TTL_MS = 3 * 24 * 60 * 60 * 1000; // フレンド解除通知を表示する期限（頻繁には開かない前提で長め）
 const DECLINE_TTL_MS = 24 * 60 * 60 * 1000; // 対戦の誘いを断られた通知を表示する期限
+const CANCEL_TTL_MS = 24 * 60 * 60 * 1000; // 対戦の誘いを取り消された通知を表示する期限
 
 function json(data, status = 200) {
   return new Response(JSON.stringify(data), {
@@ -410,11 +411,43 @@ async function handleApi(request, env, url) {
   }
 
   // DELETE /api/invites/room/:room_code — 誘った側が、相手の返事を待たずに誘いを取り消す
+  // 誘われていた側には invite_cancels で通知を残す
   if (method === "DELETE" && parts.length === 4 && parts[1] === "invites" && parts[2] === "room") {
     const me = await requireAuth(request, db);
     if (!me) return err(401, "認証が必要です");
     const roomCode = parts[3];
+    const invite = await db.prepare("SELECT to_code FROM invites WHERE from_code = ? AND room_code = ?").bind(me.code, roomCode).first();
     await db.prepare("DELETE FROM invites WHERE from_code = ? AND room_code = ?").bind(me.code, roomCode).run();
+    if (invite) {
+      await db
+        .prepare("INSERT INTO invite_cancels (to_code, from_nickname, created_at) VALUES (?, ?, ?)")
+        .bind(invite.to_code, me.nickname, Date.now())
+        .run();
+    }
+    return json({ ok: true });
+  }
+
+  // GET /api/invite-cancels — 自分あての誘いが取り消された、まだ見ていない通知の一覧
+  if (method === "GET" && parts.length === 2 && parts[1] === "invite-cancels") {
+    const me = await requireAuth(request, db);
+    if (!me) return err(401, "認証が必要です");
+    const rows = await db
+      .prepare(
+        `SELECT id, from_nickname, created_at FROM invite_cancels
+         WHERE to_code = ? AND created_at > ? ORDER BY created_at DESC`
+      )
+      .bind(me.code, Date.now() - CANCEL_TTL_MS)
+      .all();
+    return json({ cancels: rows.results });
+  }
+
+  // DELETE /api/invite-cancels/:id — 通知を確認済みにする
+  if (method === "DELETE" && parts.length === 3 && parts[1] === "invite-cancels") {
+    const me = await requireAuth(request, db);
+    if (!me) return err(401, "認証が必要です");
+    const id = Number(parts[2]);
+    if (!Number.isInteger(id)) return err(400, "idが不正です");
+    await db.prepare("DELETE FROM invite_cancels WHERE id = ? AND to_code = ?").bind(id, me.code).run();
     return json({ ok: true });
   }
 

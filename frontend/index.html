@@ -446,6 +446,7 @@
   <div id="inviteBanner" class="hidden" style="margin-bottom:16px"></div>
   <div id="removalBanner" class="hidden" style="margin-bottom:16px"></div>
   <div id="declineBanner" class="hidden" style="margin-bottom:16px"></div>
+  <div id="cancelBanner" class="hidden" style="margin-bottom:16px"></div>
 
   <div class="roomTicket" style="margin-bottom:16px">
     <div class="roomlabel">あなたの合言葉コード</div>
@@ -780,12 +781,14 @@ async function refreshFriendBadge() {
 }
 
 async function refreshInviteBadge() {
-  // 緑バッジ: 対戦の誘い関連の通知（誘いが来ている／自分の誘いが断られた）
+  // 緑バッジ: 対戦の誘い関連の通知（誘いが来ている／自分の誘いが断られた／相手の誘いが取り消された）
   const el = document.getElementById('inviteBadge');
   if (!Players.getProfile()) { el.classList.add('hidden'); return; }
   try {
-    const [invites, declines] = await Promise.all([Players.listInvites(), Players.listInviteDeclines()]);
-    el.classList.toggle('hidden', !(invites.length || declines.length));
+    const [invites, declines, cancels] = await Promise.all([
+      Players.listInvites(), Players.listInviteDeclines(), Players.listInviteCancels(),
+    ]);
+    el.classList.toggle('hidden', !(invites.length || declines.length || cancels.length));
   } catch (e) { el.classList.add('hidden'); }
 }
 
@@ -846,6 +849,7 @@ function refreshFriendsScreenIfOpen() {
   refreshInvites();
   refreshRemovals();
   refreshInviteDeclines();
+  refreshInviteCancels();
   refreshFriendsList();
   refreshRanking(currentRankLevel);
 }
@@ -1220,6 +1224,7 @@ function renderFriendsScreen() {
   refreshInvites();
   refreshRemovals();
   refreshInviteDeclines();
+  refreshInviteCancels();
   refreshFriendsList();
   refreshRanking(currentRankLevel);
 }
@@ -1271,6 +1276,28 @@ async function refreshInviteDeclines() {
     b.onclick = async () => {
       await Players.dismissInviteDecline(b.dataset.declineOk).catch(() => {});
       refreshInviteDeclines();
+    };
+  });
+}
+
+async function refreshInviteCancels() {
+  const el = document.getElementById('cancelBanner');
+  let cancels;
+  try { cancels = await Players.listInviteCancels(); }
+  catch (e) { el.classList.add('hidden'); el.innerHTML = ''; return; }
+  refreshInviteBadge();
+  if (cancels.length) refreshInvites(); // 取り消された誘いを一覧からも即座に消す
+  if (!cancels.length) { el.classList.add('hidden'); el.innerHTML = ''; return; }
+  el.classList.remove('hidden');
+  el.innerHTML = cancels.map(c => `
+    <div class="inviteCard invite" style="margin-bottom:8px">
+      <div style="font-size:13px;font-weight:700;color:var(--ink)">${c.from_nickname}さんが対戦の誘いを取り消しました</div>
+      <button class="ghost" data-cancel-ok="${c.id}">確認した</button>
+    </div>`).join('');
+  el.querySelectorAll('[data-cancel-ok]').forEach(b => {
+    b.onclick = async () => {
+      await Players.dismissInviteCancel(b.dataset.cancelOk).catch(() => {});
+      refreshInviteCancels();
     };
   });
 }

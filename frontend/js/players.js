@@ -148,6 +148,17 @@
     return readJson(res);
   }
 
+  async function listInviteCancels() {
+    const res = await fetch("/api/invite-cancels", { headers: authHeaders() });
+    const data = await readJson(res);
+    return data.cancels;
+  }
+
+  async function dismissInviteCancel(id) {
+    const res = await fetch("/api/invite-cancels/" + encodeURIComponent(id), { method: "DELETE", headers: authHeaders() });
+    return readJson(res);
+  }
+
   window.Players = {
     getProfile, saveProfile, clearProfile, getMe,
     createProfile, login, renameProfile, addFriend, removeFriend, listFriends, submitScore,
@@ -155,5 +166,6 @@
     listFriendRequests, acceptFriendRequest, declineFriendRequest,
     listRanking, sendInvite, cancelInvite, listInvites, dismissInvite, declineInvite,
     listInviteDeclines, dismissInviteDecline,
+    listInviteCancels, dismissInviteCancel,
   };
 })();
