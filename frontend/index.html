@@ -77,6 +77,7 @@
   .iconBtn:active { background: #F1EAD9; }
   .badgeDot { position: absolute; top: 2px; right: 2px; width: 10px; height: 10px; border-radius: 50%;
               background: var(--error); border: 2px solid var(--card); }
+  .badgeDot.invite { right: auto; left: 2px; background: var(--success); }
 
   /* リストの外枠・角丸はstack自身が持ち、overflow:hiddenで子を切り抜く。
      行ごとに角丸を出し分ける方式は、真ん中の行だけ既定のborder-radiusが
@@ -355,6 +356,7 @@
     <button class="iconBtn" id="openFriends" title="フレンド">
       <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="9" r="2.8"/><path d="M2.5 19c0-3 2.5-5 5.5-5s5.5 2 5.5 5"/><circle cx="17.5" cy="8.5" r="2.3"/><path d="M14.7 13.7c2.6.3 4.3 2 4.3 4.8"/></svg>
       <span class="badgeDot hidden" id="friendReqBadge"></span>
+      <span class="badgeDot invite hidden" id="inviteBadge"></span>
     </button>
     <button class="iconBtn" id="openSettings" title="設定">
       <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
@@ -747,6 +749,7 @@ async function boot() {
   else { show('loginScreen'); }
 
   setInterval(refreshFriendBadge, 30000);
+  setInterval(refreshInviteBadge, 30000);
 }
 
 async function refreshFriendBadge() {
@@ -758,6 +761,15 @@ async function refreshFriendBadge() {
   } catch (e) { el.classList.add('hidden'); }
 }
 
+async function refreshInviteBadge() {
+  const el = document.getElementById('inviteBadge');
+  if (!Players.getProfile()) { el.classList.add('hidden'); return; }
+  try {
+    const invites = await Players.listInvites();
+    el.classList.toggle('hidden', !invites.length);
+  } catch (e) { el.classList.add('hidden'); }
+}
+
 function renderModeScreen() {
   const p = Players.getProfile();
   if (!p) return;
@@ -765,6 +777,7 @@ function renderModeScreen() {
   document.getElementById('myNickname').textContent = p.nickname;
   document.getElementById('myCodeSmall').textContent = 'コード ' + p.code;
   refreshFriendBadge();
+  refreshInviteBadge();
 }
 
 function setRenameErr(t) {
@@ -1209,9 +1222,11 @@ async function refreshFriendRequests() {
 
 async function refreshInvites() {
   const el = document.getElementById('inviteBanner');
+  const badge = document.getElementById('inviteBadge');
   let invites;
   try { invites = await Players.listInvites(); }
   catch (e) { el.classList.add('hidden'); el.innerHTML = ''; return; }
+  badge.classList.toggle('hidden', !invites.length);
   if (!invites.length) { el.classList.add('hidden'); el.innerHTML = ''; return; }
   el.classList.remove('hidden');
   el.innerHTML = invites.map(inv => `
