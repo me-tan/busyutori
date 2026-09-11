@@ -22,6 +22,7 @@ class BattleState:
     attacker: str
     defender: str
     used: set[str] = field(default_factory=set)
+    used_log: list[tuple[str, str]] = field(default_factory=list)  # (kanji, 書いたplayer_id) を答えた順に
     recent_radicals: list[str] = field(default_factory=list)
     current_radical: str | None = None
     last_offer: list[str] = field(default_factory=list)
@@ -75,9 +76,10 @@ def is_valid_answer(state: BattleState, radical: str, kanji: str) -> tuple[bool,
     return True, None
 
 
-def apply_answer(state: BattleState, kanji: str) -> None:
+def apply_answer(state: BattleState, kanji: str, player_id: str) -> None:
     """正解確定後の状態更新。使用済みに追加し、攻守を交代する。"""
     state.used.add(kanji)
+    state.used_log.append((kanji, player_id))
     state.attacker, state.defender = state.defender, state.attacker
     if state.current_radical:
         state.recent_radicals.append(state.current_radical)

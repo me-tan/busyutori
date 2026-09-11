@@ -50,11 +50,12 @@ def test_is_valid_answer_rejects_wrong_radical():
 def test_apply_answer_swaps_turn_and_records_used():
     state = make_state(level="elem")
     state.current_radical = "氵"
-    gamerules.apply_answer(state, "海")
+    gamerules.apply_answer(state, "海", "b")
 
     assert state.attacker == "b"
     assert state.defender == "a"
     assert "海" in state.used
+    assert state.used_log == [("海", "b")]
     assert state.current_radical is None
     assert state.recent_radicals == ["氵"]
 
@@ -63,7 +64,7 @@ def test_recent_radicals_keeps_only_last_two():
     state = make_state(level="elem")
     for radical, kanji in [("氵", "海"), ("木", "森"), ("火", "炎")]:
         state.current_radical = radical
-        gamerules.apply_answer(state, kanji)
+        gamerules.apply_answer(state, kanji, "b")
     assert state.recent_radicals == ["木", "火"]
 
 

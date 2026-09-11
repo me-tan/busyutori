@@ -324,6 +324,26 @@
   .usedlist span.cur { color: var(--ink); }
   .usedempty { font-family: var(--font-ui); font-size: var(--t-sm); color: var(--ink-mid); }
 
+  /* 対戦では使った字が増えると探しにくくなるので、いま出題中の部首で
+     既に使われた字だけを折り返して全部見える形で上に抜き出す。
+     藍の淡い面にするのは「既に書き入れた」ことを示す既存の見立て
+     （.radbtn.done・.box.filled と同じ）を通すため */
+  .usedfocus { background: var(--ai-pale); border: 1px solid var(--ai); padding: var(--s3);
+               margin-bottom: var(--s3); }
+  .usedfocus-head { font-size: var(--t-xs); color: var(--ai); font-weight: 700; margin-bottom: var(--s2); }
+  .usedfocus-head b { font-family: var(--font-kanji); font-size: var(--t-md); font-weight: 500; }
+  .usedfocus-list { display: flex; flex-wrap: wrap; gap: var(--s1) var(--s3);
+                    font-family: var(--font-kanji); font-size: var(--t-lg); font-weight: 500; color: var(--ink); }
+
+  /* 対戦の使った字は自分／相手で列を分け、新しい字が左に来る横スクロールにする */
+  .usedlane + .usedlane { margin-top: var(--s3); }
+  .usedlane-label { font-size: var(--t-xs); color: var(--ink-mid); font-weight: 700; margin-bottom: var(--s1); }
+  .usedlist-row {
+    display: flex; flex-wrap: nowrap; gap: var(--s2); max-height: none;
+    overflow-x: auto; overflow-y: hidden; white-space: nowrap; padding-bottom: var(--s1);
+  }
+  .usedlist-row span { margin-right: 0; }
+
   /* ── 結果 ───────────────────────────────────────────────── */
   .over { text-align: center; padding: var(--s2) 0; }
   .over h2 { font-family: var(--font-mincho); font-size: var(--t-md); font-weight: 500;
@@ -879,7 +899,18 @@
 
   <div class="usedbox">
     <div class="head"><span>使った漢字</span><span id="bUsedCount">0字</span></div>
-    <div class="usedlist" id="bUsedList"><span class="usedempty">まだありません</span></div>
+    <div class="usedfocus hidden" id="bUsedFocus">
+      <div class="usedfocus-head"><b id="bUsedFocusRad">—</b> でもう使った漢字</div>
+      <div class="usedfocus-list" id="bUsedFocusList"></div>
+    </div>
+    <div class="usedlane">
+      <div class="usedlane-label">あなた</div>
+      <div class="usedlist usedlist-row" id="bUsedListMine"><span class="usedempty">まだありません</span></div>
+    </div>
+    <div class="usedlane">
+      <div class="usedlane-label">相手</div>
+      <div class="usedlist usedlist-row" id="bUsedListTheirs"><span class="usedempty">まだありません</span></div>
+    </div>
   </div>
 
   <button class="back hidden" id="bGiveUp">こうさんする</button>
@@ -941,6 +972,15 @@ const STROKE_TOLERANCE_OVER = 2; // 書いた画数 − 候補の画数 の上�
 const ALL_GRADES = ['1','2','3','4','5','6','8'];
 const GRADES = { low:['1','2','3'], elem:['1','2','3','4','5','6'], all:ALL_GRADES };
 const GLABEL = {1:'小1',2:'小2',3:'小3',4:'小4',5:'小5',6:'小6',8:'中学'};
+
+// 部首を画面に出すときの字形だけの読み替え。データやサーバーとのやり取りは
+// 元の文字のままで、見た目だけ現在の常用漢字の形に合わせる。
+// 辶(U+8FB6) はNoto Serif JPだと二点しんにょうで描かれ、近・道など実際の
+// 常用漢字（一点しんにょう）と形が食い違うため、一点の ⻌(U+2ECC) で見せる。
+const RADICAL_GLYPH = { '辶': '⻌' };
+function radGlyph(rad) {
+  return rad == null ? rad : String(rad).replace(/辶/g, RADICAL_GLYPH['辶']);
+}
 
 let DATA = null;
 let STROKE_COUNTS = null; // 字→画数（KanjiCanvasのref-patterns.jsから抽出。手書き認識の誤受理対策に使う）
@@ -1122,7 +1162,7 @@ function renderRadicalList() {
     const d = DATA.radicals[x.r];
     const done = cleared.has(state.level + ':' + x.r);
     return `<div class="radbtn ${done ? 'done' : ''}" data-rad="${x.r}">` +
-           `<div class="r">${x.r}</div><div class="n">${d.name}</div>` +
+           `<div class="r">${radGlyph(x.r)}</div><div class="n">${d.name}</div>` +
            `<div class="c">${done ? '達成' : x.n + '字'}</div></div>`;
   }).join('');
 
@@ -1161,7 +1201,7 @@ function pickRadical() {
 function setRadical(rad) {
   state.radical = rad;
   const d = DATA.radicals[rad];
-  document.getElementById('radical').textContent = rad;
+  document.getElementById('radical').textContent = radGlyph(rad);
   document.getElementById('radName').textContent = d.name;
   document.getElementById('radMeaning').textContent = d.meaning;
 }
@@ -1392,13 +1432,13 @@ function renderReveal() {
   const unused = pool.filter(k => !state.used.has(k));
   const got = pool.filter(k => state.used.has(k));
 
-  document.getElementById('revRad').textContent = rad;
+  document.getElementById('revRad').textContent = radGlyph(rad);
   document.getElementById('revName').textContent = d.name;
   document.getElementById('revSub').textContent = d.meaning;
   document.getElementById('revOrigin').textContent = d.origin ? `なりたち: ${d.origin}` : '';
 
   if (!unused.length) {
-    document.getElementById('revLead').innerHTML = `${rad}を含む漢字を、すべて書き出しました`;
+    document.getElementById('revLead').innerHTML = `${radGlyph(rad)}を含む漢字を、すべて書き出しました`;
     document.getElementById('revGrid').innerHTML = got.map(cellHTML).join('');
     document.getElementById('revMore').textContent = '';
     document.getElementById('revGot').innerHTML = '';
@@ -1406,7 +1446,7 @@ function renderReveal() {
   }
 
   document.getElementById('revLead').innerHTML =
-    `${rad}を含む漢字は、まだ <b>${unused.length}</b> 字ありました`;
+    `${radGlyph(rad)}を含む漢字は、まだ <b>${unused.length}</b> 字ありました`;
 
   const sorted = unused.slice().sort((a,b) =>
     (DATA.kanji[a] ? DATA.kanji[a].grade : 99) - (DATA.kanji[b] ? DATA.kanji[b].grade : 99));
@@ -2050,6 +2090,7 @@ function onBOffer(msg) {
   clearInterval(bstate.tickId);
   bstate.locked = false;
   bstate.used = msg.used || [];
+  bstate.radical = null; // 次の部首が投げられるまでは「出題中の部首」なし
   bRenderUsed();
   KanjiCanvas.erase('canBattle');
   document.getElementById('bPicker').classList.add('hidden');
@@ -2069,7 +2110,7 @@ function onBOffer(msg) {
     KBAudio.play('tap');
     document.getElementById('bOfferRow').innerHTML = msg.choices.map(c =>
       `<div class="radbtn" data-radical="${c.radical}">` +
-      `<div class="r">${c.radical}</div><div class="n">${c.name}</div></div>`
+      `<div class="r">${radGlyph(c.radical)}</div><div class="n">${c.name}</div></div>`
     ).join('');
     document.querySelectorAll('#bOfferRow .radbtn').forEach(el => {
       el.onclick = () => {
@@ -2090,10 +2131,11 @@ function onBDefend(msg) {
   bstate.isDefending = msg.defender === bstate.myId;
   bstate.deadline = Date.now() + msg.seconds * 1000;
   bstate.totalSeconds = msg.seconds;
+  bRenderUsedFocus(); // 出題された部首で既に使われた字を出し直す
 
   const d = DATA.radicals[msg.radical];
   document.getElementById('bRadicalBox').classList.remove('hidden');
-  document.getElementById('bRadical').textContent = msg.radical;
+  document.getElementById('bRadical').textContent = radGlyph(msg.radical);
   document.getElementById('bRadName').textContent = d.name;
   document.getElementById('bRadMeaning').textContent = d.meaning;
   document.getElementById('bOfferBox').classList.add('hidden');
@@ -2129,7 +2171,7 @@ function bTick() {
 async function bJudge() {
   if (bstate.locked || !bstate.isDefending) return;
   const inRange = new Set(poolOf(bstate.radical, ALL_GRADES));
-  const usedSet = new Set(bstate.used);
+  const usedSet = new Set(usedEntries().map(u => u.kanji));
 
   const strokes = KanjiRecog.strokesOf('canBattle');
   const { top, pool } = await KanjiRecog.recognize(strokes, answerableSet(inRange, usedSet));
@@ -2219,18 +2261,18 @@ function onBGameOver(msg) {
     box.classList.remove('hidden');
     const { radical, unused, got } = msg.reveal;
     const d = DATA.radicals[radical];
-    document.getElementById('bRevRad').textContent = radical;
+    document.getElementById('bRevRad').textContent = radGlyph(radical);
     document.getElementById('bRevName').textContent = d.name;
     document.getElementById('bRevOrigin').textContent = d.origin ? `なりたち: ${d.origin}` : '';
 
     if (!unused.length) {
-      document.getElementById('bRevLead').innerHTML = `${radical}を含む漢字は、すべて使われました`;
+      document.getElementById('bRevLead').innerHTML = `${radGlyph(radical)}を含む漢字は、すべて使われました`;
       document.getElementById('bRevGrid').innerHTML = got.map(cellHTML).join('');
       document.getElementById('bRevMore').textContent = '';
       document.getElementById('bRevGot').innerHTML = '';
     } else {
       document.getElementById('bRevLead').innerHTML =
-        `${radical}を含む漢字は、まだ <b>${unused.length}</b> 字ありました`;
+        `${radGlyph(radical)}を含む漢字は、まだ <b>${unused.length}</b> 字ありました`;
       const sorted = unused.slice().sort((a, b) =>
         (DATA.kanji[a] ? DATA.kanji[a].grade : 99) - (DATA.kanji[b] ? DATA.kanji[b].grade : 99));
       const shown = sorted.slice(0, MAX_REVEAL);
@@ -2265,11 +2307,41 @@ function bSetMsg(t, c) {
   if (c === 'ng') KBAudio.play('incorrect');
 }
 
+// サーバーが古い形式（漢字の文字列だけ）を返しても表示が壊れないようにする
+function usedEntries() {
+  return bstate.used.map(u => (typeof u === 'string' ? { kanji: u, by: null } : u));
+}
+
 function bRenderUsed() {
-  const el = document.getElementById('bUsedList');
-  document.getElementById('bUsedCount').textContent = bstate.used.length + '字';
-  if (!bstate.used.length) { el.innerHTML = '<span class="usedempty">まだありません</span>'; return; }
-  el.innerHTML = bstate.used.map(k => `<span>${k}</span>`).join('');
+  const used = usedEntries();
+  document.getElementById('bUsedCount').textContent = used.length + '字';
+  // 新しく書いた字ほど左（先頭）に来るように、答えた順を逆にして並べる
+  const mine = used.filter(u => u.by === bstate.myId).map(u => u.kanji).reverse();
+  const theirs = used.filter(u => u.by !== bstate.myId).map(u => u.kanji).reverse();
+  fillUsedLane('bUsedListMine', mine);
+  fillUsedLane('bUsedListTheirs', theirs);
+  bRenderUsedFocus();
+}
+
+// 使用済みがこの字数を超えたら、いま出題中の部首の分だけ抜き出して上に出す
+const USED_FOCUS_FROM = 10;
+
+function bRenderUsedFocus() {
+  const box = document.getElementById('bUsedFocus');
+  if (!bstate.radical || bstate.used.length < USED_FOCUS_FROM) { box.classList.add('hidden'); return; }
+  const pool = new Set(poolOf(bstate.radical, ALL_GRADES));
+  const hits = usedEntries().filter(u => pool.has(u.kanji)).map(u => u.kanji).reverse();
+  if (!hits.length) { box.classList.add('hidden'); return; }
+  box.classList.remove('hidden');
+  document.getElementById('bUsedFocusRad').textContent = radGlyph(bstate.radical);
+  document.getElementById('bUsedFocusList').innerHTML = hits.map(k => `<span>${k}</span>`).join('');
+}
+
+function fillUsedLane(id, kanjiList) {
+  const el = document.getElementById(id);
+  if (!kanjiList.length) { el.innerHTML = '<span class="usedempty">まだありません</span>'; return; }
+  el.innerHTML = kanjiList.map(k => `<span>${k}</span>`).join('');
+  el.scrollLeft = 0; // 新しい字が左端に来るので、常に先頭が見える位置に戻しておく
 }
 
 function bBind() {

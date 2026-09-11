@@ -73,6 +73,11 @@ async def broadcast(room: Room, message: dict) -> None:
         await ws.send_json(message)
 
 
+def _used_log_payload(state: gamerules.BattleState) -> list[dict]:
+    """使用済み漢字を、答えた順・誰が書いたか付きでフロントに渡す形にする。"""
+    return [{"kanji": kanji, "by": player_id} for kanji, player_id in state.used_log]
+
+
 def _start_state(room: Room) -> None:
     assert room.guest_id is not None
     room.state = gamerules.BattleState(level=room.level, attacker=room.host_id, defender=room.guest_id)
@@ -93,7 +98,7 @@ async def _send_offer(room: Room) -> None:
             {"radical": r, "name": names[r]["name"], "meaning": names[r]["meaning"]}
             for r in choices
         ],
-        "used": sorted(room.state.used),
+        "used": _used_log_payload(room.state),
     })
 
 
@@ -160,13 +165,13 @@ async def _handle_answer(room: Room, player_id: str, msg: dict) -> None:
 
     if room.timeout_task:
         room.timeout_task.cancel()
-    gamerules.apply_answer(state, kanji)
+    gamerules.apply_answer(state, kanji, player_id)
     await broadcast(room, {
         "type": "turn_result",
         "radical": radical,
         "kanji": kanji,
         "next_attacker": state.attacker,
-        "used": sorted(state.used),
+        "used": _used_log_payload(state),
     })
     await _send_offer(room)
 
