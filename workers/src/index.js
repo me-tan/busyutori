@@ -12,6 +12,9 @@
 const CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // 紛らわしい0/O,1/Iを除く
 const CODE_LENGTH = 6;
 const NICKNAME_MAX = 20;
+const USERNAME_MAX = 20;
+const PASSWORD_MIN = 4;
+const PBKDF2_ITERATIONS = 100000;
 const LEVELS = new Set(["low", "elem", "all"]);
 const MAX_STREAK = 100000; // 異常値の投稿を弾くための上限
 const INVITE_TTL_MS = 10 * 60 * 1000; // 対戦の誘いを表示する期限（ポーリング前提の簡易メールボックス）
@@ -46,6 +49,33 @@ async function hashToken(token) {
   return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
+function bytesToHex(bytes) {
+  return [...bytes].map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+function hexToBytes(hex) {
+  const out = new Uint8Array(hex.length / 2);
+  for (let i = 0; i < out.length; i++) out[i] = parseInt(hex.substr(i * 2, 2), 16);
+  return out;
+}
+
+// パスワードはPBKDF2（ユーザーごとにランダムなsalt）でハッシュ化する。
+// generalな平文比較を避けるため、saltを渡さなければ新規発行する。
+async function derivePasswordHash(password, saltHex) {
+  const salt = saltHex ? hexToBytes(saltHex) : crypto.getRandomValues(new Uint8Array(16));
+  const keyMaterial = await crypto.subtle.importKey("raw", new TextEncoder().encode(password), "PBKDF2", false, ["deriveBits"]);
+  const bits = await crypto.subtle.deriveBits(
+    { name: "PBKDF2", salt, iterations: PBKDF2_ITERATIONS, hash: "SHA-256" },
+    keyMaterial,
+    256
+  );
+  return { hash: bytesToHex(new Uint8Array(bits)), salt: bytesToHex(salt) };
+}
+
+async function verifyPassword(password, saltHex, expectedHashHex) {
+  const { hash } = await derivePasswordHash(password, saltHex);
+  return hash === expectedHashHex;
+}
+
 async function newUniqueCode(db) {
   for (let i = 0; i < 10; i++) {
     const code = randomCode();
@@ -58,6 +88,12 @@ async function newUniqueCode(db) {
 function cleanNickname(raw) {
   if (typeof raw !== "string") return null;
   const trimmed = raw.trim().slice(0, NICKNAME_MAX);
+  return trimmed.length ? trimmed : null;
+}
+
+function cleanUsername(raw) {
+  if (typeof raw !== "string") return null;
+  const trimmed = raw.trim().slice(0, USERNAME_MAX);
   return trimmed.length ? trimmed : null;
 }
 
@@ -108,19 +144,52 @@ async function handleApi(request, env, url) {
   const parts = url.pathname.split("/").filter(Boolean); // ["api", ...]
   const method = request.method;
 
-  // POST /api/players
+  // POST /api/players — 新規登録（ユーザー名＋パスワード＋ニックネーム）
   if (method === "POST" && parts.length === 2 && parts[1] === "players") {
     const body = await request.json().catch(() => ({}));
     const nickname = cleanNickname(body.nickname);
+    const username = cleanUsername(body.username);
+    const password = typeof body.password === "string" ? body.password : "";
     if (!nickname) return err(400, "nicknameを入力してください");
+    if (!username) return err(400, "usernameを入力してください");
+    if (password.length < PASSWORD_MIN) return err(400, `passwordは${PASSWORD_MIN}文字以上にしてください`);
+
+    const existing = await db.prepare("SELECT 1 FROM players WHERE username = ?").bind(username).first();
+    if (existing) return err(409, "そのusernameは既に使われています");
+
     const code = await newUniqueCode(db);
     const token = randomToken();
     const tokenHash = await hashToken(token);
+    const { hash: passwordHash, salt: passwordSalt } = await derivePasswordHash(password);
     await db
-      .prepare("INSERT INTO players (code, token_hash, nickname, created_at) VALUES (?, ?, ?, ?)")
-      .bind(code, tokenHash, nickname, Date.now())
+      .prepare(
+        `INSERT INTO players (code, token_hash, nickname, username, password_hash, password_salt, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`
+      )
+      .bind(code, tokenHash, nickname, username, passwordHash, passwordSalt, Date.now())
       .run();
     return json({ code, token, nickname });
+  }
+
+  // POST /api/login — ユーザー名＋パスワードで新しいtokenを発行する
+  if (method === "POST" && parts.length === 2 && parts[1] === "login") {
+    const body = await request.json().catch(() => ({}));
+    const username = cleanUsername(body.username);
+    const password = typeof body.password === "string" ? body.password : "";
+    if (!username || !password) return err(400, "usernameとpasswordを入力してください");
+
+    const player = await db
+      .prepare("SELECT code, nickname, password_hash, password_salt FROM players WHERE username = ?")
+      .bind(username)
+      .first();
+    if (!player || !player.password_hash) return err(401, "usernameまたはpasswordが違います");
+    const ok = await verifyPassword(password, player.password_salt, player.password_hash);
+    if (!ok) return err(401, "usernameまたはpasswordが違います");
+
+    const token = randomToken();
+    const tokenHash = await hashToken(token);
+    await db.prepare("UPDATE players SET token_hash = ? WHERE code = ?").bind(tokenHash, player.code).run();
+    return json({ code: player.code, token, nickname: player.nickname });
   }
 
   // PATCH /api/players/me

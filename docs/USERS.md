@@ -10,16 +10,24 @@
 ことにしたかは[BACKEND.md](BACKEND.md)を参照。この機能はルームの20〜30秒タイマーの
 ような常駐処理を必要としないリクエスト完結型のCRUDなので、Workers + D1が素直に合う。
 
-## 認証モデル：ニックネーム＋コードのみ（パスワード・メール不要）
+## 認証モデル：ログイン用の username/password と、フレンド用の code を分離
 
+ログインする鍵（username/password）と、フレンドに教える公開コード（code）を
+別物にしている。code はフレンドに気軽に教える前提の識別子なので、これをログイン
+の鍵にも使ってしまうと「フレンドに教える＝パスワードを教える」ことになってしまう
+ため。
+
+- `username` / `password`: アカウント作成時に決める、ログイン用の認証情報。
+  `password`はPBKDF2（ユーザーごとのランダムsalt、SHA-256、`PBKDF2_ITERATIONS`回）
+  でハッシュ化してD1に保存し、平文は保持しない。パスワードを忘れると復旧手段は
+  ない（メール・SMSを持たないため。対象年齢・スコープ的にこの割り切りを採用）。
 - `code`: 6文字の公開コード（英数字。0/O・1/Iなど紛らわしい文字は除く）。
-  フレンドに教えて追加してもらうための識別子。
-- `token`: プロフィール作成時に1度だけ発行される秘密トークン。ブラウザの
-  localStorageにだけ保存し、自分のデータを変更するリクエストで
-  `Authorization: Bearer <token>` として送る。サーバーはSHA-256ハッシュだけを
-  D1に保存し、生のトークンは保存しない。
-- パスワード・メールは持たない。**tokenを紛失するとそのプロフィールは復旧できない**
-  （対象年齢・スコープ的にこの割り切りを採用している）。
+  フレンドに教えて追加してもらうための識別子で、ログインには使えない。
+- `token`: ログイン（`POST /api/players`での新規登録、または`POST /api/login`）の
+  たびに新しく発行される秘密トークン。ブラウザのlocalStorageにだけ保存し、自分の
+  データを変更するリクエストで`Authorization: Bearer <token>`として送る。サーバー
+  はSHA-256ハッシュだけをD1に保存し、生のトークンは保存しない。ログインし直すと
+  古いtokenは上書きされて無効になる。
 
 フレンドは申請→承認の相互方式（`friendships`テーブル、`status: pending|accepted`）。
 コードを入れると相手に申請が届き、相手が承認して初めてフレンドになる。両者が
@@ -36,7 +44,8 @@
 
 | メソッド/パス | 認証 | 内容 |
 |---|---|---|
-| `POST /api/players` | 不要 | `{nickname}` → プロフィール作成。`{code, token, nickname}`を返す（tokenが渡るのはこの時だけ） |
+| `POST /api/players` | 不要 | `{username, password, nickname}` → 新規登録。`{code, token, nickname}`を返す |
+| `POST /api/login` | 不要 | `{username, password}` → ログインし直し、新しいtokenを発行する。`{code, token, nickname}`を返す |
 | `GET /api/players/me` | 必要 | `{code, nickname, best}` → 自分のプロフィール画面用 |
 | `GET /api/players/:code` | 不要 | `{code, nickname}`。コードからの照会用 |
 | `PATCH /api/players/me` | 必要 | `{nickname}` → 改名 |
@@ -58,7 +67,8 @@
 ## データ
 
 スキーマは`workers/migrations/`（`0001_init.sql`: players/friends/scores、
-`0002_invites.sql`: invites、`0003_friend_requests.sql`: friendships）。
+`0002_invites.sql`: invites、`0003_friend_requests.sql`: friendships、
+`0004_username_password.sql`: players に username/password_hash/password_salt を追加）。
 `friends`テーブルは`0003`で使わなくなったが、データはそのまま残してある
 （削除していない）。D1無料枠は1日あたり読み取り500万行・書き込み10万行・
 容量5GB（2026年9月時点、超過するとその日はエラーになる）。この規模のアプリなら十分。
@@ -70,7 +80,7 @@
    `wrangler.jsonc`の`d1_databases[0].database_id`に書き込む。
 3. `workers/migrations/`配下のファイルを番号順にすべて適用する
    （`wrangler d1 execute kanjinage-users --remote --file=workers/migrations/0001_init.sql`、
-   続けて`0002_invites.sql`、`0003_friend_requests.sql`も）。
+   続けて`0002_invites.sql`、`0003_friend_requests.sql`、`0004_username_password.sql`も）。
 4. `wrangler deploy` でフロントエンド（`frontend/`）とWorker（`workers/src/index.js`）を
    まとめてデプロイする。
 
@@ -85,5 +95,6 @@
 wrangler d1 execute kanjinage-users --local --file=workers/migrations/0001_init.sql
 wrangler d1 execute kanjinage-users --local --file=workers/migrations/0002_invites.sql
 wrangler d1 execute kanjinage-users --local --file=workers/migrations/0003_friend_requests.sql
+wrangler d1 execute kanjinage-users --local --file=workers/migrations/0004_username_password.sql
 wrangler dev --local
 ```

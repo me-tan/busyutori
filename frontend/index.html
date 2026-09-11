@@ -152,7 +152,7 @@
   }
   .radbtn:active { border-color: var(--accent); }
   .radbtn.done { border-color: var(--success); background: var(--success-bg); }
-  .radbtn .r { font-family: var(--font-kanji); font-size: 28px; line-height: 1.1; }
+  .radbtn .r { font-family: var(--font-kanji); font-size: 28px; line-height: 1.1; font-weight: 700; }
   .radbtn .n { font-size: 10px; color: var(--ink-faint); }
   .radbtn .c { font-size: 11px; color: var(--accent); font-weight: 700; }
   .radbtn.done .c { color: var(--success); }
@@ -201,6 +201,7 @@
     aspect-ratio: 1; border: 1.5px dashed var(--border); border-radius: 8px;
     display: flex; align-items: center; justify-content: center;
     font-family: var(--font-kanji); font-size: 22px; background: #FBF8F2; color: var(--ink);
+    font-weight: 700;
   }
   .box.filled { border: 1.5px solid var(--success); background: var(--success-bg); }
 
@@ -232,7 +233,7 @@
   .usedbox .head { display:flex; justify-content:space-between; align-items:baseline;
                    font-size:10.5px; color: var(--ink-soft); font-weight:700; margin-bottom:8px; }
   .usedlist { font-family: var(--font-kanji); font-size:19px; line-height:1.7; word-break:break-all;
-              max-height:96px; overflow-y:auto; }
+              max-height:96px; overflow-y:auto; font-weight: 700; }
   .usedlist span { margin-right:6px; color: var(--ink-faint); }
   .usedlist span.cur { color: var(--ink); font-weight:700; }
   .usedempty { font-family: var(--font-ui); font-size:12px; color: var(--ink-faint); }
@@ -252,7 +253,7 @@
   .reveal-origin { font-size: 11.5px; color: var(--ink-soft); line-height: 1.7; margin-bottom: 14px; text-align: left; }
   .kgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(58px,1fr)); gap: 8px; text-align:center; }
   .kcell { background: var(--card); border:1px dashed var(--border); border-radius:10px; padding:8px 2px 6px; }
-  .kcell .k { font-family: var(--font-kanji); font-size: 22px; line-height: 1.2; }
+  .kcell .k { font-family: var(--font-kanji); font-size: 22px; line-height: 1.2; font-weight: 700; }
   .kcell .r { font-size: 9px; color: var(--ink-soft); margin-top:2px; }
   .kcell .g { font-size: 8px; color: var(--ink-faint); }
   .more { font-size: 11.5px; color: var(--ink-faint); margin-top:10px; }
@@ -305,13 +306,39 @@
   <h1 style="text-align:center"><span class="accent">ぶしゅ</span>とり</h1>
   <div class="tag">部首をつないで、漢字をつぎつぎ書くゲーム</div>
   <div id="loadErr" class="err hidden"></div>
-  <div class="secTitle" style="text-align:left">ニックネームをきめてね</div>
-  <input class="codeinput" id="nicknameInput" placeholder="れい: たろう" maxlength="20"
-         style="letter-spacing:normal;font-size:16px;text-align:left;">
-  <div class="err hidden" id="profileErr" style="margin-top:10px"></div>
-  <button class="primary btn-block" id="createProfileBtn" style="margin-top:10px">はじめる</button>
-  <div style="font-size:10.5px;color:var(--ink-faint);margin-top:12px;line-height:1.6;text-align:center;">
-    はじめると、あなた専用の合言葉コードが発行されます。<br>フレンドに教えて対戦・記録くらべができます。
+
+  <div class="segmented" style="margin:14px 0 16px">
+    <button class="seg active" id="authTabSignup">はじめて</button>
+    <button class="seg" id="authTabLogin">ログイン</button>
+  </div>
+
+  <div id="signupForm">
+    <div class="secTitle" style="text-align:left">ニックネームをきめてね</div>
+    <input class="codeinput" id="nicknameInput" placeholder="れい: たろう" maxlength="20"
+           style="letter-spacing:normal;font-size:16px;text-align:left;margin-bottom:10px">
+    <div class="secTitle" style="text-align:left">ユーザー名（ログインにつかう）</div>
+    <input class="codeinput" id="usernameInput" placeholder="れい: taro2015" maxlength="20"
+           style="letter-spacing:normal;font-size:16px;text-align:left;margin-bottom:10px">
+    <div class="secTitle" style="text-align:left">パスワード（4文字以上）</div>
+    <input class="codeinput" id="passwordInput" type="password" placeholder="わすれないでね" maxlength="64"
+           style="letter-spacing:normal;font-size:16px;text-align:left;">
+    <div class="err hidden" id="profileErr" style="margin-top:10px"></div>
+    <button class="primary btn-block" id="createProfileBtn" style="margin-top:10px">はじめる</button>
+    <div style="font-size:10.5px;color:var(--ink-faint);margin-top:12px;line-height:1.6;text-align:center;">
+      はじめると、あなた専用の合言葉コードが発行されます。<br>フレンドに教えて対戦・記録くらべができます。
+      ユーザー名とパスワードは、別の端末からログインするときに使います。
+    </div>
+  </div>
+
+  <div id="loginForm" class="hidden">
+    <div class="secTitle" style="text-align:left">ユーザー名</div>
+    <input class="codeinput" id="loginUsernameInput" placeholder="ユーザー名" maxlength="20"
+           style="letter-spacing:normal;font-size:16px;text-align:left;margin-bottom:10px">
+    <div class="secTitle" style="text-align:left">パスワード</div>
+    <input class="codeinput" id="loginPasswordInput" type="password" placeholder="パスワード" maxlength="64"
+           style="letter-spacing:normal;font-size:16px;text-align:left;">
+    <div class="err hidden" id="loginErr" style="margin-top:10px"></div>
+    <button class="primary btn-block" id="loginBtn" style="margin-top:10px">ログインする</button>
   </div>
 </div>
 
@@ -389,6 +416,14 @@
 
   <div class="secTitle" style="text-align:left;margin-top:22px">自分のタイムアタック記録</div>
   <div id="profileStats" style="margin-top:10px"></div>
+
+  <div class="secTitle" style="text-align:left;margin-top:22px">ログアウト</div>
+  <div style="font-size:11px;color:var(--ink-faint);margin:6px 0 10px">
+    この端末からログアウトします。コードとパスワードのしくみがないため、
+    一度ログアウトすると同じアカウントには戻れません。別の人がこの端末で
+    使う場合などに利用してください。
+  </div>
+  <button class="ghost" id="logoutBtn" style="color:var(--error)">ログアウトする</button>
 </div>
 
 <div id="friendsScreen" class="hidden">
@@ -1099,6 +1134,11 @@ function setProfileErr(t) {
   if (!t) { el.classList.add('hidden'); el.textContent = ''; return; }
   el.classList.remove('hidden'); el.textContent = t;
 }
+function setLoginErr(t) {
+  const el = document.getElementById('loginErr');
+  if (!t) { el.classList.add('hidden'); el.textContent = ''; return; }
+  el.classList.remove('hidden'); el.textContent = t;
+}
 function setFriendsErr(t) {
   const el = document.getElementById('friendsErr');
   if (!t) { el.classList.add('hidden'); el.textContent = ''; return; }
@@ -1313,16 +1353,43 @@ function bind() {
 
   document.getElementById('openFriends').onclick = () => { renderFriendsScreen(); show('friendsScreen'); };
   document.getElementById('friendsBack').onclick = () => show('modeScreen');
+  document.getElementById('authTabSignup').onclick = () => {
+    document.getElementById('authTabSignup').classList.add('active');
+    document.getElementById('authTabLogin').classList.remove('active');
+    document.getElementById('signupForm').classList.remove('hidden');
+    document.getElementById('loginForm').classList.add('hidden');
+  };
+  document.getElementById('authTabLogin').onclick = () => {
+    document.getElementById('authTabLogin').classList.add('active');
+    document.getElementById('authTabSignup').classList.remove('active');
+    document.getElementById('loginForm').classList.remove('hidden');
+    document.getElementById('signupForm').classList.add('hidden');
+  };
   document.getElementById('createProfileBtn').onclick = async () => {
     const name = document.getElementById('nicknameInput').value.trim();
-    if (!name) return;
+    const username = document.getElementById('usernameInput').value.trim();
+    const password = document.getElementById('passwordInput').value;
+    if (!name || !username || !password) return;
     setProfileErr('');
-    try { await Players.createProfile(name); renderModeScreen(); show('modeScreen'); }
+    try { await Players.createProfile(username, password, name); renderModeScreen(); show('modeScreen'); }
     catch (e) { setProfileErr(e.message || 'はじめられませんでした'); }
+  };
+  document.getElementById('loginBtn').onclick = async () => {
+    const username = document.getElementById('loginUsernameInput').value.trim();
+    const password = document.getElementById('loginPasswordInput').value;
+    if (!username || !password) return;
+    setLoginErr('');
+    try { await Players.login(username, password); renderModeScreen(); show('modeScreen'); }
+    catch (e) { setLoginErr(e.message || 'ログインできませんでした'); }
   };
   document.getElementById('copyCodeBtn').onclick = () => {
     const p = Players.getProfile();
     if (p && navigator.clipboard) navigator.clipboard.writeText(p.code).catch(() => {});
+  };
+  document.getElementById('logoutBtn').onclick = () => {
+    if (!confirm('ログアウトしますか？この端末には戻れなくなります。')) return;
+    Players.clearProfile();
+    show('loginScreen');
   };
   document.getElementById('addFriendBtn').onclick = async () => {
     const input = document.getElementById('addFriendInput');
