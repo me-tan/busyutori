@@ -794,8 +794,8 @@
   <div class="waitmsg hidden" id="battleBusy"></div>
 
   <div class="stack" id="battleChoice">
-    <button class="bigbtn" data-battle="quick">ランダムマッチング<small>だれかとすぐに対戦する</small></button>
-    <button class="bigbtn" data-battle="friend">フレンド対戦<small>部屋コードで友だちと対戦する</small></button>
+    <button class="bigbtn" data-battle="quick">すぐに対戦<small>あいている人をさがして、すぐに始める</small></button>
+    <button class="bigbtn" data-battle="friend">部屋コードで対戦<small>コードを教えあって、その相手と対戦する</small></button>
   </div>
 
   <div class="stack hidden" id="battleFriendPanel">
@@ -1903,9 +1903,9 @@ const BATTLE_PARENT_STEP = {
 };
 
 const BATTLE_STEP_TITLE = {
-  battleChoice: 'だれかと対戦する', battleFriendPanel: 'フレンド対戦',
+  battleChoice: 'だれかと対戦する', battleFriendPanel: '部屋コードで対戦',
   battleQuickPanel: '難易度をえらぶ', battleCreatePanel: '難易度をえらぶ',
-  battleJoinPanel: '部屋に入る', battleWaiting: 'フレンド対戦', quickWaiting: 'ランダムマッチング',
+  battleJoinPanel: '部屋に入る', battleWaiting: '部屋コードで対戦', quickWaiting: 'すぐに対戦',
 };
 
 function battleShowStep(step) {
