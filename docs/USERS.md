@@ -45,6 +45,14 @@
 表示される（3日で表示対象から外れる）。まだ承認していない申請を取り消した場合は
 通知しない。
 
+対戦の誘いを断られたときも同様（`invite_declines`テーブル）。誘った側に通知が
+1件残る（1日で表示対象から外れる）。参加して誘いが消える場合（`DELETE
+/api/invites/:id`）は通知しない。
+
+通知バッジは2色に集約している。赤（`friendReqBadge`）はフレンド関連（申請が
+来ている・フレンド解除された）、緑（`inviteBadge`）は対戦の誘い関連（誘いが
+来ている・自分の誘いが断られた）で、それぞれ複数の通知種別をまとめて判定する。
+
 ## API
 
 | メソッド/パス | 認証 | 内容 |
@@ -66,7 +74,10 @@
 | `GET /api/ranking?level=elem` | 必要 | `{ranking: [{code, nickname, best, isMe}]}`（自分＋フレンドのみ、best降順） |
 | `POST /api/invites` | 必要 | `{code, room_code, level}` → `code`のフレンドを対戦に誘う（`code`がフレンドでないと400） |
 | `GET /api/invites` | 必要 | `{invites: [{id, from_code, from_nickname, room_code, level, created_at}]}`。自分あての新しい誘い（10分以内） |
-| `DELETE /api/invites/:id` | 必要 | 誘いを消す（参加した後・断った後） |
+| `DELETE /api/invites/:id` | 必要 | 誘いを消す（参加した後の後始末。通知は残さない） |
+| `POST /api/invites/:id/decline` | 必要 | 誘いを断る。誘った側に`invite_declines`で通知を残す |
+| `GET /api/invite-declines` | 必要 | `{declines: [{id, from_nickname, created_at}]}`。自分が送った誘いが断られた、まだ確認していない通知（1日以内） |
+| `DELETE /api/invite-declines/:id` | 必要 | 通知を確認済みにする |
 
 認証は`Authorization: Bearer <token>`をSHA-256でハッシュ化し、`players.token_hash`と
 一致する行を探すだけ（`workers/src/index.js`の`requireAuth`）。
@@ -76,7 +87,7 @@
 スキーマは`workers/migrations/`（`0001_init.sql`: players/friends/scores、
 `0002_invites.sql`: invites、`0003_friend_requests.sql`: friendships、
 `0004_username_password.sql`: players に username/password_hash/password_salt を追加、
-`0005_removals.sql`: removals）。
+`0005_removals.sql`: removals、`0006_invite_declines.sql`: invite_declines）。
 `friends`テーブルは`0003`で使わなくなったが、データはそのまま残してある
 （削除していない）。D1無料枠は1日あたり読み取り500万行・書き込み10万行・
 容量5GB（2026年9月時点、超過するとその日はエラーになる）。この規模のアプリなら十分。
@@ -89,7 +100,7 @@
 3. `workers/migrations/`配下のファイルを番号順にすべて適用する
    （`wrangler d1 execute kanjinage-users --remote --file=workers/migrations/0001_init.sql`、
    続けて`0002_invites.sql`、`0003_friend_requests.sql`、`0004_username_password.sql`、
-   `0005_removals.sql`も）。
+   `0005_removals.sql`、`0006_invite_declines.sql`も）。
 4. `wrangler deploy` でフロントエンド（`frontend/`）とWorker（`workers/src/index.js`）を
    まとめてデプロイする。
 
@@ -106,5 +117,6 @@ wrangler d1 execute kanjinage-users --local --file=workers/migrations/0002_invit
 wrangler d1 execute kanjinage-users --local --file=workers/migrations/0003_friend_requests.sql
 wrangler d1 execute kanjinage-users --local --file=workers/migrations/0004_username_password.sql
 wrangler d1 execute kanjinage-users --local --file=workers/migrations/0005_removals.sql
+wrangler d1 execute kanjinage-users --local --file=workers/migrations/0006_invite_declines.sql
 wrangler dev --local
 ```

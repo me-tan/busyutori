@@ -127,11 +127,28 @@
     return readJson(res);
   }
 
+  async function declineInvite(id) {
+    const res = await fetch("/api/invites/" + encodeURIComponent(id) + "/decline", { method: "POST", headers: authHeaders() });
+    return readJson(res);
+  }
+
+  async function listInviteDeclines() {
+    const res = await fetch("/api/invite-declines", { headers: authHeaders() });
+    const data = await readJson(res);
+    return data.declines;
+  }
+
+  async function dismissInviteDecline(id) {
+    const res = await fetch("/api/invite-declines/" + encodeURIComponent(id), { method: "DELETE", headers: authHeaders() });
+    return readJson(res);
+  }
+
   window.Players = {
     getProfile, saveProfile, clearProfile, getMe,
     createProfile, login, renameProfile, addFriend, removeFriend, listFriends, submitScore,
     listRemovals, dismissRemoval,
     listFriendRequests, acceptFriendRequest, declineFriendRequest,
-    listRanking, sendInvite, listInvites, dismissInvite,
+    listRanking, sendInvite, listInvites, dismissInvite, declineInvite,
+    listInviteDeclines, dismissInviteDecline,
   };
 })();

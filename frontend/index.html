@@ -444,6 +444,7 @@
   <div id="requestBanner" class="hidden" style="margin-bottom:16px"></div>
   <div id="inviteBanner" class="hidden" style="margin-bottom:16px"></div>
   <div id="removalBanner" class="hidden" style="margin-bottom:16px"></div>
+  <div id="declineBanner" class="hidden" style="margin-bottom:16px"></div>
 
   <div class="roomTicket" style="margin-bottom:16px">
     <div class="roomlabel">あなたの合言葉コード</div>
@@ -768,20 +769,22 @@ async function boot() {
 }
 
 async function refreshFriendBadge() {
+  // 赤バッジ: フレンド関連の通知（申請が来ている／フレンドを解除された）
   const el = document.getElementById('friendReqBadge');
   if (!Players.getProfile()) { el.classList.add('hidden'); return; }
   try {
-    const requests = await Players.listFriendRequests();
-    el.classList.toggle('hidden', !requests.length);
+    const [requests, removals] = await Promise.all([Players.listFriendRequests(), Players.listRemovals()]);
+    el.classList.toggle('hidden', !(requests.length || removals.length));
   } catch (e) { el.classList.add('hidden'); }
 }
 
 async function refreshInviteBadge() {
+  // 緑バッジ: 対戦の誘い関連の通知（誘いが来ている／自分の誘いが断られた）
   const el = document.getElementById('inviteBadge');
   if (!Players.getProfile()) { el.classList.add('hidden'); return; }
   try {
-    const invites = await Players.listInvites();
-    el.classList.toggle('hidden', !invites.length);
+    const [invites, declines] = await Promise.all([Players.listInvites(), Players.listInviteDeclines()]);
+    el.classList.toggle('hidden', !(invites.length || declines.length));
   } catch (e) { el.classList.add('hidden'); }
 }
 
@@ -839,6 +842,7 @@ function refreshFriendsScreenIfOpen() {
   refreshFriendRequests();
   refreshInvites();
   refreshRemovals();
+  refreshInviteDeclines();
 }
 
 function poolOf(rad, grades) {
@@ -1210,6 +1214,7 @@ function renderFriendsScreen() {
   refreshFriendRequests();
   refreshInvites();
   refreshRemovals();
+  refreshInviteDeclines();
   refreshFriendsList();
   refreshRanking('elem');
 }
@@ -1219,6 +1224,7 @@ async function refreshRemovals() {
   let removals;
   try { removals = await Players.listRemovals(); }
   catch (e) { el.classList.add('hidden'); el.innerHTML = ''; return; }
+  refreshFriendBadge();
   if (!removals.length) { el.classList.add('hidden'); el.innerHTML = ''; return; }
   el.classList.remove('hidden');
   el.innerHTML = removals.map(r => `
@@ -1234,13 +1240,33 @@ async function refreshRemovals() {
   });
 }
 
+async function refreshInviteDeclines() {
+  const el = document.getElementById('declineBanner');
+  let declines;
+  try { declines = await Players.listInviteDeclines(); }
+  catch (e) { el.classList.add('hidden'); el.innerHTML = ''; return; }
+  refreshInviteBadge();
+  if (!declines.length) { el.classList.add('hidden'); el.innerHTML = ''; return; }
+  el.classList.remove('hidden');
+  el.innerHTML = declines.map(d => `
+    <div class="inviteCard invite" style="margin-bottom:8px">
+      <div style="font-size:13px;font-weight:700;color:var(--ink)">${d.from_nickname}さんに対戦の誘いを断られました</div>
+      <button class="ghost" data-decline-ok="${d.id}">確認した</button>
+    </div>`).join('');
+  el.querySelectorAll('[data-decline-ok]').forEach(b => {
+    b.onclick = async () => {
+      await Players.dismissInviteDecline(b.dataset.declineOk).catch(() => {});
+      refreshInviteDeclines();
+    };
+  });
+}
+
 async function refreshFriendRequests() {
   const el = document.getElementById('requestBanner');
-  const badge = document.getElementById('friendReqBadge');
   let requests;
   try { requests = await Players.listFriendRequests(); }
   catch (e) { el.classList.add('hidden'); el.innerHTML = ''; return; }
-  badge.classList.toggle('hidden', !requests.length);
+  refreshFriendBadge();
   if (!requests.length) { el.classList.add('hidden'); el.innerHTML = ''; return; }
   el.classList.remove('hidden');
   el.innerHTML = requests.map(r => `
@@ -1267,11 +1293,10 @@ async function refreshFriendRequests() {
 
 async function refreshInvites() {
   const el = document.getElementById('inviteBanner');
-  const badge = document.getElementById('inviteBadge');
   let invites;
   try { invites = await Players.listInvites(); }
   catch (e) { el.classList.add('hidden'); el.innerHTML = ''; return; }
-  badge.classList.toggle('hidden', !invites.length);
+  refreshInviteBadge();
   if (!invites.length) { el.classList.add('hidden'); el.innerHTML = ''; return; }
   el.classList.remove('hidden');
   el.innerHTML = invites.map(inv => `
@@ -1282,14 +1307,14 @@ async function refreshInvites() {
       </div>
       <div style="display:flex;gap:6px">
         <button class="primary" data-accept="${inv.id}" data-room="${inv.room_code}" style="padding:9px 14px;font-size:12.5px">参加する</button>
-        <button class="ghost" data-dismiss="${inv.id}">断る</button>
+        <button class="ghost" data-decline="${inv.id}">断る</button>
       </div>
     </div>`).join('');
   el.querySelectorAll('[data-accept]').forEach(b => {
     b.onclick = () => acceptInvite(Number(b.dataset.accept), b.dataset.room);
   });
-  el.querySelectorAll('[data-dismiss]').forEach(b => {
-    b.onclick = async () => { await Players.dismissInvite(Number(b.dataset.dismiss)).catch(() => {}); refreshInvites(); };
+  el.querySelectorAll('[data-decline]').forEach(b => {
+    b.onclick = async () => { await Players.declineInvite(Number(b.dataset.decline)).catch(() => {}); refreshInvites(); };
   });
 }
 

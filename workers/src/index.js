@@ -19,6 +19,7 @@ const LEVELS = new Set(["low", "elem", "all"]);
 const MAX_STREAK = 100000; // 異常値の投稿を弾くための上限
 const INVITE_TTL_MS = 10 * 60 * 1000; // 対戦の誘いを表示する期限（ポーリング前提の簡易メールボックス）
 const REMOVAL_TTL_MS = 3 * 24 * 60 * 60 * 1000; // フレンド解除通知を表示する期限（頻繁には開かない前提で長め）
+const DECLINE_TTL_MS = 24 * 60 * 60 * 1000; // 対戦の誘いを断られた通知を表示する期限
 
 function json(data, status = 200) {
   return new Response(JSON.stringify(data), {
@@ -423,13 +424,54 @@ async function handleApi(request, env, url) {
     return json({ invites: rows.results });
   }
 
-  // DELETE /api/invites/:id  誘いを消す（参加した後・断った後）
+  // DELETE /api/invites/:id  誘いを消す（参加した後の後始末。通知は残さない）
   if (method === "DELETE" && parts.length === 3 && parts[1] === "invites") {
     const me = await requireAuth(request, db);
     if (!me) return err(401, "認証が必要です");
     const id = Number(parts[2]);
     if (!Number.isInteger(id)) return err(400, "idが不正です");
     await db.prepare("DELETE FROM invites WHERE id = ? AND to_code = ?").bind(id, me.code).run();
+    return json({ ok: true });
+  }
+
+  // POST /api/invites/:id/decline  誘いを断る。誘った側に通知を残す
+  if (method === "POST" && parts.length === 4 && parts[1] === "invites" && parts[3] === "decline") {
+    const me = await requireAuth(request, db);
+    if (!me) return err(401, "認証が必要です");
+    const id = Number(parts[2]);
+    if (!Number.isInteger(id)) return err(400, "idが不正です");
+    const invite = await db.prepare("SELECT from_code FROM invites WHERE id = ? AND to_code = ?").bind(id, me.code).first();
+    if (invite) {
+      await db
+        .prepare("INSERT INTO invite_declines (to_code, from_nickname, created_at) VALUES (?, ?, ?)")
+        .bind(invite.from_code, me.nickname, Date.now())
+        .run();
+    }
+    await db.prepare("DELETE FROM invites WHERE id = ? AND to_code = ?").bind(id, me.code).run();
+    return json({ ok: true });
+  }
+
+  // GET /api/invite-declines — 自分が送った誘いが断られた、まだ見ていない通知の一覧
+  if (method === "GET" && parts.length === 2 && parts[1] === "invite-declines") {
+    const me = await requireAuth(request, db);
+    if (!me) return err(401, "認証が必要です");
+    const rows = await db
+      .prepare(
+        `SELECT id, from_nickname, created_at FROM invite_declines
+         WHERE to_code = ? AND created_at > ? ORDER BY created_at DESC`
+      )
+      .bind(me.code, Date.now() - DECLINE_TTL_MS)
+      .all();
+    return json({ declines: rows.results });
+  }
+
+  // DELETE /api/invite-declines/:id — 通知を確認済みにする
+  if (method === "DELETE" && parts.length === 3 && parts[1] === "invite-declines") {
+    const me = await requireAuth(request, db);
+    if (!me) return err(401, "認証が必要です");
+    const id = Number(parts[2]);
+    if (!Number.isInteger(id)) return err(400, "idが不正です");
+    await db.prepare("DELETE FROM invite_declines WHERE id = ? AND to_code = ?").bind(id, me.code).run();
     return json({ ok: true });
   }
 
