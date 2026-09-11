@@ -73,6 +73,17 @@ async function requireAuth(request, db) {
   return player || null;
 }
 
+async function acceptedFriendCodes(db, code) {
+  const rows = await db
+    .prepare(
+      `SELECT CASE WHEN requester_code = ? THEN recipient_code ELSE requester_code END AS code
+       FROM friendships WHERE (requester_code = ? OR recipient_code = ?) AND status = 'accepted'`
+    )
+    .bind(code, code, code)
+    .all();
+  return rows.results.map((r) => r.code);
+}
+
 async function bestScoresFor(db, codes) {
   // codes: string[] -> { [code]: { [level]: bestStreak } }
   if (!codes.length) return {};
@@ -123,6 +134,14 @@ async function handleApi(request, env, url) {
     return json({ code: me.code, nickname });
   }
 
+  // GET /api/players/me — 自分のプロフィール画面用（ニックネーム・コード・自分のベスト記録）
+  if (method === "GET" && parts.length === 3 && parts[1] === "players" && parts[2] === "me") {
+    const me = await requireAuth(request, db);
+    if (!me) return err(401, "認証が必要です");
+    const bests = await bestScoresFor(db, [me.code]);
+    return json({ code: me.code, nickname: me.nickname, best: bests[me.code] || {} });
+  }
+
   // GET /api/players/:code
   if (method === "GET" && parts.length === 3 && parts[1] === "players") {
     const code = parts[2].toUpperCase();
@@ -131,25 +150,35 @@ async function handleApi(request, env, url) {
     return json(player);
   }
 
-  // GET /api/friends
+  // GET /api/friends — 承認済みのフレンド一覧
   if (method === "GET" && parts.length === 2 && parts[1] === "friends") {
     const me = await requireAuth(request, db);
     if (!me) return err(401, "認証が必要です");
-    const rows = await db
-      .prepare(
-        `SELECT p.code AS code, p.nickname AS nickname
-         FROM friends f JOIN players p ON p.code = f.friend_code
-         WHERE f.owner_code = ? ORDER BY f.created_at ASC`
-      )
-      .bind(me.code)
-      .all();
-    const codes = rows.results.map((r) => r.code);
+    const codes = await acceptedFriendCodes(db, me.code);
+    if (!codes.length) return json({ friends: [] });
+    const placeholders = codes.map(() => "?").join(",");
+    const rows = await db.prepare(`SELECT code, nickname FROM players WHERE code IN (${placeholders})`).bind(...codes).all();
     const bests = await bestScoresFor(db, codes);
     const friends = rows.results.map((r) => ({ code: r.code, nickname: r.nickname, best: bests[r.code] || {} }));
     return json({ friends });
   }
 
-  // POST /api/friends  { code }
+  // GET /api/friends/requests — 自分あての未承認の申請一覧
+  if (method === "GET" && parts.length === 3 && parts[1] === "friends" && parts[2] === "requests") {
+    const me = await requireAuth(request, db);
+    if (!me) return err(401, "認証が必要です");
+    const rows = await db
+      .prepare(
+        `SELECT p.code AS code, p.nickname AS nickname, f.created_at AS created_at
+         FROM friendships f JOIN players p ON p.code = f.requester_code
+         WHERE f.recipient_code = ? AND f.status = 'pending' ORDER BY f.created_at DESC`
+      )
+      .bind(me.code)
+      .all();
+    return json({ requests: rows.results });
+  }
+
+  // POST /api/friends  { code } — フレンド申請を送る。相手が先に自分へ送っていた場合は即承認になる
   if (method === "POST" && parts.length === 2 && parts[1] === "friends") {
     const me = await requireAuth(request, db);
     if (!me) return err(401, "認証が必要です");
@@ -159,19 +188,72 @@ async function handleApi(request, env, url) {
     if (code === me.code) return err(400, "自分自身は追加できません");
     const target = await db.prepare("SELECT code, nickname FROM players WHERE code = ?").bind(code).first();
     if (!target) return err(404, "そのコードの相手が見つかりません");
+
+    const existing = await db
+      .prepare(
+        `SELECT requester_code, status FROM friendships
+         WHERE (requester_code = ? AND recipient_code = ?) OR (requester_code = ? AND recipient_code = ?)`
+      )
+      .bind(me.code, target.code, target.code, me.code)
+      .first();
+
+    if (existing && existing.status === "accepted") {
+      return json({ code: target.code, nickname: target.nickname, status: "accepted" });
+    }
+    if (existing && existing.requester_code === target.code) {
+      // 相手が先に自分宛てに申請していた → クロスしたので即承認扱いにする
+      await db
+        .prepare("UPDATE friendships SET status = 'accepted' WHERE requester_code = ? AND recipient_code = ?")
+        .bind(target.code, me.code)
+        .run();
+      return json({ code: target.code, nickname: target.nickname, status: "accepted" });
+    }
+    if (existing) {
+      return json({ code: target.code, nickname: target.nickname, status: "pending" }); // 送信済みでまだ返事待ち
+    }
     await db
-      .prepare("INSERT OR IGNORE INTO friends (owner_code, friend_code, created_at) VALUES (?, ?, ?)")
+      .prepare("INSERT INTO friendships (requester_code, recipient_code, status, created_at) VALUES (?, ?, 'pending', ?)")
       .bind(me.code, target.code, Date.now())
       .run();
-    return json({ code: target.code, nickname: target.nickname });
+    return json({ code: target.code, nickname: target.nickname, status: "pending" });
   }
 
-  // DELETE /api/friends/:code
+  // POST /api/friends/:code/accept — 届いた申請を承認する
+  if (method === "POST" && parts.length === 4 && parts[1] === "friends" && parts[3] === "accept") {
+    const me = await requireAuth(request, db);
+    if (!me) return err(401, "認証が必要です");
+    const code = parts[2].toUpperCase();
+    const res = await db
+      .prepare("UPDATE friendships SET status = 'accepted' WHERE requester_code = ? AND recipient_code = ? AND status = 'pending'")
+      .bind(code, me.code)
+      .run();
+    return json({ ok: (res.meta?.changes || 0) > 0 });
+  }
+
+  // POST /api/friends/:code/decline — 届いた申請を断る
+  if (method === "POST" && parts.length === 4 && parts[1] === "friends" && parts[3] === "decline") {
+    const me = await requireAuth(request, db);
+    if (!me) return err(401, "認証が必要です");
+    const code = parts[2].toUpperCase();
+    await db
+      .prepare("DELETE FROM friendships WHERE requester_code = ? AND recipient_code = ? AND status = 'pending'")
+      .bind(code, me.code)
+      .run();
+    return json({ ok: true });
+  }
+
+  // DELETE /api/friends/:code — フレンド解除（自分が申請した/された、どちらでもよい）
   if (method === "DELETE" && parts.length === 3 && parts[1] === "friends") {
     const me = await requireAuth(request, db);
     if (!me) return err(401, "認証が必要です");
     const code = parts[2].toUpperCase();
-    await db.prepare("DELETE FROM friends WHERE owner_code = ? AND friend_code = ?").bind(me.code, code).run();
+    await db
+      .prepare(
+        `DELETE FROM friendships
+         WHERE (requester_code = ? AND recipient_code = ?) OR (requester_code = ? AND recipient_code = ?)`
+      )
+      .bind(me.code, code, code, me.code)
+      .run();
     return json({ ok: true });
   }
 
@@ -182,16 +264,13 @@ async function handleApi(request, env, url) {
     if (!me) return err(401, "認証が必要です");
     const level = url.searchParams.get("level");
     if (!LEVELS.has(level)) return err(400, "levelが不正です");
-    const friendRows = await db
-      .prepare(
-        `SELECT p.code AS code, p.nickname AS nickname
-         FROM friends f JOIN players p ON p.code = f.friend_code
-         WHERE f.owner_code = ?`
-      )
-      .bind(me.code)
-      .all();
+    const friendCodes = await acceptedFriendCodes(db, me.code);
     const nicknames = { [me.code]: me.nickname };
-    for (const r of friendRows.results) nicknames[r.code] = r.nickname;
+    if (friendCodes.length) {
+      const placeholders = friendCodes.map(() => "?").join(",");
+      const friendRows = await db.prepare(`SELECT code, nickname FROM players WHERE code IN (${placeholders})`).bind(...friendCodes).all();
+      for (const r of friendRows.results) nicknames[r.code] = r.nickname;
+    }
     const codes = Object.keys(nicknames);
     const bests = await bestScoresFor(db, codes);
     const ranking = codes
@@ -210,11 +289,8 @@ async function handleApi(request, env, url) {
     const level = body.level;
     if (!toCode || !roomCode) return err(400, "codeとroom_codeを入力してください");
     if (!LEVELS.has(level)) return err(400, "levelが不正です");
-    const isFriend = await db
-      .prepare("SELECT 1 FROM friends WHERE owner_code = ? AND friend_code = ?")
-      .bind(me.code, toCode)
-      .first();
-    if (!isFriend) return err(400, "フレンドにしか誘いを送れません");
+    const friendCodes = await acceptedFriendCodes(db, me.code);
+    if (!friendCodes.includes(toCode)) return err(400, "フレンドにしか誘いを送れません");
     await db
       .prepare("INSERT INTO invites (from_code, to_code, room_code, level, created_at) VALUES (?, ?, ?, ?, ?)")
       .bind(me.code, toCode, roomCode, level, Date.now())
