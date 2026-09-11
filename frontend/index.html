@@ -240,7 +240,7 @@
   /* ── 対局中の画面 ─────────────────────────────────────────── */
   .topbar {
     display: flex; align-items: center; justify-content: space-between;
-    border-bottom: 1px solid var(--rule); padding: 0 0 var(--s3); margin-bottom: var(--s4);
+    border-bottom: 1px solid var(--rule); padding: 0 0 var(--s2); margin-bottom: var(--s3);
   }
   .topbarInfo { display: flex; align-items: center; gap: var(--s5); }
   /* 連続数と見出しは1行に並べて、上端バーの高さを抑える */
@@ -272,8 +272,9 @@
   .timer.low { color: var(--shu); }
 
   /* 出題された部首。この画面で最初に読むものなので、周りを空けて字だけ置く */
-  .quest { padding: var(--s2) 0 var(--s5); margin-bottom: var(--s4); text-align: center;
+  .quest { padding: var(--s2) 0 var(--s4); margin-bottom: var(--s4); text-align: center;
            border-bottom: 1px solid var(--rule); }
+  .radLine { display: flex; flex-direction: column; align-items: center; }
   .radical { font-family: var(--font-kanji); font-size: 72px; line-height: 1.1; font-weight: 500; color: var(--ink); }
   .rad-name { font-family: var(--font-mincho); font-size: var(--t-md); letter-spacing: 0.18em;
               color: var(--ink); margin-top: var(--s3); font-weight: 500; }
@@ -283,7 +284,10 @@
   .boxhead { display: flex; justify-content: space-between; align-items: baseline;
              font-size: var(--t-xs); color: var(--ai); font-weight: 700; margin-bottom: var(--s3); }
   .boxhead b { font-family: var(--font-mincho); font-size: var(--t-md); color: var(--ink); font-weight: 600; }
-  .boxgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(44px,1fr)); gap: 1px; }
+  /* 氵のように対象が100字を超える部首だと桝だけで画面が埋まるので、
+     高さを区切って中をスクロールさせる */
+  .boxgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(44px,1fr)); gap: 1px;
+             max-height: 138px; overflow-y: auto; }
   .box {
     aspect-ratio: 1; border: none; box-shadow: 0 0 0 1px var(--rule);
     display: flex; align-items: center; justify-content: center;
@@ -308,11 +312,19 @@
   .btns-secondary button.passBtn { border-style: dashed; }
   @media (hover: hover) { .btns-secondary button:hover { background: var(--ai-pale); border-color: var(--ai-mid); } }
 
+  /* 「これでいく」の下は、候補と正誤を出し分ける一つの欄にまとめる。
+     高さを決め打ちにして、候補が出たときに下の内容が押し下がらないようにする
+     （押し下がると、スマホでは結果が画面の外に出てしまう） */
+  .result { min-height: 104px; margin-top: var(--s3); }
+  .result .picker { margin-top: 0; }
+  .result .msg { margin-top: var(--s2); }
+
   /* 認識した候補も桝に入れて見せる。書いた字を選ぶ操作なので大きく取る */
   .picker { margin-top: var(--s4); }
   .picker-label { font-size: var(--t-sm); color: var(--ai); font-weight: 700;
                   margin-bottom: var(--s3); text-align: center; }
-  .pick-row { display: flex; gap: var(--s3); justify-content: center; flex-wrap: wrap; }
+  .pick-row { display: flex; gap: var(--s3); justify-content: center; flex-wrap: nowrap;
+              overflow-x: auto; padding-bottom: var(--s1); }
   .pick { font-family: var(--font-kanji); font-size: 36px; padding: var(--s3) var(--s5);
           border: 1px solid var(--edge); background: var(--card); color: var(--ink);
           cursor: pointer; line-height: 1.2; font-weight: 500; min-height: 84px; }
@@ -327,7 +339,8 @@
   .msg.ok { color: var(--ai); } .msg.ng { color: var(--shu); }
   .msg.ok::before { content: "○ "; } .msg.ng::before { content: "× "; }
 
-  .usedbox { border-top: 1px solid var(--rule); padding: var(--s4) 0 0; margin-bottom: var(--s4); }
+  .usedbox { padding: 0 0 var(--s3); margin-bottom: var(--s3);
+             border-bottom: 1px solid var(--rule); }
   .usedbox .head { display: flex; justify-content: space-between; align-items: baseline;
                    font-size: var(--t-xs); color: var(--ai); font-weight: 700; margin-bottom: var(--s2); }
   .usedlist { font-family: var(--font-kanji); font-size: var(--t-lg); line-height: 1.9; word-break: break-all;
@@ -340,16 +353,21 @@
      既に使われた字だけを折り返して全部見える形で上に抜き出す。
      藍の淡い面にするのは「既に書き入れた」ことを示す既存の見立て
      （.radbtn.done・.box.filled と同じ）を通すため */
-  .usedfocus { background: var(--ai-pale); border: 1px solid var(--ai); padding: var(--s3);
-               margin-bottom: var(--s3); }
-  .usedfocus-head { font-size: var(--t-xs); color: var(--ai); font-weight: 700; margin-bottom: var(--s2); }
+  .usedfocus { background: var(--ai-pale); border: 1px solid var(--ai); padding: var(--s1) var(--s3);
+               margin-bottom: var(--s2); display: flex; align-items: center; gap: var(--s3); }
+  .usedfocus-head { font-size: var(--t-xs); color: var(--ai); font-weight: 700;
+                    flex: none; white-space: nowrap; }
   .usedfocus-head b { font-family: var(--font-kanji); font-size: var(--t-md); font-weight: 500; }
-  .usedfocus-list { display: flex; flex-wrap: wrap; gap: var(--s1) var(--s3);
+  .usedfocus-list { flex: 1; min-width: 0; display: flex; flex-wrap: nowrap; overflow-x: auto; gap: var(--s3);
                     font-family: var(--font-kanji); font-size: var(--t-lg); font-weight: 500; color: var(--ink); }
+  .usedfocus-list span { flex: none; }
 
   /* 対戦の使った字は自分／相手で列を分け、新しい字が左に来る横スクロールにする */
-  .usedlane + .usedlane { margin-top: var(--s3); }
-  .usedlane-label { font-size: var(--t-xs); color: var(--ink-mid); font-weight: 700; margin-bottom: var(--s1); }
+  .usedlane { display: flex; align-items: center; gap: var(--s3); }
+  .usedlane + .usedlane { margin-top: var(--s2); }
+  .usedlane-label { font-size: var(--t-xs); color: var(--ink-mid); font-weight: 700;
+                    flex: none; width: 3.4em; white-space: nowrap; }
+  .usedlane .usedlist { flex: 1; min-width: 0; }
   .usedlist-row {
     display: flex; flex-wrap: nowrap; gap: var(--s2); max-height: none;
     overflow-x: auto; overflow-y: hidden; white-space: nowrap; padding-bottom: var(--s1);
@@ -445,9 +463,11 @@
   /* スマホ幅では、書き取り欄とボタンの大きさはそのままに、周りだけ詰める */
   @media (max-width: 899px) {
     body { padding: var(--s4) var(--gutter) var(--s6); }
-    .quest { padding: 0 0 var(--s4); margin-bottom: var(--s3); }
-    .radical { font-size: 56px; }
-    .rad-name { margin-top: var(--s2); }
+    .quest { padding: 0 0 var(--s2); margin-bottom: var(--s3); }
+    /* 部首と読みを横に並べる。縦に積むと書き取り欄に回せる高さがなくなる */
+    .radLine { flex-direction: row; justify-content: center; gap: var(--s4); text-align: left; }
+    .radical { font-size: 52px; line-height: 1; }
+    .rad-name { margin-top: 0; }
     .turnstatus { margin-bottom: var(--s2); }
     .turnstatus.myturn { padding: var(--s2) var(--s3); }
     .board { margin-bottom: var(--s2); }
@@ -455,10 +475,26 @@
     .btn-block { margin-top: var(--s2); }
     .picker { margin-top: var(--s2); }
     .picker-label { margin-bottom: var(--s2); font-size: var(--t-xs); }
-    .pick { font-size: 32px; min-height: 72px; padding: var(--s2) var(--s4); }
+    .pick { font-size: 32px; min-height: 64px; padding: var(--s2) var(--s4); }
+    .result { min-height: 96px; }
     .msg { margin-top: var(--s2); min-height: 22px; font-size: var(--t-base); }
-    .usedbox { padding-top: var(--s3); margin-bottom: var(--s2); }
+    .usedbox { max-height: 168px; overflow-y: auto; padding-bottom: var(--s2); }
+    /* 対戦は自分と相手の2段あるので、どちらもスクロールせずに見えるよう
+       参照用の字だけ一回り小さくする */
+    .usedlane .usedlist { font-size: var(--t-md); line-height: 1.6; }
+    /* 見出しは残したまま中身だけスクロールさせる */
+    .usedbox .head { position: sticky; top: 0; background: var(--paper); padding-bottom: var(--s1); }
     .reveal { margin-top: var(--s5); padding-top: var(--s4); }
+  }
+
+  /* 背の低い端末では、参照するための欄をさらに詰めて、書き取り欄と
+     「これでいく」を画面に残すことを優先する */
+  @media (max-height: 760px) {
+    .usedbox { max-height: 104px; }
+    .quest { padding-bottom: var(--s2); margin-bottom: var(--s3); }
+    .radical { font-size: 44px; }
+    .result { min-height: 92px; }
+    .pick { min-height: 62px; font-size: 28px; }
   }
 
   /* 幅の狭い端末では、書き取り欄（302px）が左右の余白に収まらず横スクロールが
@@ -480,7 +516,7 @@
     /* 書き取り欄の列はキャンバスの実寸に合わせて固定する。1frにすると
        300pxのキャンバスの下でボタンだけが横に伸びて幅が揃わない */
     #playScreen, #battlePlayScreen {
-      display: grid; grid-template-columns: 302px 340px; column-gap: var(--s7);
+      display: grid; grid-template-columns: calc(var(--canvas-size, 340px) + 2px) 340px; column-gap: var(--s7);
       align-items: start; justify-content: center; margin: var(--s7) auto 0;
     }
     #playScreen > .board, #battlePlayScreen > #bOfferBox, #battlePlayScreen > #bBoard {
@@ -737,9 +773,13 @@
   </div>
 
   <div class="quest">
-    <div class="radical" id="radical">—</div>
-    <div class="rad-name" id="radName"></div>
-    <div class="rad-meaning" id="radMeaning"></div>
+    <div class="radLine">
+      <div class="radical" id="radical">—</div>
+      <div class="radText">
+        <div class="rad-name" id="radName"></div>
+        <div class="rad-meaning" id="radMeaning"></div>
+      </div>
+    </div>
   </div>
 
   <div class="boxwrap hidden" id="boxwrap">
@@ -750,6 +790,11 @@
     <div class="boxgrid" id="boxGrid"></div>
   </div>
 
+  <div class="usedbox" id="usedbox">
+    <div class="head"><span>使った漢字</span><span id="usedCount">0字</span></div>
+    <div class="usedlist usedlist-row" id="usedList"><span class="usedempty">まだありません</span></div>
+  </div>
+
   <div class="board">
     <canvas id="can" width="300" height="300"></canvas>
     <div class="btns-secondary">
@@ -758,16 +803,13 @@
       <button class="passBtn hidden" id="passBtn">パス</button>
     </div>
     <button id="rec" class="primary btn-block">これでいく</button>
-    <div class="picker hidden" id="picker">
-      <div class="picker-label">書いた漢字を選んでください</div>
-      <div class="pick-row" id="pickRow"></div>
+    <div class="result">
+      <div class="picker hidden" id="picker">
+        <div class="picker-label">書いた漢字を選んでください</div>
+        <div class="pick-row" id="pickRow"></div>
+      </div>
+      <div class="msg" id="msg"></div>
     </div>
-    <div class="msg" id="msg"></div>
-  </div>
-
-  <div class="usedbox" id="usedbox">
-    <div class="head"><span>使った漢字</span><span id="usedCount">0字</span></div>
-    <div class="usedlist" id="usedList"><span class="usedempty">まだありません</span></div>
   </div>
 </div>
 
@@ -856,10 +898,12 @@
 
   <div class="quest">
     <div class="turnstatus" id="bStatus">-</div>
-    <div id="bRadicalBox" class="hidden">
+    <div id="bRadicalBox" class="radLine hidden">
       <div class="radical" id="bRadical">—</div>
-      <div class="rad-name" id="bRadName"></div>
-      <div class="rad-meaning" id="bRadMeaning"></div>
+      <div class="radText">
+        <div class="rad-name" id="bRadName"></div>
+        <div class="rad-meaning" id="bRadMeaning"></div>
+      </div>
     </div>
   </div>
 
@@ -868,24 +912,10 @@
     <div class="radgrid" id="bOfferRow"></div>
   </div>
 
-  <div class="board hidden" id="bBoard">
-    <canvas id="canBattle" width="300" height="300"></canvas>
-    <div class="btns-secondary">
-      <button id="bUndo" class="ghost">一画戻す</button>
-      <button id="bErase" class="ghost">ぜんぶ消す</button>
-    </div>
-    <button id="bRec" class="primary btn-block">これでいく</button>
-    <div class="picker hidden" id="bPicker">
-      <div class="picker-label">書いた漢字を選んでください</div>
-      <div class="pick-row" id="bPickRow"></div>
-    </div>
-    <div class="msg" id="bMsg"></div>
-  </div>
-
   <div class="usedbox">
     <div class="head"><span>使った漢字</span><span id="bUsedCount">0字</span></div>
     <div class="usedfocus hidden" id="bUsedFocus">
-      <div class="usedfocus-head"><b id="bUsedFocusRad">—</b> でもう使った漢字</div>
+      <div class="usedfocus-head"><b id="bUsedFocusRad">—</b> で使った</div>
       <div class="usedfocus-list" id="bUsedFocusList"></div>
     </div>
     <div class="usedlane">
@@ -895,6 +925,22 @@
     <div class="usedlane">
       <div class="usedlane-label">相手</div>
       <div class="usedlist usedlist-row" id="bUsedListTheirs"><span class="usedempty">まだありません</span></div>
+    </div>
+  </div>
+
+  <div class="board hidden" id="bBoard">
+    <canvas id="canBattle" width="300" height="300"></canvas>
+    <div class="btns-secondary">
+      <button id="bUndo" class="ghost">一画戻す</button>
+      <button id="bErase" class="ghost">ぜんぶ消す</button>
+    </div>
+    <button id="bRec" class="primary btn-block">これでいく</button>
+    <div class="result">
+      <div class="picker hidden" id="bPicker">
+        <div class="picker-label">書いた漢字を選んでください</div>
+        <div class="pick-row" id="bPickRow"></div>
+      </div>
+      <div class="msg" id="bMsg"></div>
     </div>
   </div>
 </div>
@@ -992,6 +1038,8 @@ async function boot() {
   }
   KanjiCanvas.init('can');
   KanjiCanvas.init('canBattle');
+  // 画面の向きや大きさが変わったら、書き取り欄の大きさを測り直す
+  window.addEventListener('resize', () => { fitCanvas('can'); fitCanvas('canBattle'); });
   KanjiRecog.load(); // 最初の判定で待たされないよう、裏で読み込んでおく
   bind();
   bBind();
@@ -1183,6 +1231,7 @@ function startTime(level) {
   renderPassBtn();
   renderUsed();
   show('playScreen');
+  fitCanvas('can');
   nextTurn();
 }
 
@@ -1202,6 +1251,36 @@ function startComplete(rad) {
   state.locked = false;
   clearBoard();
   show('playScreen');
+  fitCanvas('can');
+}
+
+// 書き取り欄は、まわりを入れて1画面に収まる大きさに合わせる。
+// キャンバスはCSSで伸縮させると描いた線がずれる（KanjiCanvasが画面上の座標を
+// そのまま canvas の座標として使うため）ので、width/height属性の実寸ごと変える。
+// 認識は書いた字の外接矩形で正規化しているので、大きさを変えても精度は変わらない。
+const CANVAS_MIN = 190;
+const CANVAS_MAX = 340;
+
+function applyCanvasSize(can, px) {
+  if (can.width === px) return;
+  can.width = can.height = px;   // 属性を変えると中身は消えるので、呼び出し側で描き直す
+  KanjiCanvas['w_' + can.id] = px;
+  KanjiCanvas['h_' + can.id] = px;
+}
+
+function fitCanvas(id) {
+  const can = document.getElementById(id);
+  if (!can || !can.offsetParent) return; // 表示されていないと余白を測れない
+  const maxW = Math.min(can.parentElement.clientWidth, CANVAS_MAX);
+  // いちど最小にして、画面にどれだけ余っているかを測る。
+  // documentElement.scrollHeight は画面の高さより小さくならないので、
+  // 中身そのものの高さが分かる body 側で測る。
+  applyCanvasSize(can, CANVAS_MIN);
+  const slack = window.innerHeight - document.body.offsetHeight;
+  applyCanvasSize(can, Math.max(CANVAS_MIN, Math.min(maxW, CANVAS_MIN + slack)));
+  KanjiCanvas.redraw(id);
+  // PC表示では書き取り欄の列幅をこの実寸に合わせる
+  document.documentElement.style.setProperty('--canvas-size', can.width + 'px');
 }
 
 function renderBoxes() {
@@ -2105,10 +2184,11 @@ function onBDefend(msg) {
   document.getElementById('bOfferBox').classList.add('hidden');
 
   if (bstate.isDefending) {
-    document.getElementById('bStatus').textContent = `${msg.seconds}秒以内に、この部首を含む漢字を書いてください`;
+    document.getElementById('bStatus').textContent = 'この部首を含む漢字を書いてください';
     document.getElementById('bBoard').classList.remove('hidden');
     document.getElementById('bGiveUp').classList.remove('hidden');
     KanjiCanvas.erase('canBattle');
+    fitCanvas('canBattle');
   } else {
     document.getElementById('bStatus').textContent = '相手が書いています…';
     document.getElementById('bGiveUp').classList.add('hidden');
