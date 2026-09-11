@@ -1246,6 +1246,11 @@ async function refreshInviteDeclines() {
   try { declines = await Players.listInviteDeclines(); }
   catch (e) { el.classList.add('hidden'); el.innerHTML = ''; return; }
   refreshInviteBadge();
+  if (declines.length && currentScreen !== 'battlePlayScreen') {
+    // 断られた誘いの部屋を後始末し、「誘っています…」のまま固まったボタンを元に戻す
+    bReset();
+    refreshFriendsList();
+  }
   if (!declines.length) { el.classList.add('hidden'); el.innerHTML = ''; return; }
   el.classList.remove('hidden');
   el.innerHTML = declines.map(d => `
