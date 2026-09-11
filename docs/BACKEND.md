@@ -76,10 +76,10 @@
 | type | 内容 |
 |---|---|
 | `start` | 試合開始。`attacker`, `defender`（player_id）, `level` |
-| `offer` | 攻撃側への部首候補。`attacker`, `choices: [{radical, name, meaning}]`（最大5件）, `used`（使用済み漢字の一覧） |
+| `offer` | 攻撃側への部首候補。`attacker`, `choices: [{radical, name, meaning}]`（最大5件）, `used: [{kanji, by}]`（使用済み漢字。答えた順、`by`はplayer_id） |
 | `defend` | 攻撃側が部首を投げた。`radical`, `defender`, `seconds`（制限時間、30固定） |
 | `answer_rejected` | 防御側にだけ送る、不正解の通知。`reason: "used" \| "not_in_radical"`, `kanji` |
-| `turn_result` | 正解が確定した。`radical`, `kanji`, `next_attacker`, `used` |
+| `turn_result` | 正解が確定した。`radical`, `kanji`, `next_attacker`, `used: [{kanji, by}]` |
 | `game_over` | 試合終了。`reason: "timeout" \| "give_up" \| "disconnect" \| "exhausted"`, `loser`（player_idまたはnull）, `reveal: {radical, unused, got} \| null` |
 | `rematch_requested` | どちらか一方が再戦を希望した（`game_over`後のみ）。`by`（希望したplayer_id） |
 | `rematch_declined` | 相手が再戦せずに抜けた（`game_over`後のみ）。以後この部屋は消える |
@@ -117,8 +117,11 @@
 
 ### 使用済み漢字はルーム内で共有
 
-`used` は試合全体で1つ。攻撃側・防御側どちらが書いた字も、同じ試合中は
-二度と使えない。
+正解判定・出題対象からの除外は試合全体で1つの集合を見る。攻撃側・防御側
+どちらが書いた字も、同じ試合中は二度と使えない。フロントに送る`used`は
+`{kanji, by}`の配列で、答えた順に並んでいる。`by`のplayer_idを見れば、
+自分が書いたか相手が書いたかをクライアント側で区別できる（誰が書いたかは
+勝敗判定には使わず、UI表示のためだけの情報）。
 
 ## デプロイ
 

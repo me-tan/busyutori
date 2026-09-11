@@ -249,6 +249,23 @@
               max-height:96px; overflow-y:auto; font-weight: 700; }
   .usedlist span { margin-right:6px; color: var(--ink-faint); }
   .usedlist span.cur { color: var(--ink); font-weight:700; }
+
+  /* 使用済みが増えてくると一覧から探すのが大変になるので、いま出題されている
+     部首で既に使われた字だけを、折り返して全部見える形で上に出す。 */
+  .usedfocus { background: #FDF3EE; border: 1.5px solid var(--accent); border-radius: 12px;
+               padding: 10px 12px; margin-bottom: 12px; }
+  .usedfocus-head { font-size: 11px; color: var(--accent); font-weight: 700; margin-bottom: 6px; }
+  .usedfocus-head b { font-family: var(--font-kanji); font-size: 17px; font-weight: 700; }
+  .usedfocus-list { display: flex; flex-wrap: wrap; gap: 4px 10px;
+                    font-family: var(--font-kanji); font-size: 21px; font-weight: 700; color: var(--ink); }
+
+  .usedlane + .usedlane { margin-top: 10px; }
+  .usedlane-label { font-size: 10.5px; color: var(--ink-soft); font-weight: 700; margin-bottom: 4px; }
+  .usedlist-row {
+    display: flex; flex-wrap: nowrap; gap: 8px; max-height: none;
+    overflow-x: auto; overflow-y: hidden; white-space: nowrap; padding-bottom: 4px;
+  }
+  .usedlist-row span { margin-right: 0; }
   .usedempty { font-family: var(--font-ui); font-size:12px; color: var(--ink-faint); }
 
   .over { text-align: center; padding: 8px 4px; }
@@ -715,7 +732,18 @@
 
   <div class="usedbox">
     <div class="head"><span>使った漢字</span><span id="bUsedCount">0字</span></div>
-    <div class="usedlist" id="bUsedList"><span class="usedempty">まだありません</span></div>
+    <div class="usedfocus hidden" id="bUsedFocus">
+      <div class="usedfocus-head"><b id="bUsedFocusRad">—</b> でもう使った漢字</div>
+      <div class="usedfocus-list" id="bUsedFocusList"></div>
+    </div>
+    <div class="usedlane">
+      <div class="usedlane-label">あなた</div>
+      <div class="usedlist usedlist-row" id="bUsedListMine"><span class="usedempty">まだありません</span></div>
+    </div>
+    <div class="usedlane">
+      <div class="usedlane-label">相手</div>
+      <div class="usedlist usedlist-row" id="bUsedListTheirs"><span class="usedempty">まだありません</span></div>
+    </div>
   </div>
 
   <button class="back hidden" id="bGiveUp">こうさんする</button>
@@ -1868,6 +1896,7 @@ function onBOffer(msg) {
   clearInterval(bstate.tickId);
   bstate.locked = false;
   bstate.used = msg.used || [];
+  bstate.radical = null; // 次の部首が投げられるまでは「出題中の部首」なし
   bRenderUsed();
   KanjiCanvas.erase('canBattle');
   document.getElementById('bPicker').classList.add('hidden');
@@ -1908,6 +1937,7 @@ function onBDefend(msg) {
   bstate.isDefending = msg.defender === bstate.myId;
   bstate.deadline = Date.now() + msg.seconds * 1000;
   bstate.totalSeconds = msg.seconds;
+  bRenderUsedFocus(); // 出題された部首で既に使われた字を出し直す
 
   const d = DATA.radicals[msg.radical];
   document.getElementById('bRadicalBox').classList.remove('hidden');
@@ -1947,7 +1977,7 @@ function bTick() {
 async function bJudge() {
   if (bstate.locked || !bstate.isDefending) return;
   const inRange = new Set(poolOf(bstate.radical, ALL_GRADES));
-  const usedSet = new Set(bstate.used);
+  const usedSet = new Set(bstate.used.map(u => u.kanji));
 
   const strokes = KanjiRecog.strokesOf('canBattle');
   const { top, pool } = await KanjiRecog.recognize(strokes, answerableSet(inRange, usedSet));
@@ -2084,10 +2114,33 @@ function bSetMsg(t, c) {
 }
 
 function bRenderUsed() {
-  const el = document.getElementById('bUsedList');
   document.getElementById('bUsedCount').textContent = bstate.used.length + '字';
-  if (!bstate.used.length) { el.innerHTML = '<span class="usedempty">まだありません</span>'; return; }
-  el.innerHTML = bstate.used.map(k => `<span>${k}</span>`).join('');
+  const mine = bstate.used.filter(u => u.by === bstate.myId).map(u => u.kanji);
+  const theirs = bstate.used.filter(u => u.by !== bstate.myId).map(u => u.kanji);
+  fillUsedLane('bUsedListMine', mine);
+  fillUsedLane('bUsedListTheirs', theirs);
+  bRenderUsedFocus();
+}
+
+// 使用済みがこの字数を超えたら、いま出題中の部首の分だけ抜き出して上に出す
+const USED_FOCUS_FROM = 10;
+
+function bRenderUsedFocus() {
+  const box = document.getElementById('bUsedFocus');
+  if (!bstate.radical || bstate.used.length < USED_FOCUS_FROM) { box.classList.add('hidden'); return; }
+  const pool = new Set(poolOf(bstate.radical, ALL_GRADES));
+  const hits = bstate.used.filter(u => pool.has(u.kanji)).map(u => u.kanji);
+  if (!hits.length) { box.classList.add('hidden'); return; }
+  box.classList.remove('hidden');
+  document.getElementById('bUsedFocusRad').textContent = bstate.radical;
+  document.getElementById('bUsedFocusList').innerHTML = hits.map(k => `<span>${k}</span>`).join('');
+}
+
+function fillUsedLane(id, kanjiList) {
+  const el = document.getElementById(id);
+  if (!kanjiList.length) { el.innerHTML = '<span class="usedempty">まだありません</span>'; return; }
+  el.innerHTML = kanjiList.map(k => `<span>${k}</span>`).join('');
+  el.scrollLeft = el.scrollWidth; // 新しい字が右に並ぶので、常に最新が見える位置にしておく
 }
 
 function bBind() {
