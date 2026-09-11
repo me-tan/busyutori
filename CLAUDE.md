@@ -19,3 +19,4 @@
 - フロントエンドはビルド不要のバニラJSを維持する（`docs/GAME_DESIGN.md`参照）
 - ゲーム設計・データ仕様・既知の課題は`docs/GAME_DESIGN.md`・`docs/BACKEND.md`・
   `docs/DEVLOG.md`にまとまっているので、作業前に確認する
+

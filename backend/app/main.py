@@ -203,8 +203,19 @@ async def room_socket(ws: WebSocket, code: str, player_id: str) -> None:
 
     try:
         while True:
-            msg = await ws.receive_json()
-            await _dispatch(room, player_id, msg)
+            try:
+                msg = await ws.receive_json()
+            except WebSocketDisconnect:
+                raise
+            except Exception:
+                # 不正なメッセージ（JSONとして壊れている等）。対戦相手を巻き込んで
+                # 接続ごと落とさないよう、このメッセージだけ無視して継続する。
+                continue
+            try:
+                await _dispatch(room, player_id, msg)
+            except Exception:
+                # ハンドラ内の予期しないエラーで対戦全体が終了してしまわないようにする。
+                continue
     except WebSocketDisconnect:
         room.connections.pop(player_id, None)
         if room.started and rooms.exists(room.code):

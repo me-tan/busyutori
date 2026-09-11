@@ -12,14 +12,22 @@
 const CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // 紛らわしい0/O,1/Iを除く
 const CODE_LENGTH = 6;
 const NICKNAME_MAX = 20;
+const USERNAME_MAX = 20;
+const PASSWORD_MIN = 4;
+const PBKDF2_ITERATIONS = 100000;
 const LEVELS = new Set(["low", "elem", "all"]);
 const MAX_STREAK = 100000; // 異常値の投稿を弾くための上限
 const INVITE_TTL_MS = 10 * 60 * 1000; // 対戦の誘いを表示する期限（ポーリング前提の簡易メールボックス）
+const REMOVAL_TTL_MS = 3 * 24 * 60 * 60 * 1000; // フレンド解除通知を表示する期限（頻繁には開かない前提で長め）
+const DECLINE_TTL_MS = 24 * 60 * 60 * 1000; // 対戦の誘いを断られた通知を表示する期限
+const CANCEL_TTL_MS = 24 * 60 * 60 * 1000; // 対戦の誘いを取り消された通知を表示する期限
 
 function json(data, status = 200) {
   return new Response(JSON.stringify(data), {
     status,
-    headers: { "Content-Type": "application/json; charset=utf-8" },
+    // 全員がログイン済みの個人向けAPIなので、CDN/ブラウザにキャッシュされて
+    // 古いデータが返り続けることがないよう明示的に無効化する。
+    headers: { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" },
   });
 }
 function err(status, message) {
@@ -46,6 +54,33 @@ async function hashToken(token) {
   return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
+function bytesToHex(bytes) {
+  return [...bytes].map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+function hexToBytes(hex) {
+  const out = new Uint8Array(hex.length / 2);
+  for (let i = 0; i < out.length; i++) out[i] = parseInt(hex.substr(i * 2, 2), 16);
+  return out;
+}
+
+// パスワードはPBKDF2（ユーザーごとにランダムなsalt）でハッシュ化する。
+// generalな平文比較を避けるため、saltを渡さなければ新規発行する。
+async function derivePasswordHash(password, saltHex) {
+  const salt = saltHex ? hexToBytes(saltHex) : crypto.getRandomValues(new Uint8Array(16));
+  const keyMaterial = await crypto.subtle.importKey("raw", new TextEncoder().encode(password), "PBKDF2", false, ["deriveBits"]);
+  const bits = await crypto.subtle.deriveBits(
+    { name: "PBKDF2", salt, iterations: PBKDF2_ITERATIONS, hash: "SHA-256" },
+    keyMaterial,
+    256
+  );
+  return { hash: bytesToHex(new Uint8Array(bits)), salt: bytesToHex(salt) };
+}
+
+async function verifyPassword(password, saltHex, expectedHashHex) {
+  const { hash } = await derivePasswordHash(password, saltHex);
+  return hash === expectedHashHex;
+}
+
 async function newUniqueCode(db) {
   for (let i = 0; i < 10; i++) {
     const code = randomCode();
@@ -58,6 +93,12 @@ async function newUniqueCode(db) {
 function cleanNickname(raw) {
   if (typeof raw !== "string") return null;
   const trimmed = raw.trim().slice(0, NICKNAME_MAX);
+  return trimmed.length ? trimmed : null;
+}
+
+function cleanUsername(raw) {
+  if (typeof raw !== "string") return null;
+  const trimmed = raw.trim().slice(0, USERNAME_MAX);
   return trimmed.length ? trimmed : null;
 }
 
@@ -108,19 +149,52 @@ async function handleApi(request, env, url) {
   const parts = url.pathname.split("/").filter(Boolean); // ["api", ...]
   const method = request.method;
 
-  // POST /api/players
+  // POST /api/players — 新規登録（ユーザー名＋パスワード＋ニックネーム）
   if (method === "POST" && parts.length === 2 && parts[1] === "players") {
     const body = await request.json().catch(() => ({}));
     const nickname = cleanNickname(body.nickname);
+    const username = cleanUsername(body.username);
+    const password = typeof body.password === "string" ? body.password : "";
     if (!nickname) return err(400, "nicknameを入力してください");
+    if (!username) return err(400, "usernameを入力してください");
+    if (password.length < PASSWORD_MIN) return err(400, `passwordは${PASSWORD_MIN}文字以上にしてください`);
+
+    const existing = await db.prepare("SELECT 1 FROM players WHERE username = ?").bind(username).first();
+    if (existing) return err(409, "そのusernameは既に使われています");
+
     const code = await newUniqueCode(db);
     const token = randomToken();
     const tokenHash = await hashToken(token);
+    const { hash: passwordHash, salt: passwordSalt } = await derivePasswordHash(password);
     await db
-      .prepare("INSERT INTO players (code, token_hash, nickname, created_at) VALUES (?, ?, ?, ?)")
-      .bind(code, tokenHash, nickname, Date.now())
+      .prepare(
+        `INSERT INTO players (code, token_hash, nickname, username, password_hash, password_salt, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`
+      )
+      .bind(code, tokenHash, nickname, username, passwordHash, passwordSalt, Date.now())
       .run();
     return json({ code, token, nickname });
+  }
+
+  // POST /api/login — ユーザー名＋パスワードで新しいtokenを発行する
+  if (method === "POST" && parts.length === 2 && parts[1] === "login") {
+    const body = await request.json().catch(() => ({}));
+    const username = cleanUsername(body.username);
+    const password = typeof body.password === "string" ? body.password : "";
+    if (!username || !password) return err(400, "usernameとpasswordを入力してください");
+
+    const player = await db
+      .prepare("SELECT code, nickname, password_hash, password_salt FROM players WHERE username = ?")
+      .bind(username)
+      .first();
+    if (!player || !player.password_hash) return err(401, "usernameまたはpasswordが違います");
+    const ok = await verifyPassword(password, player.password_salt, player.password_hash);
+    if (!ok) return err(401, "usernameまたはpasswordが違います");
+
+    const token = randomToken();
+    const tokenHash = await hashToken(token);
+    await db.prepare("UPDATE players SET token_hash = ? WHERE code = ?").bind(tokenHash, player.code).run();
+    return json({ code: player.code, token, nickname: player.nickname });
   }
 
   // PATCH /api/players/me
@@ -243,10 +317,18 @@ async function handleApi(request, env, url) {
   }
 
   // DELETE /api/friends/:code — フレンド解除（自分が申請した/された、どちらでもよい）
+  // 承認済みの友達関係を解除した場合のみ、相手に通知を1件残す
   if (method === "DELETE" && parts.length === 3 && parts[1] === "friends") {
     const me = await requireAuth(request, db);
     if (!me) return err(401, "認証が必要です");
     const code = parts[2].toUpperCase();
+    const existing = await db
+      .prepare(
+        `SELECT status FROM friendships
+         WHERE (requester_code = ? AND recipient_code = ?) OR (requester_code = ? AND recipient_code = ?)`
+      )
+      .bind(me.code, code, code, me.code)
+      .first();
     await db
       .prepare(
         `DELETE FROM friendships
@@ -254,6 +336,36 @@ async function handleApi(request, env, url) {
       )
       .bind(me.code, code, code, me.code)
       .run();
+    if (existing && existing.status === "accepted") {
+      await db
+        .prepare("INSERT INTO removals (to_code, from_nickname, created_at) VALUES (?, ?, ?)")
+        .bind(code, me.nickname, Date.now())
+        .run();
+    }
+    return json({ ok: true });
+  }
+
+  // GET /api/removals — 自分が解除された、というまだ見ていない通知の一覧
+  if (method === "GET" && parts.length === 2 && parts[1] === "removals") {
+    const me = await requireAuth(request, db);
+    if (!me) return err(401, "認証が必要です");
+    const rows = await db
+      .prepare(
+        `SELECT id, from_nickname, created_at FROM removals
+         WHERE to_code = ? AND created_at > ? ORDER BY created_at DESC`
+      )
+      .bind(me.code, Date.now() - REMOVAL_TTL_MS)
+      .all();
+    return json({ removals: rows.results });
+  }
+
+  // DELETE /api/removals/:id — 通知を確認済みにする
+  if (method === "DELETE" && parts.length === 3 && parts[1] === "removals") {
+    const me = await requireAuth(request, db);
+    if (!me) return err(401, "認証が必要です");
+    const id = Number(parts[2]);
+    if (!Number.isInteger(id)) return err(400, "idが不正です");
+    await db.prepare("DELETE FROM removals WHERE id = ? AND to_code = ?").bind(id, me.code).run();
     return json({ ok: true });
   }
 
@@ -298,6 +410,47 @@ async function handleApi(request, env, url) {
     return json({ ok: true });
   }
 
+  // DELETE /api/invites/room/:room_code — 誘った側が、相手の返事を待たずに誘いを取り消す
+  // 誘われていた側には invite_cancels で通知を残す
+  if (method === "DELETE" && parts.length === 4 && parts[1] === "invites" && parts[2] === "room") {
+    const me = await requireAuth(request, db);
+    if (!me) return err(401, "認証が必要です");
+    const roomCode = parts[3];
+    const invite = await db.prepare("SELECT to_code FROM invites WHERE from_code = ? AND room_code = ?").bind(me.code, roomCode).first();
+    await db.prepare("DELETE FROM invites WHERE from_code = ? AND room_code = ?").bind(me.code, roomCode).run();
+    if (invite) {
+      await db
+        .prepare("INSERT INTO invite_cancels (to_code, from_nickname, created_at) VALUES (?, ?, ?)")
+        .bind(invite.to_code, me.nickname, Date.now())
+        .run();
+    }
+    return json({ ok: true });
+  }
+
+  // GET /api/invite-cancels — 自分あての誘いが取り消された、まだ見ていない通知の一覧
+  if (method === "GET" && parts.length === 2 && parts[1] === "invite-cancels") {
+    const me = await requireAuth(request, db);
+    if (!me) return err(401, "認証が必要です");
+    const rows = await db
+      .prepare(
+        `SELECT id, from_nickname, created_at FROM invite_cancels
+         WHERE to_code = ? AND created_at > ? ORDER BY created_at DESC`
+      )
+      .bind(me.code, Date.now() - CANCEL_TTL_MS)
+      .all();
+    return json({ cancels: rows.results });
+  }
+
+  // DELETE /api/invite-cancels/:id — 通知を確認済みにする
+  if (method === "DELETE" && parts.length === 3 && parts[1] === "invite-cancels") {
+    const me = await requireAuth(request, db);
+    if (!me) return err(401, "認証が必要です");
+    const id = Number(parts[2]);
+    if (!Number.isInteger(id)) return err(400, "idが不正です");
+    await db.prepare("DELETE FROM invite_cancels WHERE id = ? AND to_code = ?").bind(id, me.code).run();
+    return json({ ok: true });
+  }
+
   // GET /api/invites  自分あての、まだ新しい誘いの一覧
   if (method === "GET" && parts.length === 2 && parts[1] === "invites") {
     const me = await requireAuth(request, db);
@@ -315,13 +468,54 @@ async function handleApi(request, env, url) {
     return json({ invites: rows.results });
   }
 
-  // DELETE /api/invites/:id  誘いを消す（参加した後・断った後）
+  // DELETE /api/invites/:id  誘いを消す（参加した後の後始末。通知は残さない）
   if (method === "DELETE" && parts.length === 3 && parts[1] === "invites") {
     const me = await requireAuth(request, db);
     if (!me) return err(401, "認証が必要です");
     const id = Number(parts[2]);
     if (!Number.isInteger(id)) return err(400, "idが不正です");
     await db.prepare("DELETE FROM invites WHERE id = ? AND to_code = ?").bind(id, me.code).run();
+    return json({ ok: true });
+  }
+
+  // POST /api/invites/:id/decline  誘いを断る。誘った側に通知を残す
+  if (method === "POST" && parts.length === 4 && parts[1] === "invites" && parts[3] === "decline") {
+    const me = await requireAuth(request, db);
+    if (!me) return err(401, "認証が必要です");
+    const id = Number(parts[2]);
+    if (!Number.isInteger(id)) return err(400, "idが不正です");
+    const invite = await db.prepare("SELECT from_code, room_code FROM invites WHERE id = ? AND to_code = ?").bind(id, me.code).first();
+    if (invite) {
+      await db
+        .prepare("INSERT INTO invite_declines (to_code, from_nickname, room_code, created_at) VALUES (?, ?, ?, ?)")
+        .bind(invite.from_code, me.nickname, invite.room_code, Date.now())
+        .run();
+    }
+    await db.prepare("DELETE FROM invites WHERE id = ? AND to_code = ?").bind(id, me.code).run();
+    return json({ ok: true });
+  }
+
+  // GET /api/invite-declines — 自分が送った誘いが断られた、まだ見ていない通知の一覧
+  if (method === "GET" && parts.length === 2 && parts[1] === "invite-declines") {
+    const me = await requireAuth(request, db);
+    if (!me) return err(401, "認証が必要です");
+    const rows = await db
+      .prepare(
+        `SELECT id, from_nickname, room_code, created_at FROM invite_declines
+         WHERE to_code = ? AND created_at > ? ORDER BY created_at DESC`
+      )
+      .bind(me.code, Date.now() - DECLINE_TTL_MS)
+      .all();
+    return json({ declines: rows.results });
+  }
+
+  // DELETE /api/invite-declines/:id — 通知を確認済みにする
+  if (method === "DELETE" && parts.length === 3 && parts[1] === "invite-declines") {
+    const me = await requireAuth(request, db);
+    if (!me) return err(401, "認証が必要です");
+    const id = Number(parts[2]);
+    if (!Number.isInteger(id)) return err(400, "idが不正です");
+    await db.prepare("DELETE FROM invite_declines WHERE id = ? AND to_code = ?").bind(id, me.code).run();
     return json({ ok: true });
   }
 

@@ -22,9 +22,20 @@
     return data;
   }
 
-  async function createProfile(nickname) {
+  async function createProfile(username, password, nickname) {
     const res = await fetch("/api/players", {
-      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ nickname }),
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username, password, nickname }),
+    });
+    const data = await readJson(res);
+    saveProfile({ code: data.code, token: data.token, nickname: data.nickname });
+    return data;
+  }
+
+  async function login(username, password) {
+    const res = await fetch("/api/login", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username, password }),
     });
     const data = await readJson(res);
     saveProfile({ code: data.code, token: data.token, nickname: data.nickname });
@@ -46,6 +57,17 @@
 
   async function removeFriend(code) {
     const res = await fetch("/api/friends/" + encodeURIComponent(code), { method: "DELETE", headers: authHeaders() });
+    return readJson(res);
+  }
+
+  async function listRemovals() {
+    const res = await fetch("/api/removals", { headers: authHeaders() });
+    const data = await readJson(res);
+    return data.removals;
+  }
+
+  async function dismissRemoval(id) {
+    const res = await fetch("/api/removals/" + encodeURIComponent(id), { method: "DELETE", headers: authHeaders() });
     return readJson(res);
   }
 
@@ -94,6 +116,11 @@
     return readJson(res);
   }
 
+  async function cancelInvite(roomCode) {
+    const res = await fetch("/api/invites/room/" + encodeURIComponent(roomCode), { method: "DELETE", headers: authHeaders() });
+    return readJson(res);
+  }
+
   async function listInvites() {
     const res = await fetch("/api/invites", { headers: authHeaders() });
     const data = await readJson(res);
@@ -105,10 +132,40 @@
     return readJson(res);
   }
 
+  async function declineInvite(id) {
+    const res = await fetch("/api/invites/" + encodeURIComponent(id) + "/decline", { method: "POST", headers: authHeaders() });
+    return readJson(res);
+  }
+
+  async function listInviteDeclines() {
+    const res = await fetch("/api/invite-declines", { headers: authHeaders() });
+    const data = await readJson(res);
+    return data.declines;
+  }
+
+  async function dismissInviteDecline(id) {
+    const res = await fetch("/api/invite-declines/" + encodeURIComponent(id), { method: "DELETE", headers: authHeaders() });
+    return readJson(res);
+  }
+
+  async function listInviteCancels() {
+    const res = await fetch("/api/invite-cancels", { headers: authHeaders() });
+    const data = await readJson(res);
+    return data.cancels;
+  }
+
+  async function dismissInviteCancel(id) {
+    const res = await fetch("/api/invite-cancels/" + encodeURIComponent(id), { method: "DELETE", headers: authHeaders() });
+    return readJson(res);
+  }
+
   window.Players = {
     getProfile, saveProfile, clearProfile, getMe,
-    createProfile, renameProfile, addFriend, removeFriend, listFriends, submitScore,
+    createProfile, login, renameProfile, addFriend, removeFriend, listFriends, submitScore,
+    listRemovals, dismissRemoval,
     listFriendRequests, acceptFriendRequest, declineFriendRequest,
-    listRanking, sendInvite, listInvites, dismissInvite,
+    listRanking, sendInvite, cancelInvite, listInvites, dismissInvite, declineInvite,
+    listInviteDeclines, dismissInviteDecline,
+    listInviteCancels, dismissInviteCancel,
   };
 })();

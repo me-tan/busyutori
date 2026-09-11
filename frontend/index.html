@@ -71,10 +71,13 @@
   .topnavName { font-size: 13px; line-height: 1.5; text-align: left; }
   .topnavName div:first-child { font-weight: 700; color: var(--ink); }
   .topnavName div:last-child { font-size: 9px; color: var(--ink-faint); letter-spacing: 0.05em; }
-  .iconBtn { width: 36px; height: 36px; border-radius: 50%; background: transparent; border: none;
+  .iconBtn { position: relative; width: 36px; height: 36px; border-radius: 50%; background: transparent; border: none;
              color: var(--ink-soft); display: flex; align-items: center; justify-content: center;
              flex: none; cursor: pointer; padding: 0; }
   .iconBtn:active { background: #F1EAD9; }
+  .badgeDot { position: absolute; top: 2px; right: 2px; width: 10px; height: 10px; border-radius: 50%;
+              background: var(--error); border: 2px solid var(--card); }
+  .badgeDot.invite { right: auto; left: 2px; background: var(--success); }
 
   /* リストの外枠・角丸はstack自身が持ち、overflow:hiddenで子を切り抜く。
      行ごとに角丸を出し分ける方式は、真ん中の行だけ既定のborder-radiusが
@@ -124,6 +127,7 @@
   .inviteBtn { display: flex; align-items: center; gap: 5px; background: #FDEDE5; border: none;
                border-radius: 10px; padding: 8px 12px; color: var(--accent); font-size: 11px;
                font-weight: 700; font-family: inherit; }
+  .inviteBtn.cancel { background: #F1EAD9; color: var(--ink-soft); }
 
   .segmented { display: flex; border: 1px solid var(--border); border-radius: 10px; overflow: hidden;
                margin-bottom: 12px; }
@@ -144,6 +148,8 @@
 
   .inviteCard { border: 1.5px solid var(--accent); border-radius: 14px; padding: 14px 16px;
                 display: flex; align-items: center; justify-content: space-between; gap: 12px; background: #FDF3EE; }
+  .inviteCard.invite { border-color: var(--success); background: var(--success-bg); }
+  .inviteCard.invite button.primary { background: var(--success); border-bottom-color: #2E5D3E; }
 
   .radgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(84px,1fr)); gap: 9px; }
   .radbtn {
@@ -152,7 +158,7 @@
   }
   .radbtn:active { border-color: var(--accent); }
   .radbtn.done { border-color: var(--success); background: var(--success-bg); }
-  .radbtn .r { font-family: var(--font-kanji); font-size: 28px; line-height: 1.1; }
+  .radbtn .r { font-family: var(--font-kanji); font-size: 28px; line-height: 1.1; font-weight: 700; }
   .radbtn .n { font-size: 10px; color: var(--ink-faint); }
   .radbtn .c { font-size: 11px; color: var(--accent); font-weight: 700; }
   .radbtn.done .c { color: var(--success); }
@@ -201,6 +207,7 @@
     aspect-ratio: 1; border: 1.5px dashed var(--border); border-radius: 8px;
     display: flex; align-items: center; justify-content: center;
     font-family: var(--font-kanji); font-size: 22px; background: #FBF8F2; color: var(--ink);
+    font-weight: 700;
   }
   .box.filled { border: 1.5px solid var(--success); background: var(--success-bg); }
 
@@ -232,7 +239,7 @@
   .usedbox .head { display:flex; justify-content:space-between; align-items:baseline;
                    font-size:10.5px; color: var(--ink-soft); font-weight:700; margin-bottom:8px; }
   .usedlist { font-family: var(--font-kanji); font-size:19px; line-height:1.7; word-break:break-all;
-              max-height:96px; overflow-y:auto; }
+              max-height:96px; overflow-y:auto; font-weight: 700; }
   .usedlist span { margin-right:6px; color: var(--ink-faint); }
   .usedlist span.cur { color: var(--ink); font-weight:700; }
   .usedempty { font-family: var(--font-ui); font-size:12px; color: var(--ink-faint); }
@@ -252,7 +259,7 @@
   .reveal-origin { font-size: 11.5px; color: var(--ink-soft); line-height: 1.7; margin-bottom: 14px; text-align: left; }
   .kgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(58px,1fr)); gap: 8px; text-align:center; }
   .kcell { background: var(--card); border:1px dashed var(--border); border-radius:10px; padding:8px 2px 6px; }
-  .kcell .k { font-family: var(--font-kanji); font-size: 22px; line-height: 1.2; }
+  .kcell .k { font-family: var(--font-kanji); font-size: 22px; line-height: 1.2; font-weight: 700; }
   .kcell .r { font-size: 9px; color: var(--ink-soft); margin-top:2px; }
   .kcell .g { font-size: 8px; color: var(--ink-faint); }
   .more { font-size: 11.5px; color: var(--ink-faint); margin-top:10px; }
@@ -305,13 +312,39 @@
   <h1 style="text-align:center"><span class="accent">ぶしゅ</span>とり</h1>
   <div class="tag">部首をつないで、漢字をつぎつぎ書くゲーム</div>
   <div id="loadErr" class="err hidden"></div>
-  <div class="secTitle" style="text-align:left">ニックネームをきめてね</div>
-  <input class="codeinput" id="nicknameInput" placeholder="れい: たろう" maxlength="20"
-         style="letter-spacing:normal;font-size:16px;text-align:left;">
-  <div class="err hidden" id="profileErr" style="margin-top:10px"></div>
-  <button class="primary btn-block" id="createProfileBtn" style="margin-top:10px">はじめる</button>
-  <div style="font-size:10.5px;color:var(--ink-faint);margin-top:12px;line-height:1.6;text-align:center;">
-    はじめると、あなた専用の合言葉コードが発行されます。<br>フレンドに教えて対戦・記録くらべができます。
+
+  <div class="segmented" style="margin:14px 0 16px">
+    <button class="seg active" id="authTabSignup">はじめて</button>
+    <button class="seg" id="authTabLogin">ログイン</button>
+  </div>
+
+  <div id="signupForm">
+    <div class="secTitle" style="text-align:left">ニックネームをきめてね</div>
+    <input class="codeinput" id="nicknameInput" placeholder="れい: たろう" maxlength="20"
+           style="letter-spacing:normal;font-size:16px;text-align:left;margin-bottom:10px">
+    <div class="secTitle" style="text-align:left">ユーザー名（ログインにつかう）</div>
+    <input class="codeinput" id="usernameInput" placeholder="れい: taro2015" maxlength="20"
+           style="letter-spacing:normal;font-size:16px;text-align:left;margin-bottom:10px">
+    <div class="secTitle" style="text-align:left">パスワード（4文字以上）</div>
+    <input class="codeinput" id="passwordInput" type="password" placeholder="わすれないでね" maxlength="64"
+           style="letter-spacing:normal;font-size:16px;text-align:left;">
+    <div class="err hidden" id="profileErr" style="margin-top:10px"></div>
+    <button class="primary btn-block" id="createProfileBtn" style="margin-top:10px">はじめる</button>
+    <div style="font-size:10.5px;color:var(--ink-faint);margin-top:12px;line-height:1.6;text-align:center;">
+      はじめると、あなた専用の合言葉コードが発行されます。<br>フレンドに教えて対戦・記録くらべができます。
+      ユーザー名とパスワードは、別の端末からログインするときに使います。
+    </div>
+  </div>
+
+  <div id="loginForm" class="hidden">
+    <div class="secTitle" style="text-align:left">ユーザー名</div>
+    <input class="codeinput" id="loginUsernameInput" placeholder="ユーザー名" maxlength="20"
+           style="letter-spacing:normal;font-size:16px;text-align:left;margin-bottom:10px">
+    <div class="secTitle" style="text-align:left">パスワード</div>
+    <input class="codeinput" id="loginPasswordInput" type="password" placeholder="パスワード" maxlength="64"
+           style="letter-spacing:normal;font-size:16px;text-align:left;">
+    <div class="err hidden" id="loginErr" style="margin-top:10px"></div>
+    <button class="primary btn-block" id="loginBtn" style="margin-top:10px">ログインする</button>
   </div>
 </div>
 
@@ -325,6 +358,8 @@
     <div style="flex:1"></div>
     <button class="iconBtn" id="openFriends" title="フレンド">
       <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="9" r="2.8"/><path d="M2.5 19c0-3 2.5-5 5.5-5s5.5 2 5.5 5"/><circle cx="17.5" cy="8.5" r="2.3"/><path d="M14.7 13.7c2.6.3 4.3 2 4.3 4.8"/></svg>
+      <span class="badgeDot hidden" id="friendReqBadge"></span>
+      <span class="badgeDot invite hidden" id="inviteBadge"></span>
     </button>
     <button class="iconBtn" id="openSettings" title="設定">
       <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
@@ -389,6 +424,14 @@
 
   <div class="secTitle" style="text-align:left;margin-top:22px">自分のタイムアタック記録</div>
   <div id="profileStats" style="margin-top:10px"></div>
+
+  <div class="secTitle" style="text-align:left;margin-top:22px">ログアウト</div>
+  <div style="font-size:11px;color:var(--ink-faint);margin:6px 0 10px">
+    この端末からログアウトします。コードとパスワードのしくみがないため、
+    一度ログアウトすると同じアカウントには戻れません。別の人がこの端末で
+    使う場合などに利用してください。
+  </div>
+  <button class="ghost" id="logoutBtn" style="color:var(--error)">ログアウトする</button>
 </div>
 
 <div id="friendsScreen" class="hidden">
@@ -401,6 +444,9 @@
 
   <div id="requestBanner" class="hidden" style="margin-bottom:16px"></div>
   <div id="inviteBanner" class="hidden" style="margin-bottom:16px"></div>
+  <div id="removalBanner" class="hidden" style="margin-bottom:16px"></div>
+  <div id="declineBanner" class="hidden" style="margin-bottom:16px"></div>
+  <div id="cancelBanner" class="hidden" style="margin-bottom:16px"></div>
 
   <div class="roomTicket" style="margin-bottom:16px">
     <div class="roomlabel">あなたの合言葉コード</div>
@@ -707,6 +753,43 @@ async function boot() {
 
   if (Players.getProfile()) { renderModeScreen(); show('modeScreen'); }
   else { show('loginScreen'); }
+
+  setInterval(refreshFriendBadge, 10000);
+  setInterval(refreshInviteBadge, 10000);
+  setInterval(refreshFriendsScreenIfOpen, 10000);
+
+  // バックグラウンドタブになるとsetIntervalが間引かれてしまうため、
+  // タブに戻ってきた・アプリにフォーカスが戻った瞬間にも即チェックする。
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') {
+      refreshFriendBadge(); refreshInviteBadge(); refreshFriendsScreenIfOpen();
+    }
+  });
+  window.addEventListener('focus', () => {
+    refreshFriendBadge(); refreshInviteBadge(); refreshFriendsScreenIfOpen();
+  });
+}
+
+async function refreshFriendBadge() {
+  // 赤バッジ: フレンド関連の通知（申請が来ている／フレンドを解除された）
+  const el = document.getElementById('friendReqBadge');
+  if (!Players.getProfile()) { el.classList.add('hidden'); return; }
+  try {
+    const [requests, removals] = await Promise.all([Players.listFriendRequests(), Players.listRemovals()]);
+    el.classList.toggle('hidden', !(requests.length || removals.length));
+  } catch (e) { el.classList.add('hidden'); }
+}
+
+async function refreshInviteBadge() {
+  // 緑バッジ: 対戦の誘い関連の通知（誘いが来ている／自分の誘いが断られた／相手の誘いが取り消された）
+  const el = document.getElementById('inviteBadge');
+  if (!Players.getProfile()) { el.classList.add('hidden'); return; }
+  try {
+    const [invites, declines, cancels] = await Promise.all([
+      Players.listInvites(), Players.listInviteDeclines(), Players.listInviteCancels(),
+    ]);
+    el.classList.toggle('hidden', !(invites.length || declines.length || cancels.length));
+  } catch (e) { el.classList.add('hidden'); }
 }
 
 function renderModeScreen() {
@@ -715,6 +798,8 @@ function renderModeScreen() {
   document.getElementById('avatarChip').textContent = p.nickname.slice(0, 1);
   document.getElementById('myNickname').textContent = p.nickname;
   document.getElementById('myCodeSmall').textContent = 'コード ' + p.code;
+  refreshFriendBadge();
+  refreshInviteBadge();
 }
 
 function setRenameErr(t) {
@@ -749,9 +834,24 @@ const SCREENS = ['loginScreen','modeScreen','soloScreen','settingsScreen','frien
 const BGM_SCREENS = new Set(['loginScreen','modeScreen','soloScreen','settingsScreen','friendsScreen','profileScreen','levelScreen','radScreen',
   'overScreen','battleSetupScreen','battleOverScreen']);
 const LEVEL_LABEL = { low: '初級', elem: '中級', all: '上級' };
+let currentScreen = null;
+let currentRankLevel = 'elem';
+let pendingInvite = null; // { code, roomCode } 自分が送って返事待ちの対戦の誘い
 function show(id) {
+  currentScreen = id;
   SCREENS.forEach(s => document.getElementById(s).classList.toggle('hidden', s !== id));
   if (BGM_SCREENS.has(id)) KBAudio.playBgm('menu'); else KBAudio.stopBgm();
+}
+
+function refreshFriendsScreenIfOpen() {
+  if (currentScreen !== 'friendsScreen') return;
+  refreshFriendRequests();
+  refreshInvites();
+  refreshRemovals();
+  refreshInviteDeclines();
+  refreshInviteCancels();
+  refreshFriendsList();
+  refreshRanking(currentRankLevel);
 }
 
 function poolOf(rad, grades) {
@@ -1099,6 +1199,11 @@ function setProfileErr(t) {
   if (!t) { el.classList.add('hidden'); el.textContent = ''; return; }
   el.classList.remove('hidden'); el.textContent = t;
 }
+function setLoginErr(t) {
+  const el = document.getElementById('loginErr');
+  if (!t) { el.classList.add('hidden'); el.textContent = ''; return; }
+  el.classList.remove('hidden'); el.textContent = t;
+}
 function setFriendsErr(t) {
   const el = document.getElementById('friendsErr');
   if (!t) { el.classList.add('hidden'); el.textContent = ''; return; }
@@ -1117,8 +1222,84 @@ function renderFriendsScreen() {
   document.getElementById('myCodeDisplay').textContent = p.code;
   refreshFriendRequests();
   refreshInvites();
+  refreshRemovals();
+  refreshInviteDeclines();
+  refreshInviteCancels();
   refreshFriendsList();
-  refreshRanking('elem');
+  refreshRanking(currentRankLevel);
+}
+
+async function refreshRemovals() {
+  const el = document.getElementById('removalBanner');
+  let removals;
+  try { removals = await Players.listRemovals(); }
+  catch (e) { el.classList.add('hidden'); el.innerHTML = ''; return; }
+  refreshFriendBadge();
+  if (removals.length) { refreshFriendsList(); refreshRanking(currentRankLevel); } // 一覧からもランキングからも即座に消す
+  if (!removals.length) { el.classList.add('hidden'); el.innerHTML = ''; return; }
+  el.classList.remove('hidden');
+  el.innerHTML = removals.map(r => `
+    <div class="inviteCard" style="margin-bottom:8px">
+      <div style="font-size:13px;font-weight:700;color:var(--ink)">${r.from_nickname}さんとのフレンドが解除されました</div>
+      <button class="ghost" data-removal-ok="${r.id}">確認した</button>
+    </div>`).join('');
+  el.querySelectorAll('[data-removal-ok]').forEach(b => {
+    b.onclick = async () => {
+      await Players.dismissRemoval(b.dataset.removalOk).catch(() => {});
+      refreshRemovals();
+    };
+  });
+}
+
+async function refreshInviteDeclines() {
+  const el = document.getElementById('declineBanner');
+  let declines;
+  try { declines = await Players.listInviteDeclines(); }
+  catch (e) { el.classList.add('hidden'); el.innerHTML = ''; return; }
+  refreshInviteBadge();
+  // 今まさに送っている誘いの部屋が断られていた場合だけ後始末する
+  // （過去の未確認の通知が新しい誘いまで巻き込まないよう、room_codeで照合する）
+  if (pendingInvite && currentScreen !== 'battlePlayScreen' &&
+      declines.some(d => d.room_code === pendingInvite.roomCode)) {
+    pendingInvite = null;
+    bReset();
+    refreshFriendsList();
+  }
+  if (!declines.length) { el.classList.add('hidden'); el.innerHTML = ''; return; }
+  el.classList.remove('hidden');
+  el.innerHTML = declines.map(d => `
+    <div class="inviteCard invite" style="margin-bottom:8px">
+      <div style="font-size:13px;font-weight:700;color:var(--ink)">${d.from_nickname}さんに対戦の誘いを断られました</div>
+      <button class="ghost" data-decline-ok="${d.id}">確認した</button>
+    </div>`).join('');
+  el.querySelectorAll('[data-decline-ok]').forEach(b => {
+    b.onclick = async () => {
+      await Players.dismissInviteDecline(b.dataset.declineOk).catch(() => {});
+      refreshInviteDeclines();
+    };
+  });
+}
+
+async function refreshInviteCancels() {
+  const el = document.getElementById('cancelBanner');
+  let cancels;
+  try { cancels = await Players.listInviteCancels(); }
+  catch (e) { el.classList.add('hidden'); el.innerHTML = ''; return; }
+  refreshInviteBadge();
+  if (cancels.length) refreshInvites(); // 取り消された誘いを一覧からも即座に消す
+  if (!cancels.length) { el.classList.add('hidden'); el.innerHTML = ''; return; }
+  el.classList.remove('hidden');
+  el.innerHTML = cancels.map(c => `
+    <div class="inviteCard invite" style="margin-bottom:8px">
+      <div style="font-size:13px;font-weight:700;color:var(--ink)">${c.from_nickname}さんが対戦の誘いを取り消しました</div>
+      <button class="ghost" data-cancel-ok="${c.id}">確認した</button>
+    </div>`).join('');
+  el.querySelectorAll('[data-cancel-ok]').forEach(b => {
+    b.onclick = async () => {
+      await Players.dismissInviteCancel(b.dataset.cancelOk).catch(() => {});
+      refreshInviteCancels();
+    };
+  });
 }
 
 async function refreshFriendRequests() {
@@ -1126,6 +1307,7 @@ async function refreshFriendRequests() {
   let requests;
   try { requests = await Players.listFriendRequests(); }
   catch (e) { el.classList.add('hidden'); el.innerHTML = ''; return; }
+  refreshFriendBadge();
   if (!requests.length) { el.classList.add('hidden'); el.innerHTML = ''; return; }
   el.classList.remove('hidden');
   el.innerHTML = requests.map(r => `
@@ -1139,7 +1321,7 @@ async function refreshFriendRequests() {
   el.querySelectorAll('[data-req-accept]').forEach(b => {
     b.onclick = async () => {
       await Players.acceptFriendRequest(b.dataset.reqAccept).catch(() => {});
-      refreshFriendRequests(); refreshFriendsList();
+      refreshFriendRequests(); refreshFriendsList(); refreshRanking(currentRankLevel);
     };
   });
   el.querySelectorAll('[data-req-decline]').forEach(b => {
@@ -1155,24 +1337,25 @@ async function refreshInvites() {
   let invites;
   try { invites = await Players.listInvites(); }
   catch (e) { el.classList.add('hidden'); el.innerHTML = ''; return; }
+  refreshInviteBadge();
   if (!invites.length) { el.classList.add('hidden'); el.innerHTML = ''; return; }
   el.classList.remove('hidden');
   el.innerHTML = invites.map(inv => `
-    <div class="inviteCard" style="margin-bottom:8px">
+    <div class="inviteCard invite" style="margin-bottom:8px">
       <div>
         <div style="font-size:13px;font-weight:700;color:var(--ink)">${inv.from_nickname}さんから対戦の誘い</div>
         <div style="font-size:10.5px;color:var(--ink-soft)">難易度: ${LEVEL_LABEL[inv.level] || inv.level}</div>
       </div>
       <div style="display:flex;gap:6px">
         <button class="primary" data-accept="${inv.id}" data-room="${inv.room_code}" style="padding:9px 14px;font-size:12.5px">参加する</button>
-        <button class="ghost" data-dismiss="${inv.id}">断る</button>
+        <button class="ghost" data-decline="${inv.id}">断る</button>
       </div>
     </div>`).join('');
   el.querySelectorAll('[data-accept]').forEach(b => {
     b.onclick = () => acceptInvite(Number(b.dataset.accept), b.dataset.room);
   });
-  el.querySelectorAll('[data-dismiss]').forEach(b => {
-    b.onclick = async () => { await Players.dismissInvite(Number(b.dataset.dismiss)).catch(() => {}); refreshInvites(); };
+  el.querySelectorAll('[data-decline]').forEach(b => {
+    b.onclick = async () => { await Players.declineInvite(Number(b.dataset.decline)).catch(() => {}); refreshInvites(); };
   });
 }
 
@@ -1191,7 +1374,6 @@ async function acceptInvite(id, roomCode) {
 
 async function inviteFriend(code, btn) {
   setFriendsErr('');
-  const original = btn.textContent;
   btn.disabled = true; btn.textContent = '誘っています…';
   bReset();
   try {
@@ -1201,18 +1383,33 @@ async function inviteFriend(code, btn) {
     bstate.code = room.code; bstate.myId = room.player_id; bstate.level = level;
     bEnterWaiting('相手を待っています…');
     bConnect();
+    pendingInvite = { code, roomCode: room.code };
   } catch (e) {
     setFriendsErr('誘えませんでした。通信環境を確認してください。');
-    btn.disabled = false; btn.textContent = original;
+    pendingInvite = null;
   }
+  refreshFriendsList();
+}
+
+async function cancelPendingInvite(btn) {
+  if (!pendingInvite) return;
+  btn.disabled = true; btn.textContent = '取り消しています…';
+  const { roomCode } = pendingInvite;
+  await Players.cancelInvite(roomCode).catch(() => {});
+  if (bstate.code === roomCode) Net.cancelRoom(bstate.code, bstate.myId);
+  pendingInvite = null;
+  bReset();
+  refreshFriendsList();
 }
 
 async function refreshFriendsList() {
   const listEl = document.getElementById('friendsList');
-  listEl.innerHTML = '<div class="usedempty" style="padding:14px 2px">読み込み中…</div>';
+  const firstLoad = !listEl.dataset.loaded;
+  if (firstLoad) listEl.innerHTML = '<div class="usedempty" style="padding:14px 2px">読み込み中…</div>';
   let friends;
   try { friends = await Players.listFriends(); }
-  catch (e) { listEl.innerHTML = '<div class="usedempty" style="padding:14px 2px">読み込めませんでした</div>'; return; }
+  catch (e) { if (firstLoad) listEl.innerHTML = '<div class="usedempty" style="padding:14px 2px">読み込めませんでした</div>'; return; }
+  listEl.dataset.loaded = '1';
 
   if (!friends.length) {
     listEl.innerHTML = '<div class="usedempty" style="padding:14px 2px">まだフレンドがいません</div>';
@@ -1223,33 +1420,47 @@ async function refreshFriendsList() {
       .filter(l => f.best[l] != null)
       .map(l => `<span>${LEVEL_LABEL[l]} <b>${f.best[l]}</b></span>`)
       .join('');
+    const isPending = pendingInvite && pendingInvite.code === f.code;
+    const inviteButton = isPending
+      ? `<button class="inviteBtn cancel" data-cancel-invite="${f.code}">誘いを取り消す</button>`
+      : `<button class="inviteBtn" data-invite="${f.code}">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4 20-7z"/></svg>
+          対戦に誘う
+        </button>`;
     return `<div class="friendRow">
       <div><div class="friendName">${f.nickname}</div><div class="friendCode">${f.code}</div></div>
       <div class="friendBest">${best || 'まだ記録なし'}</div>
       <div class="friendActions">
-        <button class="inviteBtn" data-invite="${f.code}">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4 20-7z"/></svg>
-          対戦に誘う
-        </button>
-        <button class="friendRemove" data-code="${f.code}">削除</button>
+        ${inviteButton}
+        <button class="friendRemove" data-code="${f.code}" data-nickname="${f.nickname}">削除</button>
       </div>
     </div>`;
   }).join('') + '</div>';
 
   listEl.querySelectorAll('.friendRemove').forEach(b => {
-    b.onclick = async () => { await Players.removeFriend(b.dataset.code).catch(() => {}); refreshFriendsList(); };
+    b.onclick = async () => {
+      if (!confirm(`${b.dataset.nickname}さんをフレンドから削除しますか？`)) return;
+      await Players.removeFriend(b.dataset.code).catch(() => {});
+      refreshFriendsList();
+      refreshRanking(currentRankLevel);
+    };
   });
-  listEl.querySelectorAll('.inviteBtn').forEach(b => {
+  listEl.querySelectorAll('.inviteBtn[data-invite]').forEach(b => {
     b.onclick = () => inviteFriend(b.dataset.invite, b);
+  });
+  listEl.querySelectorAll('.inviteBtn[data-cancel-invite]').forEach(b => {
+    b.onclick = () => cancelPendingInvite(b);
   });
 }
 
 async function refreshRanking(level) {
   const el = document.getElementById('rankingList');
-  el.innerHTML = '<div class="usedempty" style="padding:14px 2px">読み込み中…</div>';
+  const firstLoad = el.dataset.loadedLevel !== level;
+  if (firstLoad) el.innerHTML = '<div class="usedempty" style="padding:14px 2px">読み込み中…</div>';
   let ranking;
   try { ranking = await Players.listRanking(level); }
-  catch (e) { el.innerHTML = '<div class="usedempty" style="padding:14px 2px">読み込めませんでした</div>'; return; }
+  catch (e) { if (firstLoad) el.innerHTML = '<div class="usedempty" style="padding:14px 2px">読み込めませんでした</div>'; return; }
+  el.dataset.loadedLevel = level;
   if (!ranking.length) { el.innerHTML = '<div class="usedempty" style="padding:14px 2px">まだ記録がありません</div>'; return; }
   el.innerHTML = ranking.map((r, i) => {
     const rank = i + 1;
@@ -1313,16 +1524,51 @@ function bind() {
 
   document.getElementById('openFriends').onclick = () => { renderFriendsScreen(); show('friendsScreen'); };
   document.getElementById('friendsBack').onclick = () => show('modeScreen');
+  document.getElementById('authTabSignup').onclick = () => {
+    document.getElementById('authTabSignup').classList.add('active');
+    document.getElementById('authTabLogin').classList.remove('active');
+    document.getElementById('signupForm').classList.remove('hidden');
+    document.getElementById('loginForm').classList.add('hidden');
+  };
+  document.getElementById('authTabLogin').onclick = () => {
+    document.getElementById('authTabLogin').classList.add('active');
+    document.getElementById('authTabSignup').classList.remove('active');
+    document.getElementById('loginForm').classList.remove('hidden');
+    document.getElementById('signupForm').classList.add('hidden');
+  };
   document.getElementById('createProfileBtn').onclick = async () => {
     const name = document.getElementById('nicknameInput').value.trim();
-    if (!name) return;
+    const username = document.getElementById('usernameInput').value.trim();
+    const password = document.getElementById('passwordInput').value;
+    if (!name || !username || !password) return;
     setProfileErr('');
-    try { await Players.createProfile(name); renderModeScreen(); show('modeScreen'); }
+    try { await Players.createProfile(username, password, name); renderModeScreen(); show('modeScreen'); }
     catch (e) { setProfileErr(e.message || 'はじめられませんでした'); }
   };
-  document.getElementById('copyCodeBtn').onclick = () => {
+  document.getElementById('loginBtn').onclick = async () => {
+    const username = document.getElementById('loginUsernameInput').value.trim();
+    const password = document.getElementById('loginPasswordInput').value;
+    if (!username || !password) return;
+    setLoginErr('');
+    try { await Players.login(username, password); renderModeScreen(); show('modeScreen'); }
+    catch (e) { setLoginErr(e.message || 'ログインできませんでした'); }
+  };
+  document.getElementById('copyCodeBtn').onclick = async () => {
     const p = Players.getProfile();
-    if (p && navigator.clipboard) navigator.clipboard.writeText(p.code).catch(() => {});
+    if (!p || !navigator.clipboard) return;
+    const btn = document.getElementById('copyCodeBtn');
+    try {
+      await navigator.clipboard.writeText(p.code);
+      clearTimeout(btn._resetTimer);
+      if (!btn.dataset.original) btn.dataset.original = btn.textContent;
+      btn.textContent = '✓ コピーしました';
+      btn._resetTimer = setTimeout(() => { btn.textContent = btn.dataset.original; }, 1500);
+    } catch (e) {}
+  };
+  document.getElementById('logoutBtn').onclick = () => {
+    if (!confirm('ログアウトしますか？この端末には戻れなくなります。')) return;
+    Players.clearProfile();
+    show('loginScreen');
   };
   document.getElementById('addFriendBtn').onclick = async () => {
     const input = document.getElementById('addFriendInput');
@@ -1332,14 +1578,19 @@ function bind() {
     try {
       const res = await Players.addFriend(code);
       input.value = '';
-      if (res.status === 'accepted') { setFriendsMsg(`${res.nickname}さんとフレンドになりました`); await refreshFriendsList(); }
+      if (res.status === 'accepted') {
+        setFriendsMsg(`${res.nickname}さんとフレンドになりました`);
+        await refreshFriendsList();
+        refreshRanking(currentRankLevel);
+      }
       else { setFriendsMsg(`${res.nickname}さんに申請を送りました。承認を待っています`); }
     } catch (e) { setFriendsErr(e.message || '追加できませんでした'); }
   };
   document.querySelectorAll('#rankLevelSeg .seg').forEach(b => {
     b.onclick = () => {
       document.querySelectorAll('#rankLevelSeg .seg').forEach(x => x.classList.toggle('active', x === b));
-      refreshRanking(b.dataset.ranklevel);
+      currentRankLevel = b.dataset.ranklevel;
+      refreshRanking(currentRankLevel);
     };
   });
   document.getElementById('seVolume').oninput = e => KBAudio.setSeVolume(e.target.value / 100);
@@ -1496,6 +1747,7 @@ function bConnect() {
 }
 
 function onBStart() {
+  pendingInvite = null;
   clearTimeout(bstate.quickTimeoutId);
   document.getElementById('bRoomCode').textContent = bstate.code;
   document.getElementById('bGiveUp').classList.add('hidden');
