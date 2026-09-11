@@ -79,14 +79,10 @@
   .navTitle { font-family: var(--font-mincho); font-size: var(--t-md); font-weight: 600;
               letter-spacing: 0.06em; line-height: 1.35; }
 
-  /* 題字は「書かれたもの」なので墨。原稿用紙の桝に1字ずつ入れる */
+  /* 題字は「書かれたもの」なので墨。字そのものを大きく見せる */
   h1 { font-family: var(--font-mincho); font-size: var(--t-xl); font-weight: 600; color: var(--ink);
        letter-spacing: 0.12em; line-height: 1.35; margin: 0; }
-  h1.logo { display: grid; grid-template-columns: repeat(5, 1fr); gap: 1px;
-            max-width: 300px; letter-spacing: 0; }
-  h1.logo span { aspect-ratio: 1; box-shadow: 0 0 0 1px var(--ai); background: var(--card);
-                 display: flex; align-items: center; justify-content: center;
-                 font-size: 38px; line-height: 1; }
+  h1.logo { font-size: 44px; letter-spacing: 0.16em; line-height: 1.2; }
   .secTitle { font-size: var(--t-sm); color: var(--ai); font-weight: 700; margin-bottom: var(--s3);
               letter-spacing: 0.06em; }
 
@@ -112,7 +108,6 @@
   button:disabled { opacity: .45; cursor: default; }
   .back { margin-top: var(--s4); width: 100%; background: transparent; color: var(--ink-mid);
           border-color: var(--rule); }
-  .passBtn { border-style: dashed; }
   .btn-block { display: block; width: 100%; margin-top: var(--s3); }
 
   /* ── 自分の情報 ─────────────────────────────────────────── */
@@ -306,10 +301,12 @@
     touch-action: none; display: block; margin: 0 auto; cursor: crosshair;
   }
   .btns-secondary { display: flex; gap: var(--s2); justify-content: center; margin-top: var(--s3); flex-wrap: wrap; }
+  /* 3つとも同じ見た目・同じ幅にそろえる。左右の余白が違うと、flexの分配が
+     ずれて1つだけ幅が広くなる */
   .btns-secondary button, .btns-secondary button.ghost {
-    flex: 1 1 0; min-width: 88px; background: var(--card); border: 1px solid var(--edge); color: var(--ai);
+    flex: 1 1 0; min-width: 0; padding: var(--s3) var(--s2);
+    background: var(--card); border: 1px solid var(--edge); color: var(--ai);
   }
-  .btns-secondary button.passBtn { border-style: dashed; }
   @media (hover: hover) { .btns-secondary button:hover { background: var(--ai-pale); border-color: var(--ai-mid); } }
 
   /* 「これでいく」の下は、候補と正誤を出し分ける一つの欄にまとめる。
@@ -533,7 +530,7 @@
 <body>
 
 <div id="loginScreen">
-  <h1 class="logo" aria-label="ぶしゅとり"><span>ぶ</span><span>し</span><span>ゅ</span><span>と</span><span>り</span></h1>
+  <h1 class="logo">ぶしゅとり</h1>
   <div id="loadErr" class="err hidden" style="margin-top:16px"></div>
 
   <div class="segmented" style="margin-top:var(--s6)">
@@ -596,7 +593,7 @@
       </svg>
     </button>
   </div>
-  <h1 class="logo" aria-label="ぶしゅとり"><span>ぶ</span><span>し</span><span>ゅ</span><span>と</span><span>り</span></h1>
+  <h1 class="logo">ぶしゅとり</h1>
   <div class="modeList">
     <button class="modeItem" id="toBattle">
       <div class="modeNum">一</div>
