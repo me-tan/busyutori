@@ -60,6 +60,17 @@
     return readJson(res);
   }
 
+  async function listRemovals() {
+    const res = await fetch("/api/removals", { headers: authHeaders() });
+    const data = await readJson(res);
+    return data.removals;
+  }
+
+  async function dismissRemoval(id) {
+    const res = await fetch("/api/removals/" + encodeURIComponent(id), { method: "DELETE", headers: authHeaders() });
+    return readJson(res);
+  }
+
   async function listFriends() {
     const res = await fetch("/api/friends", { headers: authHeaders() });
     const data = await readJson(res);
@@ -119,6 +130,7 @@
   window.Players = {
     getProfile, saveProfile, clearProfile, getMe,
     createProfile, login, renameProfile, addFriend, removeFriend, listFriends, submitScore,
+    listRemovals, dismissRemoval,
     listFriendRequests, acceptFriendRequest, declineFriendRequest,
     listRanking, sendInvite, listInvites, dismissInvite,
   };

@@ -40,6 +40,11 @@
 招待された側がフレンド画面を開いたときにポーリングで確認する方式（`invites`テーブル、
 作成から10分で表示対象から外れる）。
 
+フレンド解除も同じ考え方の「メールボックス」（`removals`テーブル）。承認済みの
+フレンド関係を解除すると、解除された側に通知が1件残り、フレンド画面を開いたときに
+表示される（3日で表示対象から外れる）。まだ承認していない申請を取り消した場合は
+通知しない。
+
 ## API
 
 | メソッド/パス | 認証 | 内容 |
@@ -54,7 +59,9 @@
 | `GET /api/friends/requests` | 必要 | `{requests: [{code, nickname, created_at}]}`。自分あての未承認の申請 |
 | `POST /api/friends/:code/accept` | 必要 | `code`からの申請を承認する |
 | `POST /api/friends/:code/decline` | 必要 | `code`からの申請を断る |
-| `DELETE /api/friends/:code` | 必要 | フレンド解除（承認済み・未承認どちらでも） |
+| `DELETE /api/friends/:code` | 必要 | フレンド解除（承認済み・未承認どちらでも）。承認済みの関係を解除した場合のみ、相手に`removals`で通知を残す |
+| `GET /api/removals` | 必要 | `{removals: [{id, from_nickname, created_at}]}`。自分がフレンド解除された、まだ確認していない通知（3日以内） |
+| `DELETE /api/removals/:id` | 必要 | 解除通知を確認済みにする |
 | `POST /api/scores` | 必要 | `{level, streak}` → タイムアタック結果を記録（追記のみ。ベストは`MAX(streak)`で都度計算） |
 | `GET /api/ranking?level=elem` | 必要 | `{ranking: [{code, nickname, best, isMe}]}`（自分＋フレンドのみ、best降順） |
 | `POST /api/invites` | 必要 | `{code, room_code, level}` → `code`のフレンドを対戦に誘う（`code`がフレンドでないと400） |
@@ -68,7 +75,8 @@
 
 スキーマは`workers/migrations/`（`0001_init.sql`: players/friends/scores、
 `0002_invites.sql`: invites、`0003_friend_requests.sql`: friendships、
-`0004_username_password.sql`: players に username/password_hash/password_salt を追加）。
+`0004_username_password.sql`: players に username/password_hash/password_salt を追加、
+`0005_removals.sql`: removals）。
 `friends`テーブルは`0003`で使わなくなったが、データはそのまま残してある
 （削除していない）。D1無料枠は1日あたり読み取り500万行・書き込み10万行・
 容量5GB（2026年9月時点、超過するとその日はエラーになる）。この規模のアプリなら十分。
@@ -80,7 +88,8 @@
    `wrangler.jsonc`の`d1_databases[0].database_id`に書き込む。
 3. `workers/migrations/`配下のファイルを番号順にすべて適用する
    （`wrangler d1 execute kanjinage-users --remote --file=workers/migrations/0001_init.sql`、
-   続けて`0002_invites.sql`、`0003_friend_requests.sql`、`0004_username_password.sql`も）。
+   続けて`0002_invites.sql`、`0003_friend_requests.sql`、`0004_username_password.sql`、
+   `0005_removals.sql`も）。
 4. `wrangler deploy` でフロントエンド（`frontend/`）とWorker（`workers/src/index.js`）を
    まとめてデプロイする。
 
@@ -96,5 +105,6 @@ wrangler d1 execute kanjinage-users --local --file=workers/migrations/0001_init.
 wrangler d1 execute kanjinage-users --local --file=workers/migrations/0002_invites.sql
 wrangler d1 execute kanjinage-users --local --file=workers/migrations/0003_friend_requests.sql
 wrangler d1 execute kanjinage-users --local --file=workers/migrations/0004_username_password.sql
+wrangler d1 execute kanjinage-users --local --file=workers/migrations/0005_removals.sql
 wrangler dev --local
 ```

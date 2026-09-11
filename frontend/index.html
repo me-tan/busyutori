@@ -147,6 +147,7 @@
 
   .inviteCard { border: 1.5px solid var(--accent); border-radius: 14px; padding: 14px 16px;
                 display: flex; align-items: center; justify-content: space-between; gap: 12px; background: #FDF3EE; }
+  .inviteCard.invite { border-color: var(--success); background: var(--success-bg); }
 
   .radgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(84px,1fr)); gap: 9px; }
   .radbtn {
@@ -441,6 +442,7 @@
 
   <div id="requestBanner" class="hidden" style="margin-bottom:16px"></div>
   <div id="inviteBanner" class="hidden" style="margin-bottom:16px"></div>
+  <div id="removalBanner" class="hidden" style="margin-bottom:16px"></div>
 
   <div class="roomTicket" style="margin-bottom:16px">
     <div class="roomlabel">あなたの合言葉コード</div>
@@ -748,8 +750,15 @@ async function boot() {
   if (Players.getProfile()) { renderModeScreen(); show('modeScreen'); }
   else { show('loginScreen'); }
 
-  setInterval(refreshFriendBadge, 30000);
-  setInterval(refreshInviteBadge, 30000);
+  setInterval(refreshFriendBadge, 10000);
+  setInterval(refreshInviteBadge, 10000);
+
+  // バックグラウンドタブになるとsetIntervalが間引かれてしまうため、
+  // タブに戻ってきた・アプリにフォーカスが戻った瞬間にも即チェックする。
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') { refreshFriendBadge(); refreshInviteBadge(); }
+  });
+  window.addEventListener('focus', () => { refreshFriendBadge(); refreshInviteBadge(); });
 }
 
 async function refreshFriendBadge() {
@@ -1185,8 +1194,29 @@ function renderFriendsScreen() {
   document.getElementById('myCodeDisplay').textContent = p.code;
   refreshFriendRequests();
   refreshInvites();
+  refreshRemovals();
   refreshFriendsList();
   refreshRanking('elem');
+}
+
+async function refreshRemovals() {
+  const el = document.getElementById('removalBanner');
+  let removals;
+  try { removals = await Players.listRemovals(); }
+  catch (e) { el.classList.add('hidden'); el.innerHTML = ''; return; }
+  if (!removals.length) { el.classList.add('hidden'); el.innerHTML = ''; return; }
+  el.classList.remove('hidden');
+  el.innerHTML = removals.map(r => `
+    <div class="inviteCard" style="margin-bottom:8px">
+      <div style="font-size:13px;font-weight:700;color:var(--ink)">${r.from_nickname}さんとのフレンドが解除されました</div>
+      <button class="ghost" data-removal-ok="${r.id}">確認した</button>
+    </div>`).join('');
+  el.querySelectorAll('[data-removal-ok]').forEach(b => {
+    b.onclick = async () => {
+      await Players.dismissRemoval(b.dataset.removalOk).catch(() => {});
+      refreshRemovals();
+    };
+  });
 }
 
 async function refreshFriendRequests() {
@@ -1230,7 +1260,7 @@ async function refreshInvites() {
   if (!invites.length) { el.classList.add('hidden'); el.innerHTML = ''; return; }
   el.classList.remove('hidden');
   el.innerHTML = invites.map(inv => `
-    <div class="inviteCard" style="margin-bottom:8px">
+    <div class="inviteCard invite" style="margin-bottom:8px">
       <div>
         <div style="font-size:13px;font-weight:700;color:var(--ink)">${inv.from_nickname}さんから対戦の誘い</div>
         <div style="font-size:10.5px;color:var(--ink-soft)">難易度: ${LEVEL_LABEL[inv.level] || inv.level}</div>
@@ -1303,13 +1333,17 @@ async function refreshFriendsList() {
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4 20-7z"/></svg>
           対戦に誘う
         </button>
-        <button class="friendRemove" data-code="${f.code}">削除</button>
+        <button class="friendRemove" data-code="${f.code}" data-nickname="${f.nickname}">削除</button>
       </div>
     </div>`;
   }).join('') + '</div>';
 
   listEl.querySelectorAll('.friendRemove').forEach(b => {
-    b.onclick = async () => { await Players.removeFriend(b.dataset.code).catch(() => {}); refreshFriendsList(); };
+    b.onclick = async () => {
+      if (!confirm(`${b.dataset.nickname}さんをフレンドから削除しますか？`)) return;
+      await Players.removeFriend(b.dataset.code).catch(() => {});
+      refreshFriendsList();
+    };
   });
   listEl.querySelectorAll('.inviteBtn').forEach(b => {
     b.onclick = () => inviteFriend(b.dataset.invite, b);

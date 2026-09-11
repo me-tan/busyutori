@@ -18,6 +18,7 @@ const PBKDF2_ITERATIONS = 100000;
 const LEVELS = new Set(["low", "elem", "all"]);
 const MAX_STREAK = 100000; // 異常値の投稿を弾くための上限
 const INVITE_TTL_MS = 10 * 60 * 1000; // 対戦の誘いを表示する期限（ポーリング前提の簡易メールボックス）
+const REMOVAL_TTL_MS = 3 * 24 * 60 * 60 * 1000; // フレンド解除通知を表示する期限（頻繁には開かない前提で長め）
 
 function json(data, status = 200) {
   return new Response(JSON.stringify(data), {
@@ -312,10 +313,18 @@ async function handleApi(request, env, url) {
   }
 
   // DELETE /api/friends/:code — フレンド解除（自分が申請した/された、どちらでもよい）
+  // 承認済みの友達関係を解除した場合のみ、相手に通知を1件残す
   if (method === "DELETE" && parts.length === 3 && parts[1] === "friends") {
     const me = await requireAuth(request, db);
     if (!me) return err(401, "認証が必要です");
     const code = parts[2].toUpperCase();
+    const existing = await db
+      .prepare(
+        `SELECT status FROM friendships
+         WHERE (requester_code = ? AND recipient_code = ?) OR (requester_code = ? AND recipient_code = ?)`
+      )
+      .bind(me.code, code, code, me.code)
+      .first();
     await db
       .prepare(
         `DELETE FROM friendships
@@ -323,6 +332,36 @@ async function handleApi(request, env, url) {
       )
       .bind(me.code, code, code, me.code)
       .run();
+    if (existing && existing.status === "accepted") {
+      await db
+        .prepare("INSERT INTO removals (to_code, from_nickname, created_at) VALUES (?, ?, ?)")
+        .bind(code, me.nickname, Date.now())
+        .run();
+    }
+    return json({ ok: true });
+  }
+
+  // GET /api/removals — 自分が解除された、というまだ見ていない通知の一覧
+  if (method === "GET" && parts.length === 2 && parts[1] === "removals") {
+    const me = await requireAuth(request, db);
+    if (!me) return err(401, "認証が必要です");
+    const rows = await db
+      .prepare(
+        `SELECT id, from_nickname, created_at FROM removals
+         WHERE to_code = ? AND created_at > ? ORDER BY created_at DESC`
+      )
+      .bind(me.code, Date.now() - REMOVAL_TTL_MS)
+      .all();
+    return json({ removals: rows.results });
+  }
+
+  // DELETE /api/removals/:id — 通知を確認済みにする
+  if (method === "DELETE" && parts.length === 3 && parts[1] === "removals") {
+    const me = await requireAuth(request, db);
+    if (!me) return err(401, "認証が必要です");
+    const id = Number(parts[2]);
+    if (!Number.isInteger(id)) return err(400, "idが不正です");
+    await db.prepare("DELETE FROM removals WHERE id = ? AND to_code = ?").bind(id, me.code).run();
     return json({ ok: true });
   }
 
