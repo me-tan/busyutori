@@ -806,6 +806,15 @@ const ALL_GRADES = ['1','2','3','4','5','6','8'];
 const GRADES = { low:['1','2','3'], elem:['1','2','3','4','5','6'], all:ALL_GRADES };
 const GLABEL = {1:'小1',2:'小2',3:'小3',4:'小4',5:'小5',6:'小6',8:'中学'};
 
+// 部首を画面に出すときの字形だけの読み替え。データやサーバーとのやり取りは
+// 元の文字のままで、見た目だけ現在の常用漢字の形に合わせる。
+// 辶(U+8FB6) はNoto Serif JPだと二点しんにょうで描かれ、近・道など実際の
+// 常用漢字（一点しんにょう）と形が食い違うため、一点の ⻌(U+2ECC) で見せる。
+const RADICAL_GLYPH = { '辶': '⻌' };
+function radGlyph(rad) {
+  return rad == null ? rad : String(rad).replace(/辶/g, RADICAL_GLYPH['辶']);
+}
+
 let DATA = null;
 let STROKE_COUNTS = null; // 字→画数（KanjiCanvasのref-patterns.jsから抽出。手書き認識の誤受理対策に使う）
 const state = {
@@ -968,7 +977,7 @@ function renderRadicalList() {
     const d = DATA.radicals[x.r];
     const done = cleared.has(state.level + ':' + x.r);
     return `<div class="radbtn ${done ? 'done' : ''}" data-rad="${x.r}">` +
-           `<div class="r">${x.r}</div><div class="n">${d.name}</div>` +
+           `<div class="r">${radGlyph(x.r)}</div><div class="n">${d.name}</div>` +
            `<div class="c">${done ? '達成' : x.n + '字'}</div></div>`;
   }).join('');
 
@@ -1007,7 +1016,7 @@ function pickRadical() {
 function setRadical(rad) {
   state.radical = rad;
   const d = DATA.radicals[rad];
-  document.getElementById('radical').textContent = rad;
+  document.getElementById('radical').textContent = radGlyph(rad);
   document.getElementById('radName').textContent = d.name;
   document.getElementById('radMeaning').textContent = d.meaning;
 }
@@ -1238,13 +1247,13 @@ function renderReveal() {
   const unused = pool.filter(k => !state.used.has(k));
   const got = pool.filter(k => state.used.has(k));
 
-  document.getElementById('revRad').textContent = rad;
+  document.getElementById('revRad').textContent = radGlyph(rad);
   document.getElementById('revName').textContent = d.name;
   document.getElementById('revSub').textContent = d.meaning;
   document.getElementById('revOrigin').textContent = d.origin ? `なりたち: ${d.origin}` : '';
 
   if (!unused.length) {
-    document.getElementById('revLead').innerHTML = `${rad}を含む漢字を、すべて書き出しました`;
+    document.getElementById('revLead').innerHTML = `${radGlyph(rad)}を含む漢字を、すべて書き出しました`;
     document.getElementById('revGrid').innerHTML = got.map(cellHTML).join('');
     document.getElementById('revMore').textContent = '';
     document.getElementById('revGot').innerHTML = '';
@@ -1252,7 +1261,7 @@ function renderReveal() {
   }
 
   document.getElementById('revLead').innerHTML =
-    `${rad}を含む漢字は、まだ <b>${unused.length}</b> 字ありました`;
+    `${radGlyph(rad)}を含む漢字は、まだ <b>${unused.length}</b> 字ありました`;
 
   const sorted = unused.slice().sort((a,b) =>
     (DATA.kanji[a] ? DATA.kanji[a].grade : 99) - (DATA.kanji[b] ? DATA.kanji[b].grade : 99));
@@ -1916,7 +1925,7 @@ function onBOffer(msg) {
     KBAudio.play('tap');
     document.getElementById('bOfferRow').innerHTML = msg.choices.map(c =>
       `<div class="radbtn" data-radical="${c.radical}">` +
-      `<div class="r">${c.radical}</div><div class="n">${c.name}</div></div>`
+      `<div class="r">${radGlyph(c.radical)}</div><div class="n">${c.name}</div></div>`
     ).join('');
     document.querySelectorAll('#bOfferRow .radbtn').forEach(el => {
       el.onclick = () => {
@@ -1941,7 +1950,7 @@ function onBDefend(msg) {
 
   const d = DATA.radicals[msg.radical];
   document.getElementById('bRadicalBox').classList.remove('hidden');
-  document.getElementById('bRadical').textContent = msg.radical;
+  document.getElementById('bRadical').textContent = radGlyph(msg.radical);
   document.getElementById('bRadName').textContent = d.name;
   document.getElementById('bRadMeaning').textContent = d.meaning;
   document.getElementById('bOfferBox').classList.add('hidden');
@@ -2067,18 +2076,18 @@ function onBGameOver(msg) {
     box.classList.remove('hidden');
     const { radical, unused, got } = msg.reveal;
     const d = DATA.radicals[radical];
-    document.getElementById('bRevRad').textContent = radical;
+    document.getElementById('bRevRad').textContent = radGlyph(radical);
     document.getElementById('bRevName').textContent = d.name;
     document.getElementById('bRevOrigin').textContent = d.origin ? `なりたち: ${d.origin}` : '';
 
     if (!unused.length) {
-      document.getElementById('bRevLead').innerHTML = `${radical}を含む漢字は、すべて使われました`;
+      document.getElementById('bRevLead').innerHTML = `${radGlyph(radical)}を含む漢字は、すべて使われました`;
       document.getElementById('bRevGrid').innerHTML = got.map(cellHTML).join('');
       document.getElementById('bRevMore').textContent = '';
       document.getElementById('bRevGot').innerHTML = '';
     } else {
       document.getElementById('bRevLead').innerHTML =
-        `${radical}を含む漢字は、まだ <b>${unused.length}</b> 字ありました`;
+        `${radGlyph(radical)}を含む漢字は、まだ <b>${unused.length}</b> 字ありました`;
       const sorted = unused.slice().sort((a, b) =>
         (DATA.kanji[a] ? DATA.kanji[a].grade : 99) - (DATA.kanji[b] ? DATA.kanji[b].grade : 99));
       const shown = sorted.slice(0, MAX_REVEAL);
@@ -2132,7 +2141,7 @@ function bRenderUsedFocus() {
   const hits = bstate.used.filter(u => pool.has(u.kanji)).map(u => u.kanji);
   if (!hits.length) { box.classList.add('hidden'); return; }
   box.classList.remove('hidden');
-  document.getElementById('bUsedFocusRad').textContent = bstate.radical;
+  document.getElementById('bUsedFocusRad').textContent = radGlyph(bstate.radical);
   document.getElementById('bUsedFocusList').innerHTML = hits.map(k => `<span>${k}</span>`).join('');
 }
 
