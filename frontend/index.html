@@ -148,6 +148,7 @@
   .inviteCard { border: 1.5px solid var(--accent); border-radius: 14px; padding: 14px 16px;
                 display: flex; align-items: center; justify-content: space-between; gap: 12px; background: #FDF3EE; }
   .inviteCard.invite { border-color: var(--success); background: var(--success-bg); }
+  .inviteCard.invite button.primary { background: var(--success); border-bottom-color: #2E5D3E; }
 
   .radgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(84px,1fr)); gap: 9px; }
   .radbtn {
@@ -752,13 +753,18 @@ async function boot() {
 
   setInterval(refreshFriendBadge, 10000);
   setInterval(refreshInviteBadge, 10000);
+  setInterval(refreshFriendsScreenIfOpen, 10000);
 
   // バックグラウンドタブになるとsetIntervalが間引かれてしまうため、
   // タブに戻ってきた・アプリにフォーカスが戻った瞬間にも即チェックする。
   document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible') { refreshFriendBadge(); refreshInviteBadge(); }
+    if (document.visibilityState === 'visible') {
+      refreshFriendBadge(); refreshInviteBadge(); refreshFriendsScreenIfOpen();
+    }
   });
-  window.addEventListener('focus', () => { refreshFriendBadge(); refreshInviteBadge(); });
+  window.addEventListener('focus', () => {
+    refreshFriendBadge(); refreshInviteBadge(); refreshFriendsScreenIfOpen();
+  });
 }
 
 async function refreshFriendBadge() {
@@ -821,9 +827,18 @@ const SCREENS = ['loginScreen','modeScreen','soloScreen','settingsScreen','frien
 const BGM_SCREENS = new Set(['loginScreen','modeScreen','soloScreen','settingsScreen','friendsScreen','profileScreen','levelScreen','radScreen',
   'overScreen','battleSetupScreen','battleOverScreen']);
 const LEVEL_LABEL = { low: '初級', elem: '中級', all: '上級' };
+let currentScreen = null;
 function show(id) {
+  currentScreen = id;
   SCREENS.forEach(s => document.getElementById(s).classList.toggle('hidden', s !== id));
   if (BGM_SCREENS.has(id)) KBAudio.playBgm('menu'); else KBAudio.stopBgm();
+}
+
+function refreshFriendsScreenIfOpen() {
+  if (currentScreen !== 'friendsScreen') return;
+  refreshFriendRequests();
+  refreshInvites();
+  refreshRemovals();
 }
 
 function poolOf(rad, grades) {
