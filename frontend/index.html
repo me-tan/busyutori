@@ -57,6 +57,8 @@
   button.ghost { background: transparent; color: var(--ink-soft); padding: 6px 4px; }
   button:disabled { opacity: .5; cursor: default; }
   .back { margin-top: 16px; width: 100%; background: transparent; color: var(--ink-soft); }
+  .passBtn { background: #F1EAD9; color: var(--ink); border: 1.5px dashed var(--border); }
+  .passBtn:active { background: #E8DFC8; }
 
   .avatarChip { width: 34px; height: 34px; border-radius: 50%; background: #FDEDE5; color: var(--accent);
                 display: flex; align-items: center; justify-content: center; font-size: 15px; font-weight: 900;
@@ -172,6 +174,7 @@
     background: var(--card); border: 1px solid var(--border); border-radius: 14px;
     padding: 12px 18px; margin-bottom: 14px;
   }
+  .topbar:has(#bRoomCodeBox.hidden) { justify-content: center; }
   .lbl { font-size: 10.5px; color: var(--ink-soft); font-weight: 700; }
   .streak { font-size: 24px; font-weight: 900; font-variant-numeric: tabular-nums; }
 
@@ -224,7 +227,7 @@
     background-size: 1px 100%, 100% 1px; background-position: center, center; background-repeat: no-repeat;
     touch-action: none; display: block; margin: 0 auto; cursor: crosshair;
   }
-  .btns-secondary { display: flex; gap: 22px; justify-content: center; margin-top: 14px; }
+  .btns-secondary { display: flex; gap: 12px; justify-content: center; margin-top: 14px; flex-wrap: wrap; }
   .btn-block { display: block; width: 100%; margin-top: 10px; }
 
   .picker { margin-top: 14px; }
@@ -284,6 +287,26 @@
   .roomlabel { font-size:11px; color: var(--ink-faint); font-weight:700; text-align:center; }
 
   input[type="range"], input[type="checkbox"] { accent-color: var(--accent); }
+
+  /* スマホ幅では、入力欄(canvas)とボタンの大きさはそのままに、
+     それ以外の余白・部首表示を詰めて、候補やメッセージがスクロールなしで
+     画面に収まりやすくする。 */
+  @media (max-width: 899px) {
+    body { padding: 14px 16px 24px; }
+    .quest { padding: 12px 14px; }
+    #playScreen > .quest, #battlePlayScreen > .quest { padding-top: 12px; }
+    .turnstatus { margin-bottom: 6px; }
+    .turnstatus.myturn { padding: 7px 12px; }
+    .radical { font-size: 42px; }
+    .rad-name { margin-top: 4px; }
+    .board { margin-bottom: 8px; }
+    .btns-secondary { margin-top: 8px; }
+    .btn-block { margin-top: 6px; }
+    .picker { margin-top: 8px; }
+    .picker-label { margin-bottom: 4px; }
+    .msg { margin-top: 8px; min-height: 20px; }
+    .usedbox { padding-top: 10px; margin-bottom: 8px; }
+  }
 
   @media (min-width: 900px) {
     body { max-width: none; padding: 0 32px 48px; }
@@ -564,6 +587,7 @@
     <div class="btns-secondary">
       <button id="undo" class="ghost">一画戻す</button>
       <button id="erase" class="ghost">ぜんぶ消す</button>
+      <button class="passBtn hidden" id="passBtn">パス</button>
     </div>
     <button id="rec" class="primary btn-block">これでいく</button>
     <div class="picker hidden" id="picker">
@@ -571,7 +595,6 @@
       <div class="pick-row" id="pickRow"></div>
     </div>
     <div class="msg" id="msg"></div>
-    <button class="back hidden" id="passBtn">パス</button>
   </div>
 
   <div class="usedbox" id="usedbox">
@@ -655,7 +678,7 @@
 
 <div id="battlePlayScreen" class="hidden">
   <div class="topbar">
-    <div><div class="lbl">部屋</div><div class="streak" id="bRoomCode">----</div></div>
+    <div id="bRoomCodeBox"><div class="lbl">部屋</div><div class="streak" id="bRoomCode">----</div></div>
     <div class="timerWrap">
       <svg class="ring" viewBox="0 0 52 52"><circle class="ringBg" cx="26" cy="26" r="22"/><circle class="ringFg" id="bTimerRingFg" cx="26" cy="26" r="22"/></svg>
       <div class="timer" id="bTimer">-</div>
@@ -1833,6 +1856,7 @@ function bConnect() {
 function onBStart() {
   pendingInvite = null;
   clearTimeout(bstate.quickTimeoutId);
+  document.getElementById('bRoomCodeBox').classList.add('hidden');
   document.getElementById('bRoomCode').textContent = bstate.code;
   document.getElementById('bGiveUp').classList.add('hidden');
   bRenderUsed();
