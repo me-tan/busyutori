@@ -78,7 +78,8 @@ kanjibattle/
 │   ├── assets/                    効果音・BGM（Kenney, CC0）
 │   ├── models/                    手書き認識のCNNモデルとラベル
 │   ├── data/
-│   │   └── radicals.json          部首・漢字データ
+│   │   ├── radicals.json          部首・漢字データ
+│   │   └── stroke-counts.json     字→画数（手書き認識の誤受理対策に使用）
 │   └── dev/                       手書き判定ロジックの検証用ページ
 ├── backend/                       対戦サーバー（Python/FastAPI）
 │   ├── app/

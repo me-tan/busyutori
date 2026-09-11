@@ -722,16 +722,30 @@ const TIME_LIMIT = 30;
 const MAX_REVEAL = 24;
 const PASS_LIMIT = 3;
 // 認識モデルが出す確率のしきい値（実機でチューニングする）
-// 候補を答えになりうる字に絞ったうえでの値。正解は0.03〜0.99、部首違いや
-// でたらめな線は0.0まで落ちるので、取りこぼさない側に余裕を取ってある
-const OCR_MIN_PROB = 0.005;   // これ未満の候補は「認識できなかった」として捨てる
-const OCR_POOL_RATIO = 0.15;  // 答えにならない字のほうがこれ以上強いなら、弱い候補を正解にしない
-const OCR_AMBIGUOUS = 0.4;    // 2位が1位のこの割合以上なら、自動確定せずプレイヤーに選ばせる
+// フォント描画した「正しい字」は候補プール内で0.95以上に集中する一方、でたらめな
+// 線でも画数フィルタを素通りすると0.01〜0.8台の確率が乗ることがある（ソフトマックス
+// の性質上、学習していないパターンにも必ず何かへ投票してしまうため）。合成1000件の
+// 実測でこの値まで上げると誤受理は約0.6%→0.3%まで下がり、正しい字（最低でも
+// 0.96台）は一切弾かれなかった。ただし0にはならない。詳細はdocs/DEVLOG.md参照
+const OCR_MIN_PROB = 0.2;    // これ未満の候補は「認識できなかった」として捨てる
+const OCR_POOL_RATIO = 0.4;  // 答えにならない字のほうがこれ以上強いなら、弱い候補を正解にしない
+const OCR_AMBIGUOUS = 0.4;   // 2位が1位のこの割合以上なら、自動確定せずプレイヤーに選ばせる
+// 画数フィルタ：CNNはでたらめな線にもソフトマックスの性質上どれかに強い確率を
+// 割り振ってしまうことがある（学習していないパターンでも「何か」に投票する）。
+// 確率だけでは弾ききれないので、書いた画数と候補の画数が離れすぎている候補は
+// 別途落とす。続け書き（画をつなげて書く）で少なく数えられることがあるため、
+// 少なめに書いた側の許容は画数に比例させてある（画数が多い字ほど、続け書きで
+// まとまって減りうるぶんを大きく見る）。固定の画数で許容すると、画数の少ない
+// 字に対してはガバガバに、画数の多い字に対してはきつすぎることになるため
+const STROKE_UNDER_RATIO = 0.25; // 候補の画数のこの割合までなら少なく書いていてもよい
+const STROKE_UNDER_MIN = 2;      // ↑の下限（画数が少ない字でも最低これだけは許す）
+const STROKE_TOLERANCE_OVER = 2; // 書いた画数 − 候補の画数 の上限（多めに書く側は一律）
 const ALL_GRADES = ['1','2','3','4','5','6','8'];
 const GRADES = { low:['1','2','3'], elem:['1','2','3','4','5','6'], all:ALL_GRADES };
 const GLABEL = {1:'小1',2:'小2',3:'小3',4:'小4',5:'小5',6:'小6',8:'中学'};
 
 let DATA = null;
+let STROKE_COUNTS = null; // 字→画数（KanjiCanvasのref-patterns.jsから抽出。手書き認識の誤受理対策に使う）
 const state = {
   mode: 'time', level: 'elem',
   used: new Set(), streak: 0,
@@ -742,7 +756,10 @@ const state = {
 const cleared = new Set();
 
 async function boot() {
-  try { DATA = await (await fetch('data/radicals.json')).json(); }
+  try {
+    DATA = await (await fetch('data/radicals.json')).json();
+    STROKE_COUNTS = await (await fetch('data/stroke-counts.json')).json();
+  }
   catch (e) {
     const el = document.getElementById('loadErr');
     el.classList.remove('hidden');
@@ -1039,12 +1056,21 @@ function answerableSet(inLevel, used) {
   return s;
 }
 
+function strokeCountOk(kanji, drawn) {
+  const n = STROKE_COUNTS[kanji];
+  if (n == null) return true; // データが無い字（ごく一部）は画数では弾かない
+  const underTol = Math.max(STROKE_UNDER_MIN, Math.ceil(n * STROKE_UNDER_RATIO));
+  return n - drawn <= underTol && drawn - n <= STROKE_TOLERANCE_OVER;
+}
+
 // 答えになりうる候補を、確からしい順に返す。
 // 答えにならない字のほうがずっと強いときは、プレイヤーは別の字を書いたとみなして何も返さない
-// （部首の「木」そのものを書いたときに、形の似た「末」を正解にしてしまうのを防ぐ）
-function validCandidates(top, pool) {
+// （部首の「木」そのものを書いたときに、形の似た「末」を正解にしてしまうのを防ぐ）。
+// 加えて、書いた画数とかけ離れた候補も落とす（でたらめな線が確率だけでは
+// 弾ききれず、たまたま候補の1つに強く一致してしまうことがあるため）
+function validCandidates(top, pool, drawnStrokes) {
   const floor = Math.max(OCR_MIN_PROB, top.length ? top[0][1] * OCR_POOL_RATIO : 0);
-  return pool.filter(([, p]) => p >= floor);
+  return pool.filter(([k, p]) => p >= floor && strokeCountOk(k, drawnStrokes));
 }
 
 // 答えにならなかったとき、何を書いたと読んだのかを伝える。
@@ -1067,11 +1093,11 @@ async function judge() {
   const allPool = new Set(poolOf(state.radical, ALL_GRADES));
   const inLevel = state.mode === 'complete' ? new Set(state.target) : allPool;
 
-  const { top, pool } = await KanjiRecog.recognize(
-    KanjiRecog.strokesOf('can'), answerableSet(inLevel, state.used));
+  const strokes = KanjiRecog.strokesOf('can');
+  const { top, pool } = await KanjiRecog.recognize(strokes, answerableSet(inLevel, state.used));
   if (state.locked) return; // 認識を待つ間に時間切れになっていることがある
 
-  const valid = validCandidates(top, pool);
+  const valid = validCandidates(top, pool, strokes.length);
 
   const picker = document.getElementById('picker');
   const row = document.getElementById('pickRow');
@@ -1856,11 +1882,11 @@ async function bJudge() {
   const inRange = new Set(poolOf(bstate.radical, ALL_GRADES));
   const usedSet = new Set(bstate.used);
 
-  const { top, pool } = await KanjiRecog.recognize(
-    KanjiRecog.strokesOf('canBattle'), answerableSet(inRange, usedSet));
+  const strokes = KanjiRecog.strokesOf('canBattle');
+  const { top, pool } = await KanjiRecog.recognize(strokes, answerableSet(inRange, usedSet));
   if (bstate.locked || !bstate.isDefending) return; // 認識を待つ間に手番が終わっていることがある
 
-  const valid = validCandidates(top, pool);
+  const valid = validCandidates(top, pool, strokes.length);
 
   const picker = document.getElementById('bPicker');
   const row = document.getElementById('bPickRow');
