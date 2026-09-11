@@ -65,7 +65,7 @@
   }
   /* 日本語は文節で折り返す。「書けなくなった／ら負け」のような切れ方を防ぐ
      （対応していないブラウザでは既定の折り返しに戻るだけ） */
-  .modeD, .bigbtn small, .reveal-origin, .rad-meaning, .waitmsg, .err, .picker-label {
+  .bigbtn small, .reveal-origin, .rad-meaning, .waitmsg, .err, .picker-label {
     word-break: auto-phrase; line-break: strict;
   }
 
@@ -79,10 +79,14 @@
   .navTitle { font-family: var(--font-mincho); font-size: var(--t-md); font-weight: 600;
               letter-spacing: 0.06em; line-height: 1.35; }
 
-  /* 題字は「書かれたもの」なので墨。字間はここだけ広げる */
+  /* 題字は「書かれたもの」なので墨。原稿用紙の桝に1字ずつ入れる */
   h1 { font-family: var(--font-mincho); font-size: var(--t-xl); font-weight: 600; color: var(--ink);
        letter-spacing: 0.12em; line-height: 1.35; margin: 0; }
-  h1 .accent { color: var(--ai); }
+  h1.logo { display: grid; grid-template-columns: repeat(5, 1fr); gap: 1px;
+            max-width: 300px; letter-spacing: 0; }
+  h1.logo span { aspect-ratio: 1; box-shadow: 0 0 0 1px var(--ai); background: var(--card);
+                 display: flex; align-items: center; justify-content: center;
+                 font-size: 38px; line-height: 1; }
   .secTitle { font-size: var(--t-sm); color: var(--ai); font-weight: 700; margin-bottom: var(--s3);
               letter-spacing: 0.06em; }
 
@@ -383,37 +387,23 @@
      余らせるより構図がはっきりし、親指の届く下半分に操作が集まる */
   #modeScreen { display: flex; flex-direction: column; min-height: calc(100svh - var(--s5) - var(--s7)); }
   #modeScreen .topnav, #modeScreen h1 { flex: none; }
-  #modeScreen h1 { margin-top: var(--s6); }
-  .modeList { margin-top: auto; border: 1px solid var(--rule); background: var(--card); }
-  .modeItem { display: flex; align-items: center; gap: var(--s4); width: 100%;
-              text-align: left; background: none; border: none; padding: var(--s5) var(--s4);
-              font-family: var(--font-ui); min-height: 152px; cursor: pointer; }
-  .modeList .modeItem:not(:last-child) { border-bottom: 1px solid var(--rule); }
+  /* 題字は上下に空きを分けて中央に置く。一か所に大きな空白を残すより
+     まとまって見え、選択肢は親指の届く下側に寄る */
+  #modeScreen h1 { margin: auto 0; }
+  .modeList { display: flex; flex-direction: column; gap: 1px; }
+  .modeItem { flex: 1 1 0; min-height: 156px; display: flex; align-items: center; gap: var(--s5);
+              width: 100%; text-align: left; background: var(--card); border: none;
+              box-shadow: 0 0 0 1px var(--ai); padding: var(--s5) var(--s6);
+              font-family: var(--font-ui); cursor: pointer; }
   @media (hover: hover) { .modeItem:hover { background: var(--ai-pale); } }
   .modeItem:active { background: var(--ai-pale); }
-  /* 番号は漢数字を桝に入れる */
+  /* 番号は漢数字を小さな桝に入れる */
   .modeNum { font-family: var(--font-mincho); font-size: var(--t-lg); color: var(--ink);
-             flex: none; width: 40px; height: 40px; border: 1px solid var(--ai);
+             flex: none; width: 40px; height: 40px; box-shadow: 0 0 0 1px var(--ai);
              display: flex; align-items: center; justify-content: center; line-height: 1; }
-  /* 自分の記録。原稿用紙の桝に書き入れた数字として見せる。
-     まだ記録がなければ空の桝（—）のままにしておく */
-  .record { margin-top: var(--s6); }
-  .recordHead { font-size: var(--t-xs); color: var(--ai); font-weight: 700;
-                letter-spacing: 0.06em; margin-bottom: var(--s3); }
-  .recordRow { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--s3); max-width: 264px; }
-  .recordCell { text-align: center; }
-  .rc-num { aspect-ratio: 1; border: 1px solid var(--ai); background: var(--card);
-            display: flex; align-items: center; justify-content: center;
-            font-family: var(--font-mincho); font-size: 30px; font-weight: 600;
-            color: var(--ink); font-variant-numeric: tabular-nums; line-height: 1; }
-  .rc-num.empty { color: var(--ink-soft); border-color: var(--rule); }
-  .rc-lbl { font-size: var(--t-xs); color: var(--ink-mid); font-weight: 700; margin-top: var(--s2); }
-
   .modeTxt { flex: 1; }
-  .modeH { font-family: var(--font-mincho); font-size: 24px; font-weight: 600;
-           letter-spacing: 0.06em; color: var(--ink); line-height: 1.4; }
-  .modeD { font-size: var(--t-sm); color: var(--ink-mid); margin-top: var(--s2); line-height: 1.7; }
-  .modeArrow { color: var(--ai-mid); flex: none; }
+  .modeH { font-family: var(--font-mincho); font-size: 30px; font-weight: 600;
+           letter-spacing: 0.08em; color: var(--ink); line-height: 1.3; }
 
   /* ── 入力欄（記入欄のように下線だけ） ─────────────────────── */
   .field { margin-bottom: var(--s5); }
@@ -500,7 +490,7 @@
 <body>
 
 <div id="loginScreen">
-  <h1>ぶしゅとり</h1>
+  <h1 class="logo" aria-label="ぶしゅとり"><span>ぶ</span><span>し</span><span>ゅ</span><span>と</span><span>り</span></h1>
   <div id="loadErr" class="err hidden" style="margin-top:16px"></div>
 
   <div class="segmented" style="margin-top:var(--s6)">
@@ -563,34 +553,18 @@
       </svg>
     </button>
   </div>
-  <h1>ぶしゅとり</h1>
-  <div class="record">
-    <div class="recordHead">タイムアタックの記録</div>
-    <div class="recordRow">
-      <div class="recordCell"><div class="rc-num empty" id="recLow">—</div><div class="rc-lbl">初級</div></div>
-      <div class="recordCell"><div class="rc-num empty" id="recElem">—</div><div class="rc-lbl">中級</div></div>
-      <div class="recordCell"><div class="rc-num empty" id="recAll">—</div><div class="rc-lbl">上級</div></div>
-    </div>
-  </div>
+  <h1 class="logo" aria-label="ぶしゅとり"><span>ぶ</span><span>し</span><span>ゅ</span><span>と</span><span>り</span></h1>
   <div class="modeList">
     <button class="modeItem" id="toBattle">
       <div class="modeNum">一</div>
       <div class="modeTxt">
         <div class="modeH">たいせん</div>
-        <div class="modeD">友だちと部首を投げ合う。書けなくなったら負け</div>
-      </div>
-      <div class="modeArrow">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
       </div>
     </button>
     <button class="modeItem" id="toSolo">
       <div class="modeNum">二</div>
       <div class="modeTxt">
         <div class="modeH">ひとりで</div>
-        <div class="modeD">30秒で何字書けるか。部首ごとの書き出しもこちら</div>
-      </div>
-      <div class="modeArrow">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
       </div>
     </button>
   </div>
@@ -1062,24 +1036,6 @@ function renderModeScreen() {
   document.getElementById('myCodeSmall').textContent = 'コード ' + p.code;
   refreshFriendBadge();
   refreshInviteBadge();
-  refreshModeRecord();
-}
-
-// 遊び方を選ぶ画面に自分のタイムアタック記録を出す。通信に失敗しても
-// 画面は出したままにしたいので、空の桝（—）に戻すだけにする。
-async function refreshModeRecord() {
-  const cells = { low: 'recLow', elem: 'recElem', all: 'recAll' };
-  const put = (id, v) => {
-    const el = document.getElementById(id);
-    el.textContent = v == null ? '—' : v;
-    el.classList.toggle('empty', v == null);
-  };
-  try {
-    const me = await Players.getMe();
-    Object.entries(cells).forEach(([lv, id]) => put(id, me.best[lv]));
-  } catch (e) {
-    Object.values(cells).forEach(id => put(id, null));
-  }
 }
 
 function setRenameErr(t) {
