@@ -831,6 +831,7 @@ const BGM_SCREENS = new Set(['loginScreen','modeScreen','soloScreen','settingsSc
   'overScreen','battleSetupScreen','battleOverScreen']);
 const LEVEL_LABEL = { low: '初級', elem: '中級', all: '上級' };
 let currentScreen = null;
+let currentRankLevel = 'elem';
 function show(id) {
   currentScreen = id;
   SCREENS.forEach(s => document.getElementById(s).classList.toggle('hidden', s !== id));
@@ -843,6 +844,8 @@ function refreshFriendsScreenIfOpen() {
   refreshInvites();
   refreshRemovals();
   refreshInviteDeclines();
+  refreshFriendsList();
+  refreshRanking(currentRankLevel);
 }
 
 function poolOf(rad, grades) {
@@ -1216,7 +1219,7 @@ function renderFriendsScreen() {
   refreshRemovals();
   refreshInviteDeclines();
   refreshFriendsList();
-  refreshRanking('elem');
+  refreshRanking(currentRankLevel);
 }
 
 async function refreshRemovals() {
@@ -1225,7 +1228,7 @@ async function refreshRemovals() {
   try { removals = await Players.listRemovals(); }
   catch (e) { el.classList.add('hidden'); el.innerHTML = ''; return; }
   refreshFriendBadge();
-  if (removals.length) refreshFriendsList(); // 消された側の一覧からも即座に消す
+  if (removals.length) { refreshFriendsList(); refreshRanking(currentRankLevel); } // 一覧からもランキングからも即座に消す
   if (!removals.length) { el.classList.add('hidden'); el.innerHTML = ''; return; }
   el.classList.remove('hidden');
   el.innerHTML = removals.map(r => `
@@ -1286,7 +1289,7 @@ async function refreshFriendRequests() {
   el.querySelectorAll('[data-req-accept]').forEach(b => {
     b.onclick = async () => {
       await Players.acceptFriendRequest(b.dataset.reqAccept).catch(() => {});
-      refreshFriendRequests(); refreshFriendsList();
+      refreshFriendRequests(); refreshFriendsList(); refreshRanking(currentRankLevel);
     };
   });
   el.querySelectorAll('[data-req-decline]').forEach(b => {
@@ -1357,10 +1360,12 @@ async function inviteFriend(code, btn) {
 
 async function refreshFriendsList() {
   const listEl = document.getElementById('friendsList');
-  listEl.innerHTML = '<div class="usedempty" style="padding:14px 2px">読み込み中…</div>';
+  const firstLoad = !listEl.dataset.loaded;
+  if (firstLoad) listEl.innerHTML = '<div class="usedempty" style="padding:14px 2px">読み込み中…</div>';
   let friends;
   try { friends = await Players.listFriends(); }
-  catch (e) { listEl.innerHTML = '<div class="usedempty" style="padding:14px 2px">読み込めませんでした</div>'; return; }
+  catch (e) { if (firstLoad) listEl.innerHTML = '<div class="usedempty" style="padding:14px 2px">読み込めませんでした</div>'; return; }
+  listEl.dataset.loaded = '1';
 
   if (!friends.length) {
     listEl.innerHTML = '<div class="usedempty" style="padding:14px 2px">まだフレンドがいません</div>';
@@ -1389,6 +1394,7 @@ async function refreshFriendsList() {
       if (!confirm(`${b.dataset.nickname}さんをフレンドから削除しますか？`)) return;
       await Players.removeFriend(b.dataset.code).catch(() => {});
       refreshFriendsList();
+      refreshRanking(currentRankLevel);
     };
   });
   listEl.querySelectorAll('.inviteBtn').forEach(b => {
@@ -1398,10 +1404,12 @@ async function refreshFriendsList() {
 
 async function refreshRanking(level) {
   const el = document.getElementById('rankingList');
-  el.innerHTML = '<div class="usedempty" style="padding:14px 2px">読み込み中…</div>';
+  const firstLoad = el.dataset.loadedLevel !== level;
+  if (firstLoad) el.innerHTML = '<div class="usedempty" style="padding:14px 2px">読み込み中…</div>';
   let ranking;
   try { ranking = await Players.listRanking(level); }
-  catch (e) { el.innerHTML = '<div class="usedempty" style="padding:14px 2px">読み込めませんでした</div>'; return; }
+  catch (e) { if (firstLoad) el.innerHTML = '<div class="usedempty" style="padding:14px 2px">読み込めませんでした</div>'; return; }
+  el.dataset.loadedLevel = level;
   if (!ranking.length) { el.innerHTML = '<div class="usedempty" style="padding:14px 2px">まだ記録がありません</div>'; return; }
   el.innerHTML = ranking.map((r, i) => {
     const rank = i + 1;
@@ -1511,14 +1519,19 @@ function bind() {
     try {
       const res = await Players.addFriend(code);
       input.value = '';
-      if (res.status === 'accepted') { setFriendsMsg(`${res.nickname}さんとフレンドになりました`); await refreshFriendsList(); }
+      if (res.status === 'accepted') {
+        setFriendsMsg(`${res.nickname}さんとフレンドになりました`);
+        await refreshFriendsList();
+        refreshRanking(currentRankLevel);
+      }
       else { setFriendsMsg(`${res.nickname}さんに申請を送りました。承認を待っています`); }
     } catch (e) { setFriendsErr(e.message || '追加できませんでした'); }
   };
   document.querySelectorAll('#rankLevelSeg .seg').forEach(b => {
     b.onclick = () => {
       document.querySelectorAll('#rankLevelSeg .seg').forEach(x => x.classList.toggle('active', x === b));
-      refreshRanking(b.dataset.ranklevel);
+      currentRankLevel = b.dataset.ranklevel;
+      refreshRanking(currentRankLevel);
     };
   });
   document.getElementById('seVolume').oninput = e => KBAudio.setSeVolume(e.target.value / 100);
