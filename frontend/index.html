@@ -712,7 +712,11 @@
     <div class="gotbox" id="bRevGot"></div>
   </div>
 
-  <div style="margin-top:24px"><button id="bToTitle" style="width:100%">最初の画面へ</button></div>
+  <div class="waitmsg hidden" id="bRematchMsg"></div>
+  <div style="margin-top:24px; display:flex; gap:10px">
+    <button class="primary" id="bRematchBtn" style="flex:1">再戦する</button>
+    <button id="bLeaveBtn" style="flex:1">終了する</button>
+  </div>
 </div>
 
 <script src="js/vendor/kanji-canvas.js"></script>
@@ -1821,6 +1825,8 @@ function bConnect() {
   Net.on('answer_rejected', onBRejected);
   Net.on('turn_result', onBTurnResult);
   Net.on('game_over', onBGameOver);
+  Net.on('rematch_requested', onBRematchRequested);
+  Net.on('rematch_declined', onBRematchDeclined);
   Net.on('closed', () => bSetErr('通信が切れました。もう一度お試しください。'));
 }
 
@@ -1972,10 +1978,21 @@ function onBTurnResult(msg) {
 
 function onBGameOver(msg) {
   clearInterval(bstate.tickId);
-  Net.close();
   const iLost = msg.loser === bstate.myId;
   const title = document.getElementById('bOverTitle');
   const unit = document.getElementById('bOverUnit');
+
+  const rematchBtn = document.getElementById('bRematchBtn');
+  const rematchMsg = document.getElementById('bRematchMsg');
+  rematchMsg.classList.add('hidden');
+  rematchMsg.textContent = '';
+  if (msg.reason === 'disconnect') {
+    rematchBtn.disabled = true;
+    rematchMsg.classList.remove('hidden');
+    rematchMsg.textContent = '相手との通信が切れたため、再戦はできません';
+  } else {
+    rematchBtn.disabled = false;
+  }
 
   const REASON_TEXT = {
     timeout: iLost ? '時間切れで負けました' : '相手が時間切れ。あなたの勝ちです',
@@ -2022,6 +2039,20 @@ function onBGameOver(msg) {
   show('battleOverScreen');
 }
 
+function onBRematchRequested(msg) {
+  if (msg.by === bstate.myId) return; // 自分の送信のエコーは無視（ボタン側で既に表示済み）
+  const el = document.getElementById('bRematchMsg');
+  el.classList.remove('hidden');
+  el.textContent = '相手が再戦を希望しています！「再戦する」を押すと始まります';
+}
+
+function onBRematchDeclined() {
+  document.getElementById('bRematchBtn').disabled = true;
+  const el = document.getElementById('bRematchMsg');
+  el.classList.remove('hidden');
+  el.textContent = '相手が対戦を終了しました';
+}
+
 function bSetMsg(t, c) {
   const el = document.getElementById('bMsg');
   el.textContent = t; el.className = 'msg' + (c ? ' ' + c : '');
@@ -2066,7 +2097,20 @@ function bBind() {
   document.getElementById('bGiveUp').onclick = () => {
     if (bstate.isDefending) Net.send('give_up', {});
   };
-  document.getElementById('bToTitle').onclick = () => { bReset(); show('modeScreen'); };
+  document.getElementById('bRematchBtn').onclick = () => {
+    const btn = document.getElementById('bRematchBtn');
+    const el = document.getElementById('bRematchMsg');
+    btn.disabled = true;
+    el.classList.remove('hidden');
+    el.textContent = '相手の返事を待っています…';
+    Net.send('rematch', {});
+  };
+  document.getElementById('bLeaveBtn').onclick = () => {
+    Net.send('leave', {});
+    Net.close();
+    bReset();
+    show('modeScreen');
+  };
 }
 
 boot();

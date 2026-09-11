@@ -104,7 +104,15 @@ async def _end_game(room: Room, reason: str, loser: str | None) -> None:
     await broadcast(room, {"type": "game_over", "reason": reason, "loser": loser, "reveal": reveal})
     if room.timeout_task:
         room.timeout_task.cancel()
-    rooms.remove(room.code)
+    room.started = False
+    room.state = None
+    if reason == "disconnect":
+        # 相手の接続が切れている以上、再戦しようがないのでそのまま部屋を消す
+        rooms.remove(room.code)
+    else:
+        # 再戦の返事を待つ状態にする。両者が"rematch"を送るまで部屋は残す
+        room.post_game = True
+        room.rematch_votes = set()
 
 
 async def _timeout_watch(room: Room, radical: str, deadline: float) -> None:
@@ -170,6 +178,35 @@ async def _handle_give_up(room: Room, player_id: str) -> None:
     await _end_game(room, reason="give_up", loser=player_id)
 
 
+async def _handle_rematch(room: Room, player_id: str) -> None:
+    """対戦終了後、再戦したいという意思表示。両者がそろったら試合を再開する。"""
+    if not room.post_game:
+        return
+    room.rematch_votes.add(player_id)
+    if room.host_id in room.rematch_votes and room.guest_id in room.rematch_votes:
+        room.post_game = False
+        room.rematch_votes = set()
+        _start_state(room)
+        await broadcast(room, {
+            "type": "start",
+            "attacker": room.state.attacker,
+            "defender": room.state.defender,
+            "level": room.level,
+        })
+        await _send_offer(room)
+    else:
+        await broadcast(room, {"type": "rematch_requested", "by": player_id})
+
+
+async def _handle_leave(room: Room, player_id: str) -> None:
+    """対戦終了後、再戦せずに抜ける。相手に伝えて部屋を消す。"""
+    if not room.post_game:
+        return
+    if rooms.exists(room.code):
+        await broadcast(room, {"type": "rematch_declined"})
+        rooms.remove(room.code)
+
+
 async def _dispatch(room: Room, player_id: str, msg: dict) -> None:
     mtype = msg.get("type")
     if mtype == "throw":
@@ -178,6 +215,10 @@ async def _dispatch(room: Room, player_id: str, msg: dict) -> None:
         await _handle_answer(room, player_id, msg)
     elif mtype == "give_up":
         await _handle_give_up(room, player_id)
+    elif mtype == "rematch":
+        await _handle_rematch(room, player_id)
+    elif mtype == "leave":
+        await _handle_leave(room, player_id)
 
 
 @app.websocket("/ws/rooms/{code}")
@@ -220,3 +261,7 @@ async def room_socket(ws: WebSocket, code: str, player_id: str) -> None:
         room.connections.pop(player_id, None)
         if room.started and rooms.exists(room.code):
             await _end_game(room, reason="disconnect", loser=None)
+        elif room.post_game and rooms.exists(room.code):
+            # 再戦の返事を待っている間に相手が抜けた
+            await broadcast(room, {"type": "rematch_declined"})
+            rooms.remove(room.code)
