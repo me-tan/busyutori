@@ -172,6 +172,7 @@
     background: var(--card); border: 1px solid var(--border); border-radius: 14px;
     padding: 12px 18px; margin-bottom: 14px;
   }
+  .topbar:has(#bRoomCodeBox.hidden) { justify-content: center; }
   .lbl { font-size: 10.5px; color: var(--ink-soft); font-weight: 700; }
   .streak { font-size: 24px; font-weight: 900; font-variant-numeric: tabular-nums; }
 
@@ -284,6 +285,26 @@
   .roomlabel { font-size:11px; color: var(--ink-faint); font-weight:700; text-align:center; }
 
   input[type="range"], input[type="checkbox"] { accent-color: var(--accent); }
+
+  /* スマホ幅では、入力欄(canvas)とボタンの大きさはそのままに、
+     それ以外の余白・部首表示を詰めて、候補やメッセージがスクロールなしで
+     画面に収まりやすくする。 */
+  @media (max-width: 899px) {
+    body { padding: 14px 16px 24px; }
+    .quest { padding: 12px 14px; }
+    #playScreen > .quest, #battlePlayScreen > .quest { padding-top: 12px; }
+    .turnstatus { margin-bottom: 6px; }
+    .turnstatus.myturn { padding: 7px 12px; }
+    .radical { font-size: 42px; }
+    .rad-name { margin-top: 4px; }
+    .board { margin-bottom: 8px; }
+    .btns-secondary { margin-top: 8px; }
+    .btn-block { margin-top: 6px; }
+    .picker { margin-top: 8px; }
+    .picker-label { margin-bottom: 4px; }
+    .msg { margin-top: 8px; min-height: 20px; }
+    .usedbox { padding-top: 10px; margin-bottom: 8px; }
+  }
 
   @media (min-width: 900px) {
     body { max-width: none; padding: 0 32px 48px; }
@@ -655,7 +676,7 @@
 
 <div id="battlePlayScreen" class="hidden">
   <div class="topbar">
-    <div><div class="lbl">部屋</div><div class="streak" id="bRoomCode">----</div></div>
+    <div id="bRoomCodeBox"><div class="lbl">部屋</div><div class="streak" id="bRoomCode">----</div></div>
     <div class="timerWrap">
       <svg class="ring" viewBox="0 0 52 52"><circle class="ringBg" cx="26" cy="26" r="22"/><circle class="ringFg" id="bTimerRingFg" cx="26" cy="26" r="22"/></svg>
       <div class="timer" id="bTimer">-</div>
@@ -1833,6 +1854,7 @@ function bConnect() {
 function onBStart() {
   pendingInvite = null;
   clearTimeout(bstate.quickTimeoutId);
+  document.getElementById('bRoomCodeBox').classList.add('hidden');
   document.getElementById('bRoomCode').textContent = bstate.code;
   document.getElementById('bGiveUp').classList.add('hidden');
   bRenderUsed();
