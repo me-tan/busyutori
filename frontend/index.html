@@ -1986,7 +1986,7 @@ function bTick() {
 async function bJudge() {
   if (bstate.locked || !bstate.isDefending) return;
   const inRange = new Set(poolOf(bstate.radical, ALL_GRADES));
-  const usedSet = new Set(bstate.used.map(u => u.kanji));
+  const usedSet = new Set(usedEntries().map(u => u.kanji));
 
   const strokes = KanjiRecog.strokesOf('canBattle');
   const { top, pool } = await KanjiRecog.recognize(strokes, answerableSet(inRange, usedSet));
@@ -2122,10 +2122,17 @@ function bSetMsg(t, c) {
   if (c === 'ng') KBAudio.play('incorrect');
 }
 
+// サーバーが古い形式（漢字の文字列だけ）を返しても表示が壊れないようにする
+function usedEntries() {
+  return bstate.used.map(u => (typeof u === 'string' ? { kanji: u, by: null } : u));
+}
+
 function bRenderUsed() {
-  document.getElementById('bUsedCount').textContent = bstate.used.length + '字';
-  const mine = bstate.used.filter(u => u.by === bstate.myId).map(u => u.kanji);
-  const theirs = bstate.used.filter(u => u.by !== bstate.myId).map(u => u.kanji);
+  const used = usedEntries();
+  document.getElementById('bUsedCount').textContent = used.length + '字';
+  // 新しく書いた字ほど左（先頭）に来るように、答えた順を逆にして並べる
+  const mine = used.filter(u => u.by === bstate.myId).map(u => u.kanji).reverse();
+  const theirs = used.filter(u => u.by !== bstate.myId).map(u => u.kanji).reverse();
   fillUsedLane('bUsedListMine', mine);
   fillUsedLane('bUsedListTheirs', theirs);
   bRenderUsedFocus();
@@ -2138,7 +2145,7 @@ function bRenderUsedFocus() {
   const box = document.getElementById('bUsedFocus');
   if (!bstate.radical || bstate.used.length < USED_FOCUS_FROM) { box.classList.add('hidden'); return; }
   const pool = new Set(poolOf(bstate.radical, ALL_GRADES));
-  const hits = bstate.used.filter(u => pool.has(u.kanji)).map(u => u.kanji);
+  const hits = usedEntries().filter(u => pool.has(u.kanji)).map(u => u.kanji).reverse();
   if (!hits.length) { box.classList.add('hidden'); return; }
   box.classList.remove('hidden');
   document.getElementById('bUsedFocusRad').textContent = radGlyph(bstate.radical);
@@ -2149,7 +2156,7 @@ function fillUsedLane(id, kanjiList) {
   const el = document.getElementById(id);
   if (!kanjiList.length) { el.innerHTML = '<span class="usedempty">まだありません</span>'; return; }
   el.innerHTML = kanjiList.map(k => `<span>${k}</span>`).join('');
-  el.scrollLeft = el.scrollWidth; // 新しい字が右に並ぶので、常に最新が見える位置にしておく
+  el.scrollLeft = 0; // 新しい字が左端に来るので、常に先頭が見える位置に戻しておく
 }
 
 function bBind() {
