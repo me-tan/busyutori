@@ -128,6 +128,10 @@
                border-radius: 10px; padding: 8px 12px; color: var(--accent); font-size: 11px;
                font-weight: 700; font-family: inherit; }
   .inviteBtn.cancel { background: #F1EAD9; color: var(--ink-soft); }
+  .levelPicker { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+  .levelPickBtn { background: var(--accent); color: #fff; border: none; border-radius: 10px;
+                  padding: 8px 10px; font-size: 11px; font-weight: 700; font-family: inherit; }
+  .levelPickBtn:active { background: var(--accent-dark); }
 
   .segmented { display: flex; border: 1px solid var(--border); border-radius: 10px; overflow: hidden;
                margin-bottom: 12px; }
@@ -274,6 +278,9 @@
                font-family: inherit; border:1.5px dashed var(--border); border-radius:12px; box-sizing:border-box; }
   .waitmsg { margin-top:10px; color: var(--ink-soft); font-size:13px; text-align:center; }
   .turnstatus { font-size:14px; font-weight:700; color: var(--ink); margin-bottom:10px; text-align:center; }
+  .turnstatus.myturn { background: var(--accent); color: #fff; padding: 10px 14px; border-radius: 12px;
+                        animation: turnPulse 1s ease-in-out 2; }
+  @keyframes turnPulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.04); } }
   .roomlabel { font-size:11px; color: var(--ink-faint); font-weight:700; text-align:center; }
 
   input[type="range"], input[type="checkbox"] { accent-color: var(--accent); }
@@ -705,7 +712,11 @@
     <div class="gotbox" id="bRevGot"></div>
   </div>
 
-  <div style="margin-top:24px"><button id="bToTitle" style="width:100%">最初の画面へ</button></div>
+  <div class="waitmsg hidden" id="bRematchMsg"></div>
+  <div style="margin-top:24px; display:flex; gap:10px">
+    <button class="primary" id="bRematchBtn" style="flex:1">再戦する</button>
+    <button id="bLeaveBtn" style="flex:1">終了する</button>
+  </div>
 </div>
 
 <script src="js/vendor/kanji-canvas.js"></script>
@@ -861,6 +872,8 @@ const LEVEL_LABEL = { low: '初級', elem: '中級', all: '上級' };
 let currentScreen = null;
 let currentRankLevel = 'elem';
 let pendingInvite = null; // { code, roomCode } 自分が送って返事待ちの対戦の誘い
+let inviteLevelPickerFor = null; // 難易度を選んでいる最中のフレンドコード
+let sendingInviteTo = null; // 誘いを送信中のフレンドコード
 function show(id) {
   currentScreen = id;
   SCREENS.forEach(s => document.getElementById(s).classList.toggle('hidden', s !== id));
@@ -1419,12 +1432,12 @@ async function acceptInvite(id, roomCode) {
   }
 }
 
-async function inviteFriend(code, btn) {
+async function inviteFriend(code, level) {
   setFriendsErr('');
-  btn.disabled = true; btn.textContent = '誘っています…';
+  sendingInviteTo = code;
+  refreshFriendsList();
   bReset();
   try {
-    const level = state.level || 'elem';
     const room = await Net.createRoom(level);
     await Players.sendInvite(code, room.code, level);
     bstate.code = room.code; bstate.myId = room.player_id; bstate.level = level;
@@ -1435,6 +1448,7 @@ async function inviteFriend(code, btn) {
     setFriendsErr('誘えませんでした。通信環境を確認してください。');
     pendingInvite = null;
   }
+  sendingInviteTo = null;
   refreshFriendsList();
 }
 
@@ -1468,19 +1482,31 @@ async function refreshFriendsList() {
       .map(l => `<span>${LEVEL_LABEL[l]} <b>${f.best[l]}</b></span>`)
       .join('');
     const isPending = pendingInvite && pendingInvite.code === f.code;
-    const inviteButton = isPending
-      ? `<button class="inviteBtn cancel" data-cancel-invite="${f.code}">誘いを取り消す</button>`
-      : `<button class="inviteBtn" data-invite="${f.code}">
+    const isSending = sendingInviteTo === f.code;
+    const isPicking = inviteLevelPickerFor === f.code;
+    const removeBtn = `<button class="friendRemove" data-code="${f.code}" data-nickname="${f.nickname}">削除</button>`;
+    let actions;
+    if (isPending) {
+      actions = `<button class="inviteBtn cancel" data-cancel-invite="${f.code}">誘いを取り消す</button>${removeBtn}`;
+    } else if (isSending) {
+      actions = `<button class="inviteBtn" disabled>誘っています…</button>${removeBtn}`;
+    } else if (isPicking) {
+      actions = `<div class="levelPicker">
+          <button class="levelPickBtn" data-invite-level="low" data-code="${f.code}">初級</button>
+          <button class="levelPickBtn" data-invite-level="elem" data-code="${f.code}">中級</button>
+          <button class="levelPickBtn" data-invite-level="all" data-code="${f.code}">上級</button>
+          <button class="ghost" data-cancel-picker="${f.code}">やめる</button>
+        </div>`;
+    } else {
+      actions = `<button class="inviteBtn" data-invite="${f.code}">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4 20-7z"/></svg>
           対戦に誘う
-        </button>`;
+        </button>${removeBtn}`;
+    }
     return `<div class="friendRow">
       <div><div class="friendName">${f.nickname}</div><div class="friendCode">${f.code}</div></div>
       <div class="friendBest">${best || 'まだ記録なし'}</div>
-      <div class="friendActions">
-        ${inviteButton}
-        <button class="friendRemove" data-code="${f.code}" data-nickname="${f.nickname}">削除</button>
-      </div>
+      <div class="friendActions">${actions}</div>
     </div>`;
   }).join('') + '</div>';
 
@@ -1493,10 +1519,19 @@ async function refreshFriendsList() {
     };
   });
   listEl.querySelectorAll('.inviteBtn[data-invite]').forEach(b => {
-    b.onclick = () => inviteFriend(b.dataset.invite, b);
+    b.onclick = () => { inviteLevelPickerFor = b.dataset.invite; refreshFriendsList(); };
   });
   listEl.querySelectorAll('.inviteBtn[data-cancel-invite]').forEach(b => {
     b.onclick = () => cancelPendingInvite(b);
+  });
+  listEl.querySelectorAll('[data-invite-level]').forEach(b => {
+    b.onclick = () => {
+      inviteLevelPickerFor = null;
+      inviteFriend(b.dataset.code, b.dataset.inviteLevel);
+    };
+  });
+  listEl.querySelectorAll('[data-cancel-picker]').forEach(b => {
+    b.onclick = () => { inviteLevelPickerFor = null; refreshFriendsList(); };
   });
 }
 
@@ -1790,6 +1825,8 @@ function bConnect() {
   Net.on('answer_rejected', onBRejected);
   Net.on('turn_result', onBTurnResult);
   Net.on('game_over', onBGameOver);
+  Net.on('rematch_requested', onBRematchRequested);
+  Net.on('rematch_declined', onBRematchDeclined);
   Net.on('closed', () => bSetErr('通信が切れました。もう一度お試しください。'));
 }
 
@@ -1811,6 +1848,7 @@ function onBOffer(msg) {
   KanjiCanvas.erase('canBattle');
   document.getElementById('bPicker').classList.add('hidden');
   bSetMsg('', '');
+  document.getElementById('bStatus').classList.remove('myturn');
 
   const iAmAttacker = msg.attacker === bstate.myId;
   document.getElementById('bOfferBox').classList.toggle('hidden', !iAmAttacker);
@@ -1819,7 +1857,10 @@ function onBOffer(msg) {
   document.getElementById('bTimer').textContent = '-';
 
   if (iAmAttacker) {
-    document.getElementById('bStatus').textContent = '部首をえらんで、相手に投げてください';
+    const statusEl = document.getElementById('bStatus');
+    statusEl.textContent = 'あなたの番です。部首をえらんで、相手に投げてください';
+    statusEl.classList.add('myturn');
+    KBAudio.play('tap');
     document.getElementById('bOfferRow').innerHTML = msg.choices.map(c =>
       `<div class="radbtn" data-radical="${c.radical}">` +
       `<div class="r">${c.radical}</div><div class="n">${c.name}</div></div>`
@@ -1827,7 +1868,8 @@ function onBOffer(msg) {
     document.querySelectorAll('#bOfferRow .radbtn').forEach(el => {
       el.onclick = () => {
         document.getElementById('bOfferBox').classList.add('hidden');
-        document.getElementById('bStatus').textContent = '相手が書くのを待っています…';
+        statusEl.classList.remove('myturn');
+        statusEl.textContent = '相手が書くのを待っています…';
         Net.send('throw', { radical: el.dataset.radical });
       };
     });
@@ -1837,6 +1879,7 @@ function onBOffer(msg) {
 }
 
 function onBDefend(msg) {
+  document.getElementById('bStatus').classList.remove('myturn');
   bstate.radical = msg.radical;
   bstate.isDefending = msg.defender === bstate.myId;
   bstate.deadline = Date.now() + msg.seconds * 1000;
@@ -1935,10 +1978,21 @@ function onBTurnResult(msg) {
 
 function onBGameOver(msg) {
   clearInterval(bstate.tickId);
-  Net.close();
   const iLost = msg.loser === bstate.myId;
   const title = document.getElementById('bOverTitle');
   const unit = document.getElementById('bOverUnit');
+
+  const rematchBtn = document.getElementById('bRematchBtn');
+  const rematchMsg = document.getElementById('bRematchMsg');
+  rematchMsg.classList.add('hidden');
+  rematchMsg.textContent = '';
+  if (msg.reason === 'disconnect') {
+    rematchBtn.disabled = true;
+    rematchMsg.classList.remove('hidden');
+    rematchMsg.textContent = '相手との通信が切れたため、再戦はできません';
+  } else {
+    rematchBtn.disabled = false;
+  }
 
   const REASON_TEXT = {
     timeout: iLost ? '時間切れで負けました' : '相手が時間切れ。あなたの勝ちです',
@@ -1985,6 +2039,20 @@ function onBGameOver(msg) {
   show('battleOverScreen');
 }
 
+function onBRematchRequested(msg) {
+  if (msg.by === bstate.myId) return; // 自分の送信のエコーは無視（ボタン側で既に表示済み）
+  const el = document.getElementById('bRematchMsg');
+  el.classList.remove('hidden');
+  el.textContent = '相手が再戦を希望しています！「再戦する」を押すと始まります';
+}
+
+function onBRematchDeclined() {
+  document.getElementById('bRematchBtn').disabled = true;
+  const el = document.getElementById('bRematchMsg');
+  el.classList.remove('hidden');
+  el.textContent = '相手が対戦を終了しました';
+}
+
 function bSetMsg(t, c) {
   const el = document.getElementById('bMsg');
   el.textContent = t; el.className = 'msg' + (c ? ' ' + c : '');
@@ -2029,7 +2097,20 @@ function bBind() {
   document.getElementById('bGiveUp').onclick = () => {
     if (bstate.isDefending) Net.send('give_up', {});
   };
-  document.getElementById('bToTitle').onclick = () => { bReset(); show('modeScreen'); };
+  document.getElementById('bRematchBtn').onclick = () => {
+    const btn = document.getElementById('bRematchBtn');
+    const el = document.getElementById('bRematchMsg');
+    btn.disabled = true;
+    el.classList.remove('hidden');
+    el.textContent = '相手の返事を待っています…';
+    Net.send('rematch', {});
+  };
+  document.getElementById('bLeaveBtn').onclick = () => {
+    Net.send('leave', {});
+    Net.close();
+    bReset();
+    show('modeScreen');
+  };
 }
 
 boot();

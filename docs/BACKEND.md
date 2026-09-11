@@ -81,6 +81,8 @@
 | `answer_rejected` | 防御側にだけ送る、不正解の通知。`reason: "used" \| "not_in_radical"`, `kanji` |
 | `turn_result` | 正解が確定した。`radical`, `kanji`, `next_attacker`, `used` |
 | `game_over` | 試合終了。`reason: "timeout" \| "give_up" \| "disconnect" \| "exhausted"`, `loser`（player_idまたはnull）, `reveal: {radical, unused, got} \| null` |
+| `rematch_requested` | どちらか一方が再戦を希望した（`game_over`後のみ）。`by`（希望したplayer_id） |
+| `rematch_declined` | 相手が再戦せずに抜けた（`game_over`後のみ）。以後この部屋は消える |
 
 ### クライアント→サーバー
 
@@ -89,6 +91,8 @@
 | `throw` | 現在の攻撃側 | `{"type": "throw", "radical": "氵"}`。直前の `offer` の `choices` に含まれる部首以外は無視される |
 | `answer` | 現在の防御側 | `{"type": "answer", "kanji": "海"}`。KanjiCanvasの認識候補の中からプレイヤーが選んだ1文字を送る |
 | `give_up` | 現在の防御側 | `{"type": "give_up"}`。時間内でも自主的に負けを認める |
+| `rematch` | `game_over`後の両者 | `{"type": "rematch"}`。両者が送ると同じ部屋・同じ難易度で試合が再開し `start` が届く |
+| `leave` | `game_over`後の両者 | `{"type": "leave"}`。再戦せずに部屋を抜ける。相手に `rematch_declined` が届く |
 
 ### 正解判定はサーバーが最終決定する
 

@@ -32,6 +32,8 @@ class Room:
     timeout_task: "asyncio.Task | None" = None
     started: bool = False
     quickmatch: bool = False
+    post_game: bool = False  # 対戦終了後、再戦の返事を待っている状態か
+    rematch_votes: set[str] = field(default_factory=set)
 
 
 class RoomStore:
