@@ -242,10 +242,18 @@
     display: flex; align-items: center; justify-content: space-between;
     border-bottom: 1px solid var(--rule); padding: 0 0 var(--s3); margin-bottom: var(--s4);
   }
-  .topbar:has(#bRoomCodeBox.hidden) { justify-content: center; }
+  .topbarInfo { display: flex; align-items: center; gap: var(--s5); }
+  /* 連続数と見出しは1行に並べて、上端バーの高さを抑える */
+  .streakBox { display: flex; align-items: baseline; gap: var(--s2); }
   .lbl { font-size: var(--t-xs); color: var(--ai); font-weight: 700; letter-spacing: 0.08em; }
   .streak { font-family: var(--font-mincho); font-size: var(--t-xl); font-weight: 600;
             font-variant-numeric: tabular-nums; line-height: 1.2; color: var(--ink); }
+  /* 書いている途中でやめて戻るためのボタン。書き取り欄の下に置くと
+     スクロールしないと押せないので、常に見えている上端バーに置く */
+  .quitBtn { display: inline-flex; align-items: center; justify-content: center;
+             min-height: var(--tap); padding: var(--s2) var(--s4); flex: none;
+             background: var(--card); border: 1px solid var(--edge); color: var(--ink-mid);
+             font-size: var(--t-xs); font-weight: 700; font-family: var(--font-ui); }
 
   .timerWrap { position: relative; width: 52px; height: 52px; flex: none; }
   .timerWrap .ring { position: absolute; inset: 0; transform: rotate(-90deg); }
@@ -481,9 +489,8 @@
     #playScreen > #topbarTime, #battlePlayScreen > .topbar { grid-area: top; margin-bottom: 0; }
     #playScreen > .quest, #battlePlayScreen > .quest { grid-area: quest; margin-bottom: 0; }
     #playScreen > #boxwrap, #playScreen > #usedbox, #battlePlayScreen > .usedbox { grid-area: info; margin-bottom: 0; }
-    #playScreen > #giveup, #battlePlayScreen > #bGiveUp { grid-area: giveup; margin-top: 0; }
-    #playScreen { grid-template-areas: "board top" "board quest" "board info" "board giveup"; }
-    #battlePlayScreen { grid-template-areas: "board top" "board quest" "board info" "board giveup"; }
+    #playScreen { grid-template-areas: "board top" "board quest" "board info"; }
+    #battlePlayScreen { grid-template-areas: "board top" "board quest" "board info"; }
   }
 </style>
 </head>
@@ -719,10 +726,13 @@
 
 <div id="playScreen" class="hidden">
   <div class="topbar" id="topbarTime">
-    <div><div class="lbl">連続</div><div class="streak" id="streak">0</div></div>
-    <div class="timerWrap">
-      <svg class="ring" viewBox="0 0 52 52"><circle class="ringBg" cx="26" cy="26" r="22"/><circle class="ringFg" id="timerRingFg" cx="26" cy="26" r="22"/></svg>
-      <div class="timer" id="timer">30</div>
+    <button class="quitBtn" id="giveup">やめる</button>
+    <div class="topbarInfo hidden" id="topbarInfo">
+      <div class="streakBox"><span class="lbl">連続</span><span class="streak" id="streak">0</span></div>
+      <div class="timerWrap">
+        <svg class="ring" viewBox="0 0 52 52"><circle class="ringBg" cx="26" cy="26" r="22"/><circle class="ringFg" id="timerRingFg" cx="26" cy="26" r="22"/></svg>
+        <div class="timer" id="timer">30</div>
+      </div>
     </div>
   </div>
 
@@ -759,8 +769,6 @@
     <div class="head"><span>使った漢字</span><span id="usedCount">0字</span></div>
     <div class="usedlist" id="usedList"><span class="usedempty">まだありません</span></div>
   </div>
-
-  <button class="back hidden" id="giveup">ここでやめる</button>
 </div>
 
 <div id="overScreen" class="over hidden">
@@ -836,10 +844,13 @@
 
 <div id="battlePlayScreen" class="hidden">
   <div class="topbar">
-    <div id="bRoomCodeBox"><div class="lbl">部屋</div><div class="streak" id="bRoomCode">----</div></div>
-    <div class="timerWrap">
-      <svg class="ring" viewBox="0 0 52 52"><circle class="ringBg" cx="26" cy="26" r="22"/><circle class="ringFg" id="bTimerRingFg" cx="26" cy="26" r="22"/></svg>
-      <div class="timer" id="bTimer">-</div>
+    <button class="quitBtn danger hidden" id="bGiveUp">こうさんする</button>
+    <div class="topbarInfo">
+      <div class="streakBox" id="bRoomCodeBox"><span class="lbl">部屋</span><span class="streak" id="bRoomCode">----</span></div>
+      <div class="timerWrap">
+        <svg class="ring" viewBox="0 0 52 52"><circle class="ringBg" cx="26" cy="26" r="22"/><circle class="ringFg" id="bTimerRingFg" cx="26" cy="26" r="22"/></svg>
+        <div class="timer" id="bTimer">-</div>
+      </div>
     </div>
   </div>
 
@@ -886,8 +897,6 @@
       <div class="usedlist usedlist-row" id="bUsedListTheirs"><span class="usedempty">まだありません</span></div>
     </div>
   </div>
-
-  <button class="back hidden" id="bGiveUp">こうさんする</button>
 </div>
 
 <div id="battleOverScreen" class="over hidden">
@@ -1167,10 +1176,9 @@ function startTime(level) {
   state.used = new Set(); state.streak = 0; state.recent = [];
   state.passesLeft = PASS_LIMIT;
   document.getElementById('streak').textContent = '0';
-  document.getElementById('topbarTime').classList.remove('hidden');
+  document.getElementById('topbarInfo').classList.remove('hidden');
   document.getElementById('boxwrap').classList.add('hidden');
   document.getElementById('usedbox').classList.remove('hidden');
-  document.getElementById('giveup').classList.add('hidden');
   document.getElementById('passBtn').classList.remove('hidden');
   renderPassBtn();
   renderUsed();
@@ -1185,10 +1193,9 @@ function startComplete(rad) {
     .sort((a,b) => (DATA.kanji[a].grade - DATA.kanji[b].grade));
   state.startedAt = Date.now();
   setRadical(rad);
-  document.getElementById('topbarTime').classList.add('hidden');
+  document.getElementById('topbarInfo').classList.add('hidden');
   document.getElementById('boxwrap').classList.remove('hidden');
   document.getElementById('usedbox').classList.add('hidden');
-  document.getElementById('giveup').classList.remove('hidden');
   document.getElementById('passBtn').classList.add('hidden');
   document.getElementById('boxTotal').textContent = state.target.length;
   renderBoxes();
@@ -1438,7 +1445,8 @@ function gameOver(reason) {
       unit.textContent = `/ ${state.target.length} 字`;
     }
   } else {
-    title.textContent = reason === 'exhausted' ? '出せる部首がなくなりました' : '時間切れ';
+    title.textContent = reason === 'giveup' ? 'とちゅうでやめました'
+      : reason === 'exhausted' ? '出せる部首がなくなりました' : '時間切れ';
     score.textContent = state.streak;
     unit.textContent = '連続で答えられました';
     Players.submitScore(state.level, state.streak);
