@@ -538,6 +538,19 @@ async function handleApi(request, env, url) {
   return err(404, "not found");
 }
 
+// デプロイのたびに中身が変わるもの（HTML・アプリのJS・部首データ）は、
+// 古いキャッシュが残っているとサーバー側と食い違って壊れるため、毎回サーバーに
+// 確認させる。フォント・モデル・音などの重い固定ファイルはキャッシュさせたままにする。
+const NO_CACHE_TYPES = ["text/html", "javascript", "application/json"];
+
+function withNoCache(res) {
+  const type = res.headers.get("Content-Type") || "";
+  if (!NO_CACHE_TYPES.some((t) => type.includes(t))) return res;
+  const headers = new Headers(res.headers);
+  headers.set("Cache-Control", "no-cache");
+  return new Response(res.body, { status: res.status, statusText: res.statusText, headers });
+}
+
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
@@ -548,6 +561,6 @@ export default {
         return err(500, "サーバーエラーが発生しました");
       }
     }
-    return env.ASSETS.fetch(request);
+    return withNoCache(await env.ASSETS.fetch(request));
   },
 };
