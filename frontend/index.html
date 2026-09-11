@@ -1252,8 +1252,10 @@ async function refreshInviteDeclines() {
   try { declines = await Players.listInviteDeclines(); }
   catch (e) { el.classList.add('hidden'); el.innerHTML = ''; return; }
   refreshInviteBadge();
-  if (declines.length && currentScreen !== 'battlePlayScreen') {
-    // 断られた誘いの部屋を後始末し、「誘っています…」のまま固まったボタンを元に戻す
+  // 今まさに送っている誘いの部屋が断られていた場合だけ後始末する
+  // （過去の未確認の通知が新しい誘いまで巻き込まないよう、room_codeで照合する）
+  if (pendingInvite && currentScreen !== 'battlePlayScreen' &&
+      declines.some(d => d.room_code === pendingInvite.roomCode)) {
     pendingInvite = null;
     bReset();
     refreshFriendsList();

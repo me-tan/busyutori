@@ -451,11 +451,11 @@ async function handleApi(request, env, url) {
     if (!me) return err(401, "認証が必要です");
     const id = Number(parts[2]);
     if (!Number.isInteger(id)) return err(400, "idが不正です");
-    const invite = await db.prepare("SELECT from_code FROM invites WHERE id = ? AND to_code = ?").bind(id, me.code).first();
+    const invite = await db.prepare("SELECT from_code, room_code FROM invites WHERE id = ? AND to_code = ?").bind(id, me.code).first();
     if (invite) {
       await db
-        .prepare("INSERT INTO invite_declines (to_code, from_nickname, created_at) VALUES (?, ?, ?)")
-        .bind(invite.from_code, me.nickname, Date.now())
+        .prepare("INSERT INTO invite_declines (to_code, from_nickname, room_code, created_at) VALUES (?, ?, ?, ?)")
+        .bind(invite.from_code, me.nickname, invite.room_code, Date.now())
         .run();
     }
     await db.prepare("DELETE FROM invites WHERE id = ? AND to_code = ?").bind(id, me.code).run();
@@ -468,7 +468,7 @@ async function handleApi(request, env, url) {
     if (!me) return err(401, "認証が必要です");
     const rows = await db
       .prepare(
-        `SELECT id, from_nickname, created_at FROM invite_declines
+        `SELECT id, from_nickname, room_code, created_at FROM invite_declines
          WHERE to_code = ? AND created_at > ? ORDER BY created_at DESC`
       )
       .bind(me.code, Date.now() - DECLINE_TTL_MS)
