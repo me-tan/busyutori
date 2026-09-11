@@ -375,6 +375,20 @@
   .modeNum { font-family: var(--font-mincho); font-size: var(--t-lg); color: var(--ink);
              flex: none; width: 40px; height: 40px; border: 1px solid var(--ai);
              display: flex; align-items: center; justify-content: center; line-height: 1; }
+  /* 自分の記録。原稿用紙の桝に書き入れた数字として見せる。
+     まだ記録がなければ空の桝（—）のままにしておく */
+  .record { margin-top: var(--s6); }
+  .recordHead { font-size: var(--t-xs); color: var(--ai); font-weight: 700;
+                letter-spacing: 0.06em; margin-bottom: var(--s3); }
+  .recordRow { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--s3); max-width: 264px; }
+  .recordCell { text-align: center; }
+  .rc-num { aspect-ratio: 1; border: 1px solid var(--ai); background: var(--card);
+            display: flex; align-items: center; justify-content: center;
+            font-family: var(--font-mincho); font-size: 30px; font-weight: 600;
+            color: var(--ink); font-variant-numeric: tabular-nums; line-height: 1; }
+  .rc-num.empty { color: var(--ink-soft); border-color: var(--rule); }
+  .rc-lbl { font-size: var(--t-xs); color: var(--ink-mid); font-weight: 700; margin-top: var(--s2); }
+
   .modeTxt { flex: 1; }
   .modeH { font-family: var(--font-mincho); font-size: 24px; font-weight: 600;
            letter-spacing: 0.06em; color: var(--ink); line-height: 1.4; }
@@ -530,6 +544,14 @@
     </button>
   </div>
   <h1>ぶしゅとり</h1>
+  <div class="record">
+    <div class="recordHead">タイムアタックの記録</div>
+    <div class="recordRow">
+      <div class="recordCell"><div class="rc-num empty" id="recLow">—</div><div class="rc-lbl">初級</div></div>
+      <div class="recordCell"><div class="rc-num empty" id="recElem">—</div><div class="rc-lbl">中級</div></div>
+      <div class="recordCell"><div class="rc-num empty" id="recAll">—</div><div class="rc-lbl">上級</div></div>
+    </div>
+  </div>
   <div class="modeList">
     <button class="modeItem" id="toBattle">
       <div class="modeNum">一</div>
@@ -1000,6 +1022,24 @@ function renderModeScreen() {
   document.getElementById('myCodeSmall').textContent = 'コード ' + p.code;
   refreshFriendBadge();
   refreshInviteBadge();
+  refreshModeRecord();
+}
+
+// 遊び方を選ぶ画面に自分のタイムアタック記録を出す。通信に失敗しても
+// 画面は出したままにしたいので、空の桝（—）に戻すだけにする。
+async function refreshModeRecord() {
+  const cells = { low: 'recLow', elem: 'recElem', all: 'recAll' };
+  const put = (id, v) => {
+    const el = document.getElementById(id);
+    el.textContent = v == null ? '—' : v;
+    el.classList.toggle('empty', v == null);
+  };
+  try {
+    const me = await Players.getMe();
+    Object.entries(cells).forEach(([lv, id]) => put(id, me.best[lv]));
+  } catch (e) {
+    Object.values(cells).forEach(id => put(id, null));
+  }
 }
 
 function setRenameErr(t) {
