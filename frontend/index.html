@@ -4,340 +4,517 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>ぶしゅとり</title>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@500;700;900&family=Noto+Serif+JP:wght@700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@400;500;600;700&family=BIZ+UDPGothic:wght@400;700&display=swap">
 <style>
+  /* ───────────────────────────────────────────────────────────────────────
+     下敷きにしているもの：原稿用紙
+
+     このゲームは漢字を手で書くゲームなので、見た目のよりどころも
+     「和風の飾り」ではなく、字を書く紙そのものから採る。和紙風の地紋や
+     落款といった飾りは、足すほど説明的になって内容から離れるので使わない。
+
+     色の役割は3つに固定する。増やさない。
+       墨  … 書かれたもの（題字・漢字・答え・記録の数字）
+       藍  … 印刷されたもの（罫・枠・桝・ボタン・選択中の表示）
+       朱  … 直しの朱筆（誤り・残り時間わずか）
+     地は紙。面を積み重ねて段差を作るのではなく、原稿用紙と同じように
+     「印刷された罫」で構造を作る。
+
+     字組みは日本語に合わせる。本文の行間1.75、見出し1.35。字間を広げても
+     和風にはならず読みにくくなるだけなので、広い字間は題字だけに使う。
+
+     操作するものには必ず面か枠を与える。タップ範囲は44px以上。
+     文字は地に対して4.5:1以上、押せる枠は3:1以上（実測して選んでいる）。
+     主要な操作は画面の下寄りに置く。片手持ちの親指が自然に届く範囲では
+     タップ精度が96%、上方向に伸ばすと61%まで落ちるため。
+
+     余白は4px刻みの段階（--s1〜--s8）からだけ選ぶ。
+     ─────────────────────────────────────────────────────────────────────── */
   :root {
-    --paper: #F7F3EC; --card: #fff; --ink: #262019; --ink-soft: #8A8074; --ink-faint: #B0A691;
-    --border: #E4DCCB; --accent: #B8391F; --accent-dark: #8F2B16;
-    --success: #3F7D53; --success-bg: #EAF3EC; --error: #A8433A;
-    --font-ui: "Zen Maru Gothic", "Hiragino Maru Gothic ProN", "Hiragino Sans", "Noto Sans JP", sans-serif;
-    --font-kanji: "Noto Serif JP", "Hiragino Mincho ProN", serif;
+    /* 紙 */
+    --paper: #FDFCFA; --card: #fff;
+    /* 墨：書かれたもの */
+    --ink: #17191C; --ink-mid: #4E535A; --ink-soft: #6B7178;
+    /* 藍：印刷されたもの */
+    --ai: #1D3A5C; --ai-mid: #41618A; --ai-pale: #E9EEF4;
+    --rule: #C9D4E0; --edge: #7E8794;
+    /* 朱：直し */
+    --shu: #C0381F;
+    /* 間 */
+    --s1: 4px; --s2: 8px; --s3: 12px; --s4: 16px; --s5: 24px; --s6: 32px; --s7: 48px; --s8: 64px;
+    /* 文字（12pxを下限にする） */
+    --t-xs: 12px; --t-sm: 13px; --t-base: 15px; --t-md: 17px; --t-lg: 20px; --t-xl: 28px;
+    --tap: 44px; --gutter: 20px;
+    --font-ui: "BIZ UDPGothic", "Hiragino Sans", "Noto Sans JP", sans-serif;
+    /* 明朝は漢字の手本の形なので、字を見せるところにだけ使う。
+       Shippori Minchoは常用漢字1542字＋部首65字の収録を確認済み */
+    --font-mincho: "Shippori Mincho", "Hiragino Mincho ProN", serif;
+    --font-kanji: "Shippori Mincho", "Hiragino Mincho ProN", serif;
   }
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   body {
     font-family: var(--font-ui);
-    max-width: 480px; margin: 0 auto; padding: 22px 18px;
-    background: var(--paper); color: var(--ink);
+    font-size: var(--t-base); line-height: 1.75; letter-spacing: 0.02em;
+    max-width: 480px; margin: 0 auto; padding: var(--s5) var(--gutter) var(--s7);
+    color: var(--ink); background: var(--paper);
   }
   .hidden { display: none !important; }
-  /* 画面全体を白い角丸カードで囲うのをやめた（ページ背景と別色の箱に収まっている
-     ように見えるのが「作り物っぽい」印象の一因だったため）。各画面はページの
-     背景の上に直接、bodyの余白だけで配置する。 */
-  .navbar { display: flex; align-items: center; gap: 4px; margin-bottom: 20px; min-height: 36px; }
-  .navBack { width: 36px; height: 36px; border-radius: 50%; background: transparent; border: none;
-             color: var(--ink); display: flex; align-items: center; justify-content: center;
-             flex: none; cursor: pointer; padding: 0; }
-  .navBack:active { background: #F1EAD9; }
-  .navTitle { font-size: 16px; font-weight: 900; color: var(--ink); }
-
-  h1 { font-size: 24px; font-weight: 900; margin: 0 0 6px; text-align: center; }
-  h1 .accent { color: var(--accent); }
-  .tag { font-size: 12.5px; color: var(--ink-soft); margin-bottom: 18px; text-align: center; }
-
-  .tileRow { display: flex; gap: 14px; }
-  .tile {
-    flex: 1; aspect-ratio: 1; display: flex; flex-direction: column; align-items: center;
-    justify-content: center; gap: 12px; background: var(--card); border: 1.5px solid var(--border);
-    border-radius: 20px; color: var(--ink); font-family: inherit; font-weight: 700; font-size: 14.5px;
-    cursor: pointer; padding: 16px; text-align: center;
+  :focus-visible { outline: 2px solid var(--shu); outline-offset: 2px; }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
   }
-  .tile:active { background: #F7F1E4; }
-  .tile-primary { background: var(--accent); border-color: var(--accent-dark); color: #fff; }
-  .tile-primary:active { background: var(--accent-dark); }
-  .secTitle { font-size: 12.5px; color: var(--ink-soft); font-weight: 700; margin-bottom: 10px; text-align: center; }
+  /* 日本語は文節で折り返す。「書けなくなった／ら負け」のような切れ方を防ぐ
+     （対応していないブラウザでは既定の折り返しに戻るだけ） */
+  .bigbtn small, .reveal-origin, .rad-meaning, .waitmsg, .err, .picker-label {
+    word-break: auto-phrase; line-break: strict;
+  }
 
+  /* ── 見出し・ナビ ───────────────────────────────────────────── */
+  .navbar { display: flex; align-items: center; gap: var(--s2); margin-bottom: var(--s5);
+            min-height: var(--tap); border-bottom: 1px solid var(--rule); padding-bottom: var(--s3); }
+  .navBack { width: var(--tap); height: var(--tap); margin-left: -10px; background: transparent; border: none;
+             color: var(--ai); display: flex; align-items: center; justify-content: center;
+             flex: none; cursor: pointer; padding: 0; }
+  .navBack:active { background: var(--ai-pale); }
+  .navTitle { font-family: var(--font-mincho); font-size: var(--t-md); font-weight: 600;
+              letter-spacing: 0.06em; line-height: 1.35; }
+
+  /* 題字は「書かれたもの」なので墨。字そのものを大きく見せる */
+  h1 { font-family: var(--font-mincho); font-size: var(--t-xl); font-weight: 600; color: var(--ink);
+       letter-spacing: 0.12em; line-height: 1.35; margin: 0; }
+  h1.logo { font-size: 44px; letter-spacing: 0.16em; line-height: 1.2; }
+  .secTitle { font-size: var(--t-sm); color: var(--ai); font-weight: 700; margin-bottom: var(--s3);
+              letter-spacing: 0.06em; }
+
+  /* ── ボタン ─────────────────────────────────────────────────
+     ボタンは「印刷されたもの」なので藍。押せるものには必ず枠か面を与える */
   button {
-    padding: 11px 16px; font-size: 13.5px; font-family: inherit; font-weight: 700;
-    border: none; border-radius: 12px; cursor: pointer; background: #F1EAD9; color: var(--ink);
+    min-height: var(--tap); padding: var(--s3) var(--s4);
+    font-size: var(--t-sm); font-family: var(--font-ui); font-weight: 700; line-height: 1.4;
+    letter-spacing: 0.02em; border: 1px solid var(--edge); cursor: pointer;
+    background: var(--card); color: var(--ai); border-radius: 0;
   }
+  @media (hover: hover) { button:hover { background: var(--ai-pale); border-color: var(--ai-mid); } }
+  button:active { background: var(--ai-pale); border-color: var(--ai); }
   button.primary {
-    background: var(--accent); color: #fff; border-bottom: 3px solid var(--accent-dark);
-    font-size: 15px; padding: 14px;
+    background: var(--ai); color: #fff; border: 1px solid var(--ai);
+    font-weight: 700; font-size: var(--t-md); letter-spacing: 0.08em; padding: var(--s4);
   }
-  button.ghost { background: transparent; color: var(--ink-soft); padding: 6px 4px; }
-  button:disabled { opacity: .5; cursor: default; }
-  .back { margin-top: 16px; width: 100%; background: transparent; color: var(--ink-soft); }
-  .passBtn { background: #F1EAD9; color: var(--ink); border: 1.5px dashed var(--border); }
-  .passBtn:active { background: #E8DFC8; }
+  @media (hover: hover) { button.primary:hover { background: #25496F; border-color: #25496F; } }
+  button.primary:active { background: #162C46; border-color: #162C46; }
+  button.ghost { background: transparent; border: 1px solid transparent; color: var(--ai);
+                 min-height: var(--tap); padding: var(--s2) var(--s3); }
+  @media (hover: hover) { button.ghost:hover { background: var(--ai-pale); } }
+  button:disabled { opacity: .45; cursor: default; }
+  .back { margin-top: var(--s4); width: 100%; background: transparent; color: var(--ink-mid);
+          border-color: var(--rule); }
+  .btn-block { display: block; width: 100%; margin-top: var(--s3); }
 
-  .avatarChip { width: 34px; height: 34px; border-radius: 50%; background: #FDEDE5; color: var(--accent);
-                display: flex; align-items: center; justify-content: center; font-size: 15px; font-weight: 900;
-                flex: none; border: none; cursor: pointer; padding: 0; }
-  .avatarBig { width: 64px; height: 64px; border-radius: 50%; background: #FDEDE5; color: var(--accent);
-               display: flex; align-items: center; justify-content: center; font-size: 26px; font-weight: 900;
-               margin: 0 auto; }
-  .statRow { display: flex; align-items: center; justify-content: space-between; padding: 12px 2px; border-bottom: 1px solid var(--border); }
-  .statRow .lv { font-size: 13.5px; font-weight: 700; color: var(--ink); }
-  .statRow .sc { font-size: 20px; font-weight: 900; color: var(--accent); }
-  .topnav { display: flex; align-items: center; gap: 10px; margin-bottom: 22px; }
-  .topnavName { font-size: 13px; line-height: 1.5; text-align: left; }
+  /* ── 自分の情報 ─────────────────────────────────────────── */
+  /* 名前の頭文字を桝に入れる。原稿用紙の1マスと同じ見立て */
+  .avatarChip { width: var(--tap); height: var(--tap); border: 1px solid var(--ai); background: var(--card);
+                color: var(--ink); display: flex; align-items: center; justify-content: center;
+                font-family: var(--font-mincho); font-size: var(--t-md); font-weight: 600;
+                flex: none; cursor: pointer; padding: 0; min-height: 0; }
+  .avatarBig { width: 68px; height: 68px; border: 1px solid var(--ai); background: var(--card);
+               color: var(--ink); display: flex; align-items: center; justify-content: center;
+               font-family: var(--font-mincho); font-size: 30px; font-weight: 600; margin: 0 auto; }
+  .statRow { display: flex; align-items: center; justify-content: space-between;
+             padding: var(--s3) 0; border-bottom: 1px solid var(--rule); }
+  .statRow .lv { font-size: var(--t-sm); font-weight: 700; color: var(--ai); }
+  .statRow .sc { font-family: var(--font-mincho); font-size: var(--t-lg); font-weight: 600; color: var(--ink); }
+  .topnav { display: flex; align-items: center; gap: var(--s3); }
+  .topnavName { font-size: var(--t-sm); line-height: 1.5; text-align: left; }
   .topnavName div:first-child { font-weight: 700; color: var(--ink); }
-  .topnavName div:last-child { font-size: 9px; color: var(--ink-faint); letter-spacing: 0.05em; }
-  .iconBtn { position: relative; width: 36px; height: 36px; border-radius: 50%; background: transparent; border: none;
-             color: var(--ink-soft); display: flex; align-items: center; justify-content: center;
-             flex: none; cursor: pointer; padding: 0; }
-  .iconBtn:active { background: #F1EAD9; }
-  .badgeDot { position: absolute; top: 2px; right: 2px; width: 10px; height: 10px; border-radius: 50%;
-              background: var(--error); border: 2px solid var(--card); }
-  .badgeDot.invite { right: auto; left: 2px; background: var(--success); }
+  .topnavName div:last-child { font-size: var(--t-xs); color: var(--ink-soft); letter-spacing: 0.1em; }
+  .iconBtn { position: relative; width: var(--tap); height: var(--tap); background: transparent;
+             border: 1px solid transparent; color: var(--ai); display: flex; align-items: center;
+             justify-content: center; flex: none; cursor: pointer; padding: 0; min-height: 0; }
+  @media (hover: hover) { .iconBtn:hover { background: var(--ai-pale); } }
+  .iconBtn:active { background: var(--ai-pale); }
+  .badgeDot { position: absolute; top: 5px; right: 5px; width: 8px; height: 8px; border-radius: 50%;
+              background: var(--shu); border: none; }
+  .badgeDot.invite { right: auto; left: 5px; background: var(--ai); }
 
-  /* リストの外枠・角丸はstack自身が持ち、overflow:hiddenで子を切り抜く。
-     行ごとに角丸を出し分ける方式は、真ん中の行だけ既定のborder-radiusが
-     上書きされずに残るミスが起きやすいので採用しない。 */
+  /* ── 一覧 ─────────────────────────────────────────────────── */
   .stack { display: flex; flex-direction: column; gap: 0;
-           border: 1.5px solid var(--border); border-radius: 14px; overflow: hidden; }
+           background: var(--card); border: 1px solid var(--rule); }
   .bigbtn {
-    position: relative; display: block; width: 100%; text-align: left; font-family: inherit;
-    background: var(--card); border: none; border-radius: 0; color: var(--ink);
-    padding: 16px 34px 16px 16px; font-size: 16px; font-weight: 700; cursor: pointer;
+    position: relative; display: block; width: 100%; text-align: left; font-family: var(--font-ui);
+    background: transparent; border: none; color: var(--ink);
+    padding: var(--s4) var(--s6) var(--s4) var(--s4); font-size: var(--t-base); font-weight: 700; cursor: pointer;
   }
-  .stack .bigbtn:not(:last-child) { border-bottom: 1px solid var(--border); }
-  /* アイコン付きの行は、区切り線をアイコン分だけ内側にずらす（iOSの設定リストと同じ見せ方） */
-  .stack .bigbtn.has-icon:not(:last-child) { border-bottom: none; }
-  .stack .bigbtn.has-icon:not(:last-child)::before {
-    content: ""; position: absolute; left: 54px; right: 16px; bottom: 0; height: 1px; background: var(--border);
-  }
-  .bigbtn:active { background: #F7F1E4; }
+  .stack .bigbtn:not(:last-child) { border-bottom: 1px solid var(--rule); }
+  @media (hover: hover) { .bigbtn:hover { background: var(--ai-pale); } }
+  .bigbtn:active { background: var(--ai-pale); }
   .bigbtn::after {
-    content: ""; position: absolute; right: 18px; top: 50%; width: 7px; height: 7px;
-    border-right: 2px solid var(--ink-faint); border-bottom: 2px solid var(--ink-faint);
+    content: ""; position: absolute; right: var(--s4); top: 50%; width: 7px; height: 7px;
+    border-right: 1.5px solid var(--ai-mid); border-bottom: 1.5px solid var(--ai-mid);
     transform: translateY(-60%) rotate(-45deg);
   }
-  .bigbtn small { display: block; font-size: 11.5px; color: var(--ink-faint); font-weight: 500; margin-top: 3px; line-height: 1.5; }
-  .bigbtn.has-icon { padding-left: 54px; }
-  .bigbtn .icon { position: absolute; left: 16px; top: 16px; }
+  .bigbtn small { display: block; font-size: var(--t-xs); color: var(--ink-mid);
+                  font-weight: 400; margin-top: var(--s1); line-height: 1.7; }
+  .bigbtn.has-icon { padding-left: 52px; }
+  .bigbtn .icon { position: absolute; left: var(--s4); top: var(--s4); color: var(--ai); }
 
-  .settingsList { border-top: 1px solid var(--border); }
+  .settingsList, .friendsList { border-top: 1px solid var(--rule); }
   .settingRow {
-    display: flex; align-items: center; justify-content: space-between; gap: 16px;
-    padding: 16px 2px; border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between; gap: var(--s4);
+    padding: var(--s3) 0; min-height: 56px; border-bottom: 1px solid var(--rule);
   }
-  .settingLbl { display: flex; align-items: center; gap: 10px; font-size: 14px; font-weight: 700; color: var(--ink); }
-  .settingLbl svg { color: var(--ink-soft); flex: none; }
-  .settingRow input[type="range"] { width: 120px; }
+  .settingLbl { display: flex; align-items: center; gap: var(--s3); font-size: var(--t-base);
+                font-weight: 700; color: var(--ink); }
+  .settingLbl svg { color: var(--ai); flex: none; }
+  .settingRow input[type="range"] { width: 132px; height: var(--tap); }
 
-  .friendsList { border-top: 1px solid var(--border); }
-  .friendRow { display: flex; align-items: center; justify-content: space-between; gap: 10px;
-               padding: 14px 2px; border-bottom: 1px solid var(--border); }
-  .friendName { font-size: 14px; font-weight: 700; color: var(--ink); }
-  .friendCode { font-size: 10px; color: var(--ink-faint); letter-spacing: 0.05em; }
-  .friendBest { display: flex; gap: 8px; font-size: 11px; color: var(--ink-soft); flex: none; }
-  .friendBest b { color: var(--accent); font-size: 13px; }
-  .friendRemove { background: transparent; border: none; color: var(--ink-faint); font-size: 11px;
-                  font-weight: 700; padding: 4px; flex: none; }
-  .friendActions { display: flex; align-items: center; gap: 6px; flex: none; }
-  .inviteBtn { display: flex; align-items: center; gap: 5px; background: #FDEDE5; border: none;
-               border-radius: 10px; padding: 8px 12px; color: var(--accent); font-size: 11px;
-               font-weight: 700; font-family: inherit; }
-  .inviteBtn.cancel { background: #F1EAD9; color: var(--ink-soft); }
-  .levelPicker { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
-  .levelPickBtn { background: var(--accent); color: #fff; border: none; border-radius: 10px;
-                  padding: 8px 10px; font-size: 11px; font-weight: 700; font-family: inherit; }
-  .levelPickBtn:active { background: var(--accent-dark); }
+  .friendRow { display: flex; align-items: center; justify-content: space-between; gap: var(--s3);
+               padding: var(--s3) 0; min-height: 56px; border-bottom: 1px solid var(--rule); }
+  .friendName { font-size: var(--t-base); font-weight: 700; color: var(--ink); }
+  .friendCode { font-size: var(--t-xs); color: var(--ink-soft); letter-spacing: 0.08em; }
+  .friendBest { display: flex; gap: var(--s2); font-size: var(--t-xs); color: var(--ink-mid); flex: none; }
+  .friendBest b { font-family: var(--font-mincho); color: var(--ink); font-size: var(--t-md); font-weight: 600; }
+  .friendRemove { background: transparent; border: 1px solid transparent; color: var(--ink-soft);
+                  font-size: var(--t-xs); font-weight: 700; padding: var(--s2); flex: none; min-height: var(--tap); }
+  @media (hover: hover) { .friendRemove:hover { color: var(--shu); background: transparent; } }
+  .friendActions { display: flex; align-items: center; gap: var(--s2); flex: none; }
+  .inviteBtn { display: flex; align-items: center; gap: var(--s1); background: var(--card);
+               border: 1px solid var(--ai); padding: var(--s2) var(--s3); color: var(--ai);
+               font-size: var(--t-xs); font-weight: 700; font-family: var(--font-ui); min-height: var(--tap); }
+  .inviteBtn.cancel { border-color: var(--edge); color: var(--ink-mid); }
+  .levelPicker { display: flex; align-items: center; gap: var(--s1); flex-wrap: wrap; }
+  .levelPickBtn { background: var(--ai); color: #fff; border: 1px solid var(--ai);
+                  padding: var(--s2) var(--s3); font-size: var(--t-xs); font-weight: 700;
+                  font-family: var(--font-ui); min-height: var(--tap); }
+  .levelPickBtn:active { background: #162C46; }
 
-  .segmented { display: flex; border: 1px solid var(--border); border-radius: 10px; overflow: hidden;
-               margin-bottom: 12px; }
-  .seg { flex: 1; background: var(--card); border: none; border-radius: 0; padding: 9px 4px;
-         font-size: 12.5px; font-weight: 700; color: var(--ink-soft); }
-  .seg:not(:last-child) { border-right: 1px solid var(--border); }
-  .seg.active { background: var(--accent); color: #fff; }
+  .segmented { display: flex; gap: var(--s5); border-bottom: 1px solid var(--rule); margin-bottom: var(--s5); }
+  .seg { background: transparent; border: none; border-bottom: 2px solid transparent;
+         padding: var(--s3) var(--s1); min-height: var(--tap); font-family: var(--font-ui);
+         font-size: var(--t-base); font-weight: 700; color: var(--ink-soft); letter-spacing: 0.04em; }
+  @media (hover: hover) { .seg:hover { background: transparent; color: var(--ai); } }
+  .seg.active { color: var(--ai); border-bottom-color: var(--ai); }
 
-  .rankRow { display: flex; align-items: center; gap: 12px; padding: 12px 2px; border-bottom: 1px solid var(--border); }
-  .rankRow.me { background: #FDF6EC; border-radius: 8px; }
-  .rankBadge { width: 22px; height: 22px; border-radius: 50%; flex: none; font-size: 11px; font-weight: 900;
-               display: flex; align-items: center; justify-content: center; background: var(--border); color: var(--ink-soft); }
-  .rankBadge.gold { background: #F0C75E; color: #7A5A0E; }
-  .rankBadge.silver { background: #D9D2C4; color: #6B6152; }
-  .rankBadge.bronze { background: #EDE4D3; color: #9A9080; }
-  .rankName { flex: 1; font-size: 14px; font-weight: 700; color: var(--ink); }
-  .rankScore { font-size: 17px; font-weight: 900; color: var(--accent); }
+  .rankRow { display: flex; align-items: center; gap: var(--s3); padding: var(--s3) 0;
+             min-height: 56px; border-bottom: 1px solid var(--rule); }
+  .rankRow.me { box-shadow: inset 3px 0 0 var(--ai); padding-left: var(--s3); }
+  /* 順位も桝に入れる */
+  .rankBadge { width: 26px; height: 26px; flex: none; font-family: var(--font-mincho);
+               font-size: var(--t-sm); font-weight: 600;
+               display: flex; align-items: center; justify-content: center; background: var(--card);
+               border: 1px solid var(--rule); color: var(--ink-mid); }
+  .rankBadge.gold { background: var(--ai); border-color: var(--ai); color: #fff; }
+  .rankBadge.silver { background: var(--ai-pale); border-color: var(--ai-mid); color: var(--ai); }
+  .rankBadge.bronze { background: var(--card); border-color: var(--ai-mid); color: var(--ai); }
+  .rankName { flex: 1; font-size: var(--t-base); font-weight: 700; color: var(--ink); }
+  .rankScore { font-family: var(--font-mincho); font-size: var(--t-lg); font-weight: 600; color: var(--ink); }
 
-  .inviteCard { border: 1.5px solid var(--accent); border-radius: 14px; padding: 14px 16px;
-                display: flex; align-items: center; justify-content: space-between; gap: 12px; background: #FDF3EE; }
-  .inviteCard.invite { border-color: var(--success); background: var(--success-bg); }
-  .inviteCard.invite button.primary { background: var(--success); border-bottom-color: #2E5D3E; }
+  .inviteCard { border: 1px solid var(--ai); border-left-width: 4px; padding: var(--s4);
+                display: flex; align-items: center; justify-content: space-between; gap: var(--s3);
+                background: var(--card); }
+  .inviteCard.invite { border-color: var(--shu); }
+  .inviteCard.invite button.primary { background: var(--shu); border-color: var(--shu); }
 
-  .radgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(84px,1fr)); gap: 9px; }
+  /* ── 桝目 ───────────────────────────────────────────────────
+     部首一覧・集めた漢字・結果の漢字は、すべて原稿用紙の桝として扱う。
+     罫は1pxの隙間を空け、桝が自分で外周を描く（下地を隙間から覗かせると、
+     最後の行が埋まらないときに余りが色の塊になって見えてしまう） */
+  .radgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(88px,1fr)); gap: 1px; }
   .radbtn {
-    background: var(--card); border: 1px solid var(--border); border-radius: 12px;
-    padding: 10px 4px 8px; text-align: center; cursor: pointer;
+    background: var(--card); border: none; box-shadow: 0 0 0 1px var(--rule);
+    padding: var(--s3) var(--s1) var(--s2); text-align: center; cursor: pointer; min-height: 78px;
   }
-  .radbtn:active { border-color: var(--accent); }
-  .radbtn.done { border-color: var(--success); background: var(--success-bg); }
-  .radbtn .r { font-family: var(--font-kanji); font-size: 28px; line-height: 1.1; font-weight: 700; }
-  .radbtn .n { font-size: 10px; color: var(--ink-faint); }
-  .radbtn .c { font-size: 11px; color: var(--accent); font-weight: 700; }
-  .radbtn.done .c { color: var(--success); }
+  @media (hover: hover) { .radbtn:hover { background: var(--ai-pale); box-shadow: 0 0 0 1px var(--ai-mid); } }
+  .radbtn:active { background: var(--ai-pale); }
+  /* 書き終えた桝は、字を書き入れたあとの桝として藍の淡い面にする */
+  .radbtn.done { background: var(--ai-pale); box-shadow: 0 0 0 1px var(--ai-mid); }
+  .radbtn .r { font-family: var(--font-kanji); font-size: 30px; line-height: 1.2; font-weight: 500; color: var(--ink); }
+  .radbtn .n { font-size: var(--t-xs); color: var(--ink-mid); line-height: 1.5; }
+  .radbtn .c { font-size: var(--t-xs); color: var(--ai); font-weight: 700; line-height: 1.5; }
+  .radbtn.done .c { color: var(--ai); }
 
+  /* ── 対局中の画面 ─────────────────────────────────────────── */
   .topbar {
     display: flex; align-items: center; justify-content: space-between;
-    background: var(--card); border: 1px solid var(--border); border-radius: 14px;
-    padding: 12px 18px; margin-bottom: 14px;
+    border-bottom: 1px solid var(--rule); padding: 0 0 var(--s2); margin-bottom: var(--s3);
   }
-  .topbar:has(#bRoomCodeBox.hidden) { justify-content: center; }
-  .lbl { font-size: 10.5px; color: var(--ink-soft); font-weight: 700; }
-  .streak { font-size: 24px; font-weight: 900; font-variant-numeric: tabular-nums; }
+  .topbarInfo { display: flex; align-items: center; gap: var(--s5); }
+  /* 連続数と見出しは1行に並べて、上端バーの高さを抑える */
+  .streakBox { display: flex; align-items: baseline; gap: var(--s2); }
+  .lbl { font-size: var(--t-xs); color: var(--ai); font-weight: 700; letter-spacing: 0.08em; }
+  .streak { font-family: var(--font-mincho); font-size: var(--t-xl); font-weight: 600;
+            font-variant-numeric: tabular-nums; line-height: 1.2; color: var(--ink); }
+  /* 書いている途中でやめて戻るためのボタン。書き取り欄の下に置くと
+     スクロールしないと押せないので、常に見えている上端バーに置く */
+  .quitBtn { display: inline-flex; align-items: center; justify-content: center;
+             min-height: var(--tap); padding: var(--s2) var(--s4); flex: none;
+             background: var(--card); border: 1px solid var(--edge); color: var(--ink-mid);
+             font-size: var(--t-xs); font-weight: 700; font-family: var(--font-ui); }
 
   .timerWrap { position: relative; width: 52px; height: 52px; flex: none; }
   .timerWrap .ring { position: absolute; inset: 0; transform: rotate(-90deg); }
-  .timerWrap .ringBg { fill: none; stroke: var(--border); stroke-width: 4; }
+  .timerWrap .ringBg { fill: none; stroke: var(--rule); stroke-width: 3; }
   .timerWrap .ringFg {
-    fill: none; stroke: var(--accent); stroke-width: 4; stroke-linecap: round;
+    fill: none; stroke: var(--ai); stroke-width: 3; stroke-linecap: butt;
     stroke-dasharray: 138; stroke-dashoffset: 0; transition: stroke-dashoffset .2s linear, stroke .2s ease;
   }
-  .timerWrap .ringFg.low { stroke: var(--error); }
+  /* 残りわずかは朱。直しの色なので「まずい」ことがひと目で分かる */
+  .timerWrap .ringFg.low { stroke: var(--shu); }
   .timer {
     position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
-    font-size: 17px; font-weight: 900; font-variant-numeric: tabular-nums; color: var(--ink);
+    font-family: var(--font-mincho); font-size: var(--t-lg); font-weight: 600;
+    font-variant-numeric: tabular-nums; color: var(--ink);
   }
-  .timer.low { color: var(--error); }
+  .timer.low { color: var(--shu); }
 
-  .quest { background: var(--card); border: 1px solid var(--border); border-radius: 14px;
-           padding: 18px; margin-bottom: 14px; text-align: center; }
-  /* タイマー行と部首カードを1枚の続いたカードに見せる（箱の重なりを減らす） */
-  #topbarTime, #battlePlayScreen > .topbar {
-    border-radius: 14px 14px 0 0; border-bottom: none; margin-bottom: 0;
-  }
-  #playScreen > .quest, #battlePlayScreen > .quest {
-    border-radius: 0 0 14px 14px; border-top: 1px dashed var(--border); padding-top: 16px;
-  }
-  .radical { font-family: var(--font-kanji); font-size: 58px; line-height: 1; font-weight: 700; }
-  .rad-name { font-size: 13px; color: #6B6152; font-weight: 700; margin-top: 8px; }
-  .rad-meaning { font-size: 11px; color: var(--ink-faint); }
+  /* 出題された部首。この画面で最初に読むものなので、周りを空けて字だけ置く */
+  .quest { padding: var(--s2) 0 var(--s4); margin-bottom: var(--s4); text-align: center;
+           border-bottom: 1px solid var(--rule); }
+  .radLine { display: flex; flex-direction: column; align-items: center; }
+  .radical { font-family: var(--font-kanji); font-size: 72px; line-height: 1.1; font-weight: 500; color: var(--ink); }
+  .rad-name { font-family: var(--font-mincho); font-size: var(--t-md); letter-spacing: 0.18em;
+              color: var(--ink); margin-top: var(--s3); font-weight: 500; }
+  .rad-meaning { font-size: var(--t-sm); color: var(--ink-mid); margin-top: var(--s1); }
 
-  .boxwrap { border-top: 1px solid var(--border); padding: 14px 2px 0; margin-bottom: 14px; }
-  .boxhead { display:flex; justify-content:space-between; align-items:baseline;
-             font-size: 10.5px; color: var(--ink-soft); font-weight:700; margin-bottom:10px; }
-  .boxhead b { font-size: 15px; color: var(--accent); }
-  .boxgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(42px,1fr)); gap: 6px; }
+  .boxwrap { padding: 0 0 var(--s4); margin-bottom: var(--s4); border-bottom: 1px solid var(--rule); }
+  .boxhead { display: flex; justify-content: space-between; align-items: baseline;
+             font-size: var(--t-xs); color: var(--ai); font-weight: 700; margin-bottom: var(--s3); }
+  .boxhead b { font-family: var(--font-mincho); font-size: var(--t-md); color: var(--ink); font-weight: 600; }
+  /* 氵のように対象が100字を超える部首だと桝だけで画面が埋まるので、
+     高さを区切って中をスクロールさせる */
+  .boxgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(44px,1fr)); gap: 1px;
+             max-height: 138px; overflow-y: auto; }
   .box {
-    aspect-ratio: 1; border: 1.5px dashed var(--border); border-radius: 8px;
+    aspect-ratio: 1; border: none; box-shadow: 0 0 0 1px var(--rule);
     display: flex; align-items: center; justify-content: center;
-    font-family: var(--font-kanji); font-size: 22px; background: #FBF8F2; color: var(--ink);
-    font-weight: 700;
+    font-family: var(--font-kanji); font-size: var(--t-lg); background: var(--card); color: var(--ink);
+    font-weight: 500;
   }
-  .box.filled { border: 1.5px solid var(--success); background: var(--success-bg); }
+  .box.filled { background: var(--ai-pale); box-shadow: 0 0 0 1px var(--ai-mid); color: var(--ink); }
 
-  .board { margin-bottom: 14px; }
+  /* 書き取り欄。原稿用紙の桝そのもの。枠は藍、中央の十字も藍の細い点線 */
+  .board { margin-bottom: var(--s4); }
   #can, #canBattle {
-    border: 1.5px solid var(--ink); border-radius: 6px; background-color: #FFFEFB;
+    border: 1px solid var(--ai); background-color: #fff;
     background-image:
-      linear-gradient(to right, var(--border) 1px, transparent 1px),
-      linear-gradient(to bottom, var(--border) 1px, transparent 1px);
-    background-size: 1px 100%, 100% 1px; background-position: center, center; background-repeat: no-repeat;
+      linear-gradient(var(--rule) 1px, transparent 0), linear-gradient(90deg, var(--rule) 1px, transparent 0);
+    background-size: 1px 10px, 10px 1px; background-position: center, center; background-repeat: repeat-y, repeat-x;
     touch-action: none; display: block; margin: 0 auto; cursor: crosshair;
   }
-  .btns-secondary { display: flex; gap: 12px; justify-content: center; margin-top: 14px; flex-wrap: wrap; }
-  .btn-block { display: block; width: 100%; margin-top: 10px; }
+  .btns-secondary { display: flex; gap: var(--s2); justify-content: center; margin-top: var(--s3); flex-wrap: wrap; }
+  /* 3つとも同じ見た目・同じ幅にそろえる。左右の余白が違うと、flexの分配が
+     ずれて1つだけ幅が広くなる */
+  .btns-secondary button, .btns-secondary button.ghost {
+    flex: 1 1 0; min-width: 0; padding: var(--s3) var(--s2);
+    background: var(--card); border: 1px solid var(--edge); color: var(--ai);
+  }
+  @media (hover: hover) { .btns-secondary button:hover { background: var(--ai-pale); border-color: var(--ai-mid); } }
 
-  .picker { margin-top: 14px; }
-  .picker-label { font-size: 11.5px; color: var(--ink-soft); font-weight: 700; margin-bottom: 8px; text-align: center; }
-  .pick-row { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
-  .pick { font-family: var(--font-kanji); font-size: 32px; padding: 8px 16px; border: 1px solid var(--border);
-          border-radius: 12px; background: var(--card); cursor: pointer; line-height: 1.2; font-weight: 700; }
-  .pick:active { background: #FBF3E9; border-color: var(--accent); }
-  .pick small { display: block; font-family: var(--font-ui); font-size: 11px; color: var(--ink-faint); font-weight: 700; }
+  /* 「これでいく」の下は、候補と正誤を出し分ける一つの欄にまとめる。
+     高さを決め打ちにして、候補が出たときに下の内容が押し下がらないようにする
+     （押し下がると、スマホでは結果が画面の外に出てしまう） */
+  .result { min-height: 104px; margin-top: var(--s3); }
+  .result .picker { margin-top: 0; }
+  .result .msg { margin-top: var(--s2); }
 
-  .msg { text-align: center; font-size: 16px; font-weight: 900; margin-top: 14px; min-height: 24px; }
-  .msg.ok { color: var(--success); } .msg.ng { color: var(--error); }
-  .msg.ok::before { content: "✓ "; } .msg.ng::before { content: "✕ "; }
+  /* 認識した候補も桝に入れて見せる。書いた字を選ぶ操作なので大きく取る */
+  .picker { margin-top: var(--s4); }
+  .picker-label { font-size: var(--t-sm); color: var(--ai); font-weight: 700;
+                  margin-bottom: var(--s3); text-align: center; }
+  .pick-row { display: flex; gap: var(--s3); justify-content: center; flex-wrap: nowrap;
+              overflow-x: auto; padding-bottom: var(--s1); }
+  .pick { font-family: var(--font-kanji); font-size: 36px; padding: var(--s3) var(--s5);
+          border: 1px solid var(--edge); background: var(--card); color: var(--ink);
+          cursor: pointer; line-height: 1.2; font-weight: 500; min-height: 84px; }
+  @media (hover: hover) { .pick:hover { background: var(--ai-pale); border-color: var(--ai); } }
+  .pick:active { background: var(--ai-pale); border-color: var(--ai); }
+  .pick small { display: block; font-family: var(--font-ui); font-size: var(--t-xs);
+                color: var(--ink-mid); font-weight: 700; letter-spacing: 0.02em; }
 
-  .usedbox { border-top: 1px solid var(--border); padding: 14px 2px 0; margin-bottom: 14px; }
-  .usedbox .head { display:flex; justify-content:space-between; align-items:baseline;
-                   font-size:10.5px; color: var(--ink-soft); font-weight:700; margin-bottom:8px; }
-  .usedlist { font-family: var(--font-kanji); font-size:19px; line-height:1.7; word-break:break-all;
-              max-height:96px; overflow-y:auto; font-weight: 700; }
-  .usedlist span { margin-right:6px; color: var(--ink-faint); }
-  .usedlist span.cur { color: var(--ink); font-weight:700; }
+  /* 正誤は答案と同じ丸と罰で示す。合っていれば藍、誤りは朱筆の朱 */
+  .msg { text-align: center; font-family: var(--font-mincho); font-size: var(--t-md);
+         font-weight: 600; margin-top: var(--s4); min-height: 28px; line-height: 1.6; }
+  .msg.ok { color: var(--ai); } .msg.ng { color: var(--shu); }
+  .msg.ok::before { content: "○ "; } .msg.ng::before { content: "× "; }
 
-  /* 使用済みが増えてくると一覧から探すのが大変になるので、いま出題されている
-     部首で既に使われた字だけを、折り返して全部見える形で上に出す。 */
-  .usedfocus { background: #FDF3EE; border: 1.5px solid var(--accent); border-radius: 12px;
-               padding: 10px 12px; margin-bottom: 12px; }
-  .usedfocus-head { font-size: 11px; color: var(--accent); font-weight: 700; margin-bottom: 6px; }
-  .usedfocus-head b { font-family: var(--font-kanji); font-size: 17px; font-weight: 700; }
-  .usedfocus-list { display: flex; flex-wrap: wrap; gap: 4px 10px;
-                    font-family: var(--font-kanji); font-size: 21px; font-weight: 700; color: var(--ink); }
+  .usedbox { padding: 0 0 var(--s3); margin-bottom: var(--s3);
+             border-bottom: 1px solid var(--rule); }
+  .usedbox .head { display: flex; justify-content: space-between; align-items: baseline;
+                   font-size: var(--t-xs); color: var(--ai); font-weight: 700; margin-bottom: var(--s2); }
+  .usedlist { font-family: var(--font-kanji); font-size: var(--t-lg); line-height: 1.9; word-break: break-all;
+              max-height: 104px; overflow-y: auto; font-weight: 500; }
+  .usedlist span { margin-right: var(--s2); color: var(--ink-mid); }
+  .usedlist span.cur { color: var(--ink); }
+  .usedempty { font-family: var(--font-ui); font-size: var(--t-sm); color: var(--ink-mid); }
 
-  .usedlane + .usedlane { margin-top: 10px; }
-  .usedlane-label { font-size: 10.5px; color: var(--ink-soft); font-weight: 700; margin-bottom: 4px; }
+  /* 対戦では使った字が増えると探しにくくなるので、いま出題中の部首で
+     既に使われた字だけを折り返して全部見える形で上に抜き出す。
+     藍の淡い面にするのは「既に書き入れた」ことを示す既存の見立て
+     （.radbtn.done・.box.filled と同じ）を通すため */
+  .usedfocus { background: var(--ai-pale); border: 1px solid var(--ai); padding: var(--s1) var(--s3);
+               margin-bottom: var(--s2); display: flex; align-items: center; gap: var(--s3); }
+  .usedfocus-head { font-size: var(--t-xs); color: var(--ai); font-weight: 700;
+                    flex: none; white-space: nowrap; }
+  .usedfocus-head b { font-family: var(--font-kanji); font-size: var(--t-md); font-weight: 500; }
+  .usedfocus-list { flex: 1; min-width: 0; display: flex; flex-wrap: nowrap; overflow-x: auto; gap: var(--s3);
+                    font-family: var(--font-kanji); font-size: var(--t-lg); font-weight: 500; color: var(--ink); }
+  .usedfocus-list span { flex: none; }
+
+  /* 対戦の使った字は自分／相手で列を分け、新しい字が左に来る横スクロールにする */
+  .usedlane { display: flex; align-items: center; gap: var(--s3); }
+  .usedlane + .usedlane { margin-top: var(--s2); }
+  .usedlane-label { font-size: var(--t-xs); color: var(--ink-mid); font-weight: 700;
+                    flex: none; width: 3.4em; white-space: nowrap; }
+  .usedlane .usedlist { flex: 1; min-width: 0; }
   .usedlist-row {
-    display: flex; flex-wrap: nowrap; gap: 8px; max-height: none;
-    overflow-x: auto; overflow-y: hidden; white-space: nowrap; padding-bottom: 4px;
+    display: flex; flex-wrap: nowrap; gap: var(--s2); max-height: none;
+    overflow-x: auto; overflow-y: hidden; white-space: nowrap; padding-bottom: var(--s1);
   }
   .usedlist-row span { margin-right: 0; }
-  .usedempty { font-family: var(--font-ui); font-size:12px; color: var(--ink-faint); }
 
-  .over { text-align: center; padding: 8px 4px; }
-  .over h2 { font-size: 15px; font-weight: 700; color: var(--ink-soft); margin: 0 0 4px; }
-  .over .score { font-size: 58px; font-weight: 900; color: var(--accent); line-height: 1; }
-  .over .score.gold { color: var(--success); }
-  .over .unit { font-size: 12.5px; color: var(--ink-soft); font-weight: 700; margin-top: 2px; }
+  /* ── 結果 ───────────────────────────────────────────────── */
+  .over { text-align: center; padding: var(--s2) 0; }
+  .over h2 { font-family: var(--font-mincho); font-size: var(--t-md); font-weight: 500;
+             color: var(--ink-mid); margin: 0 0 var(--s3); letter-spacing: 0.1em; line-height: 1.35; }
+  /* 記録は自分が書いた結果なので墨。桝に入れて原稿用紙の見立てを通す */
+  .over .score { font-family: var(--font-mincho); font-size: 68px; font-weight: 600; color: var(--ink);
+                 line-height: 1; display: inline-flex; align-items: center; justify-content: center;
+                 min-width: 132px; min-height: 132px; border: 1px solid var(--ai); background: var(--card); }
+  .over .score.gold { background: var(--ai-pale); }
+  .over .unit { font-size: var(--t-sm); color: var(--ink-mid); font-weight: 700; margin-top: var(--s3); }
 
-  .reveal { margin-top: 22px; padding-top: 20px; border-top: 1px solid var(--border); }
-  .reveal-rad { font-family: var(--font-kanji); font-size: 34px; font-weight: 700; line-height: 1; }
-  .reveal-name { font-size: 11.5px; color: var(--ink-faint); margin-top: 4px; }
-  .reveal-lead { font-size: 13.5px; margin: 14px 0 4px; }
-  .reveal-lead b { font-size: 20px; color: var(--accent); }
-  .reveal-sub { font-size: 11px; color: var(--ink-faint); margin-bottom: 14px; }
-  .reveal-origin { font-size: 11.5px; color: var(--ink-soft); line-height: 1.7; margin-bottom: 14px; text-align: left; }
-  .kgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(58px,1fr)); gap: 8px; text-align:center; }
-  .kcell { background: var(--card); border:1px dashed var(--border); border-radius:10px; padding:8px 2px 6px; }
-  .kcell .k { font-family: var(--font-kanji); font-size: 22px; line-height: 1.2; font-weight: 700; }
-  .kcell .r { font-size: 9px; color: var(--ink-soft); margin-top:2px; }
-  .kcell .g { font-size: 8px; color: var(--ink-faint); }
-  .more { font-size: 11.5px; color: var(--ink-faint); margin-top:10px; }
-  .gotbox { margin-top: 18px; font-size: 11.5px; color: var(--ink-soft); }
-  .gotbox .gk { font-family: var(--font-kanji); font-size: 18px; color: var(--success); font-weight:700; margin-right:4px; }
+  .reveal { margin-top: var(--s6); padding-top: var(--s5); border-top: 1px solid var(--rule); }
+  .reveal-rad { font-family: var(--font-kanji); font-size: 40px; font-weight: 500; line-height: 1.1; color: var(--ink); }
+  .reveal-name { font-size: var(--t-sm); color: var(--ink-mid); margin-top: var(--s1); }
+  .reveal-lead { font-size: var(--t-base); margin: var(--s4) 0 var(--s1); }
+  .reveal-lead b { font-family: var(--font-mincho); font-size: var(--t-lg); font-weight: 600; color: var(--ai); }
+  .reveal-sub { font-size: var(--t-sm); color: var(--ink-mid); margin-bottom: var(--s4); }
+  .reveal-origin { font-size: var(--t-sm); color: var(--ink-mid); line-height: 1.9;
+                   margin-bottom: var(--s4); text-align: left; }
+  .kgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(64px,1fr)); gap: 1px; text-align: center; }
+  .kcell { background: var(--card); border: none; box-shadow: 0 0 0 1px var(--rule); padding: var(--s2) var(--s1); }
+  .kcell .k { font-family: var(--font-kanji); font-size: 26px; line-height: 1.3; font-weight: 500; color: var(--ink); }
+  .kcell .r { font-size: var(--t-xs); color: var(--ink-mid); margin-top: var(--s1); line-height: 1.5; }
+  .kcell .g { font-size: var(--t-xs); color: var(--ink-soft); line-height: 1.5; }
+  .more { font-size: var(--t-sm); color: var(--ink-mid); margin-top: var(--s3); }
+  .gotbox { margin-top: var(--s5); font-size: var(--t-sm); color: var(--ink-mid); }
+  .gotbox .gk { font-family: var(--font-kanji); font-size: var(--t-lg); color: var(--ai);
+                font-weight: 500; margin-right: var(--s1); }
 
-  .err { color: var(--error); font-size:13px; line-height:1.8; }
+  .err { color: var(--shu); font-size: var(--t-sm); line-height: 1.8; }
+  /* 取り消せない操作は朱で示す */
+  .danger { color: var(--shu); border-color: var(--shu); }
+  @media (hover: hover) { .danger:hover { background: #FBEEEB; border-color: var(--shu); } }
 
-  .roomTicket { border: 1.5px dashed var(--accent); border-radius: 14px; padding: 18px; text-align: center; }
-  .roomcode { font-size: 36px; font-weight: 900; letter-spacing: 8px; color: var(--accent); }
-  .codeinput { width:100%; padding:12px; font-size:19px; text-align:center; letter-spacing:6px;
-               font-family: inherit; border:1.5px dashed var(--border); border-radius:12px; box-sizing:border-box; }
-  .waitmsg { margin-top:10px; color: var(--ink-soft); font-size:13px; text-align:center; }
-  .turnstatus { font-size:14px; font-weight:700; color: var(--ink); margin-bottom:10px; text-align:center; }
-  .turnstatus.myturn { background: var(--accent); color: #fff; padding: 10px 14px; border-radius: 12px;
-                        animation: turnPulse 1s ease-in-out 2; }
-  @keyframes turnPulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.04); } }
-  .roomlabel { font-size:11px; color: var(--ink-faint); font-weight:700; text-align:center; }
+  /* ── 遊び方を選ぶ画面 ─────────────────────────────────────
+     選べるものが2つしかないので、題字の下を2枚で使い切る。中途半端に
+     余らせるより構図がはっきりし、親指の届く下半分に操作が集まる */
+  #modeScreen { display: flex; flex-direction: column; min-height: calc(100svh - var(--s5) - var(--s7)); }
+  #modeScreen .topnav, #modeScreen h1 { flex: none; }
+  /* 題字は上下に空きを分けて中央に置く。一か所に大きな空白を残すより
+     まとまって見え、選択肢は親指の届く下側に寄る */
+  #modeScreen h1 { margin: auto 0; }
+  .modeList { display: flex; flex-direction: column; gap: 1px; }
+  .modeItem { flex: 1 1 0; min-height: 156px; display: flex; align-items: center; gap: var(--s5);
+              width: 100%; text-align: left; background: var(--card); border: none;
+              box-shadow: 0 0 0 1px var(--ai); padding: var(--s5) var(--s6);
+              font-family: var(--font-ui); cursor: pointer; }
+  @media (hover: hover) { .modeItem:hover { background: var(--ai-pale); } }
+  .modeItem:active { background: var(--ai-pale); }
+  /* 番号は漢数字を小さな桝に入れる */
+  .modeNum { font-family: var(--font-mincho); font-size: var(--t-lg); color: var(--ink);
+             flex: none; width: 40px; height: 40px; box-shadow: 0 0 0 1px var(--ai);
+             display: flex; align-items: center; justify-content: center; line-height: 1; }
+  .modeTxt { flex: 1; }
+  .modeH { font-family: var(--font-mincho); font-size: 30px; font-weight: 600;
+           letter-spacing: 0.08em; color: var(--ink); line-height: 1.3; }
 
-  input[type="range"], input[type="checkbox"] { accent-color: var(--accent); }
+  /* ── 入力欄（記入欄のように下線だけ） ─────────────────────── */
+  .field { margin-bottom: var(--s5); }
+  .fieldLbl { font-size: var(--t-sm); color: var(--ai); font-weight: 700; margin-bottom: var(--s2); }
+  /* 16px未満だとiOSが入力時に画面を勝手に拡大するので、下回らせない */
+  .fieldInput { width: 100%; border: none; background: transparent; padding: var(--s2) var(--s1) var(--s3);
+                border-bottom: 1px solid var(--edge); font-family: var(--font-ui);
+                font-size: 16px; line-height: 1.6; color: var(--ink); box-sizing: border-box; }
+  .fieldInput:focus { border-bottom: 2px solid var(--ai); outline: none; padding-bottom: 11px; }
+  .fieldInput:focus-visible { outline: 2px solid var(--shu); outline-offset: 2px; }
+  .fieldInput::placeholder { color: var(--ink-soft); }
 
-  /* スマホ幅では、入力欄(canvas)とボタンの大きさはそのままに、
-     それ以外の余白・部首表示を詰めて、候補やメッセージがスクロールなしで
-     画面に収まりやすくする。 */
+  .roomTicket { border: 1px solid var(--ai); padding: var(--s5); text-align: center; background: var(--card); }
+  .roomcode { font-family: var(--font-mincho); font-size: 38px; font-weight: 600;
+              letter-spacing: 0.24em; text-indent: 0.24em; color: var(--ink); line-height: 1.3; }
+  .codeinput { width: 100%; padding: var(--s3); font-size: 20px; text-align: center;
+               letter-spacing: 0.2em; text-indent: 0.2em; font-family: var(--font-mincho); color: var(--ink);
+               border: 1px solid var(--edge); background: var(--card); box-sizing: border-box; min-height: var(--tap); }
+  .codeinput:focus { border-color: var(--ai); outline: none; }
+  .waitmsg { margin-top: var(--s3); color: var(--ink-mid); font-size: var(--t-sm); text-align: center; }
+  .turnstatus { font-size: var(--t-base); font-weight: 700; color: var(--ink);
+                margin-bottom: var(--s3); text-align: center; }
+  .turnstatus.myturn { background: var(--ai); color: #fff; padding: var(--s3) var(--s4);
+                       animation: turnPulse 1s ease-in-out 2; }
+  @keyframes turnPulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.02); } }
+  .roomlabel { font-size: var(--t-xs); color: var(--ai); font-weight: 700; text-align: center; letter-spacing: 0.06em; }
+
+  input[type="range"], input[type="checkbox"] { accent-color: var(--ai); }
+  input[type="checkbox"] { width: 22px; height: 22px; }
+
+  /* スマホ幅では、書き取り欄とボタンの大きさはそのままに、周りだけ詰める */
   @media (max-width: 899px) {
-    body { padding: 14px 16px 24px; }
-    .quest { padding: 12px 14px; }
-    #playScreen > .quest, #battlePlayScreen > .quest { padding-top: 12px; }
-    .turnstatus { margin-bottom: 6px; }
-    .turnstatus.myturn { padding: 7px 12px; }
-    .radical { font-size: 42px; }
-    .rad-name { margin-top: 4px; }
-    .board { margin-bottom: 8px; }
-    .btns-secondary { margin-top: 8px; }
-    .btn-block { margin-top: 6px; }
-    .picker { margin-top: 8px; }
-    .picker-label { margin-bottom: 4px; }
-    .msg { margin-top: 8px; min-height: 20px; }
-    .usedbox { padding-top: 10px; margin-bottom: 8px; }
+    body { padding: var(--s4) var(--gutter) var(--s6); }
+    .quest { padding: 0 0 var(--s2); margin-bottom: var(--s3); }
+    /* 部首と読みを横に並べる。縦に積むと書き取り欄に回せる高さがなくなる */
+    .radLine { flex-direction: row; justify-content: center; gap: var(--s4); text-align: left; }
+    .radical { font-size: 52px; line-height: 1; }
+    .rad-name { margin-top: 0; }
+    .turnstatus { margin-bottom: var(--s2); }
+    .turnstatus.myturn { padding: var(--s2) var(--s3); }
+    .board { margin-bottom: var(--s2); }
+    .btns-secondary { margin-top: var(--s2); }
+    .btn-block { margin-top: var(--s2); }
+    .picker { margin-top: var(--s2); }
+    .picker-label { margin-bottom: var(--s2); font-size: var(--t-xs); }
+    .pick { font-size: 32px; min-height: 64px; padding: var(--s2) var(--s4); }
+    .result { min-height: 96px; }
+    .msg { margin-top: var(--s2); min-height: 22px; font-size: var(--t-base); }
+    .usedbox { max-height: 168px; overflow-y: auto; padding-bottom: var(--s2); }
+    /* 対戦は自分と相手の2段あるので、どちらもスクロールせずに見えるよう
+       参照用の字だけ一回り小さくする */
+    .usedlane .usedlist { font-size: var(--t-md); line-height: 1.6; }
+    /* 見出しは残したまま中身だけスクロールさせる */
+    .usedbox .head { position: sticky; top: 0; background: var(--paper); padding-bottom: var(--s1); }
+    .reveal { margin-top: var(--s5); padding-top: var(--s4); }
+  }
+
+  /* 背の低い端末では、参照するための欄をさらに詰めて、書き取り欄と
+     「これでいく」を画面に残すことを優先する */
+  @media (max-height: 760px) {
+    .usedbox { max-height: 104px; }
+    .quest { padding-bottom: var(--s2); margin-bottom: var(--s3); }
+    .radical { font-size: 44px; }
+    .result { min-height: 92px; }
+    .pick { min-height: 62px; font-size: 28px; }
+  }
+
+  /* 幅の狭い端末では、書き取り欄（302px）が左右の余白に収まらず横スクロールが
+     出る。キャンバスはCSSで縮めると線がずれる（KanjiCanvasが画面座標を
+     そのまま使うため）ので、書き取り欄まわりだけ余白の外へ広げて収める */
+  @media (max-width: 359px) {
+    .board { margin-inline: calc(2px - var(--gutter)); }
   }
 
   @media (min-width: 900px) {
-    body { max-width: none; padding: 0 32px 48px; }
-    #loginScreen, #soloScreen, #settingsScreen, #friendsScreen, #profileScreen, #levelScreen, #radScreen, #battleSetupScreen,
-    #overScreen, #battleOverScreen {
-      max-width: 560px; margin: 64px auto 0;
+    :root { --gutter: 32px; }
+    body { max-width: none; padding: 0 var(--gutter) var(--s7); }
+    #loginScreen, #soloScreen, #settingsScreen, #friendsScreen, #profileScreen, #levelScreen, #radScreen,
+    #battleSetupScreen, #overScreen, #battleOverScreen {
+      max-width: 560px; margin: var(--s8) auto 0;
     }
-    #modeScreen { max-width: 760px; margin: 72px auto 0; }
-    #modeScreen .tile { padding: 32px; font-size: 17px; }
-    #modeScreen .tile .icon { width: 52px; height: 52px; }
+    #modeScreen { max-width: 560px; margin: var(--s7) auto 0; min-height: calc(100svh - var(--s7) - var(--s7)); }
 
+    /* 書き取り欄の列はキャンバスの実寸に合わせて固定する。1frにすると
+       300pxのキャンバスの下でボタンだけが横に伸びて幅が揃わない */
     #playScreen, #battlePlayScreen {
-      display: grid; grid-template-columns: 1fr 340px; column-gap: 32px; align-items: start;
-      max-width: 1040px; margin: 48px auto 0;
+      display: grid; grid-template-columns: calc(var(--canvas-size, 340px) + 2px) 340px; column-gap: var(--s7);
+      align-items: start; justify-content: center; margin: var(--s7) auto 0;
     }
     #playScreen > .board, #battlePlayScreen > #bOfferBox, #battlePlayScreen > #bBoard {
       grid-area: board; margin-bottom: 0;
@@ -345,53 +522,54 @@
     #playScreen > #topbarTime, #battlePlayScreen > .topbar { grid-area: top; margin-bottom: 0; }
     #playScreen > .quest, #battlePlayScreen > .quest { grid-area: quest; margin-bottom: 0; }
     #playScreen > #boxwrap, #playScreen > #usedbox, #battlePlayScreen > .usedbox { grid-area: info; margin-bottom: 0; }
-    #playScreen > #giveup, #battlePlayScreen > #bGiveUp { grid-area: giveup; margin-top: 0; }
-    #playScreen { grid-template-areas: "board top" "board quest" "board info" "board giveup"; }
-    #battlePlayScreen { grid-template-areas: "board top" "board quest" "board info" "board giveup"; }
-
-    #can, #canBattle { max-width: 480px; }
+    #playScreen { grid-template-areas: "board top" "board quest" "board info"; }
+    #battlePlayScreen { grid-template-areas: "board top" "board quest" "board info"; }
   }
 </style>
 </head>
 <body>
 
 <div id="loginScreen">
-  <h1 style="text-align:center"><span class="accent">ぶしゅ</span>とり</h1>
-  <div class="tag">部首をつないで、漢字をつぎつぎ書くゲーム</div>
-  <div id="loadErr" class="err hidden"></div>
+  <h1 class="logo">ぶしゅとり</h1>
+  <div id="loadErr" class="err hidden" style="margin-top:16px"></div>
 
-  <div class="segmented" style="margin:14px 0 16px">
+  <div class="segmented" style="margin-top:var(--s6)">
     <button class="seg active" id="authTabSignup">はじめて</button>
     <button class="seg" id="authTabLogin">ログイン</button>
   </div>
 
   <div id="signupForm">
-    <div class="secTitle" style="text-align:left">ニックネームをきめてね</div>
-    <input class="codeinput" id="nicknameInput" placeholder="れい: たろう" maxlength="20"
-           style="letter-spacing:normal;font-size:16px;text-align:left;margin-bottom:10px">
-    <div class="secTitle" style="text-align:left">ユーザー名（ログインにつかう）</div>
-    <input class="codeinput" id="usernameInput" placeholder="れい: taro2015" maxlength="20"
-           style="letter-spacing:normal;font-size:16px;text-align:left;margin-bottom:10px">
-    <div class="secTitle" style="text-align:left">パスワード（4文字以上）</div>
-    <input class="codeinput" id="passwordInput" type="password" placeholder="わすれないでね" maxlength="64"
-           style="letter-spacing:normal;font-size:16px;text-align:left;">
-    <div class="err hidden" id="profileErr" style="margin-top:10px"></div>
-    <button class="primary btn-block" id="createProfileBtn" style="margin-top:10px">はじめる</button>
-    <div style="font-size:10.5px;color:var(--ink-faint);margin-top:12px;line-height:1.6;text-align:center;">
-      はじめると、あなた専用の合言葉コードが発行されます。<br>フレンドに教えて対戦・記録くらべができます。
+    <div class="field">
+      <div class="fieldLbl">なまえ</div>
+      <input class="fieldInput" id="nicknameInput" placeholder="れい: たろう" maxlength="20">
+    </div>
+    <div class="field">
+      <div class="fieldLbl">ユーザー名（ログインにつかう）</div>
+      <input class="fieldInput" id="usernameInput" placeholder="れい: taro2015" maxlength="20">
+    </div>
+    <div class="field">
+      <div class="fieldLbl">パスワード（4文字以上）</div>
+      <input class="fieldInput" id="passwordInput" type="password" placeholder="わすれないでね" maxlength="64">
+    </div>
+    <div class="err hidden" id="profileErr" style="margin-bottom:10px"></div>
+    <button class="primary btn-block" id="createProfileBtn">はじめる</button>
+    <div style="font-size:var(--t-xs);color:var(--ink-mid);margin-top:var(--s4);line-height:1.9;word-break:auto-phrase;">
+      はじめると、あなた専用の合言葉コードが発行されます。フレンドに教えて対戦・記録くらべができます。
       ユーザー名とパスワードは、別の端末からログインするときに使います。
     </div>
   </div>
 
   <div id="loginForm" class="hidden">
-    <div class="secTitle" style="text-align:left">ユーザー名</div>
-    <input class="codeinput" id="loginUsernameInput" placeholder="ユーザー名" maxlength="20"
-           style="letter-spacing:normal;font-size:16px;text-align:left;margin-bottom:10px">
-    <div class="secTitle" style="text-align:left">パスワード</div>
-    <input class="codeinput" id="loginPasswordInput" type="password" placeholder="パスワード" maxlength="64"
-           style="letter-spacing:normal;font-size:16px;text-align:left;">
-    <div class="err hidden" id="loginErr" style="margin-top:10px"></div>
-    <button class="primary btn-block" id="loginBtn" style="margin-top:10px">ログインする</button>
+    <div class="field">
+      <div class="fieldLbl">ユーザー名</div>
+      <input class="fieldInput" id="loginUsernameInput" placeholder="ユーザー名" maxlength="20">
+    </div>
+    <div class="field">
+      <div class="fieldLbl">パスワード</div>
+      <input class="fieldInput" id="loginPasswordInput" type="password" placeholder="パスワード" maxlength="64">
+    </div>
+    <div class="err hidden" id="loginErr" style="margin-bottom:10px"></div>
+    <button class="primary btn-block" id="loginBtn">ログインする</button>
   </div>
 </div>
 
@@ -415,16 +593,19 @@
       </svg>
     </button>
   </div>
-  <h1><span class="accent">ぶしゅ</span>とり</h1>
-  <div class="tag">部首をつないで、漢字をつぎつぎ書くゲーム</div>
-  <div class="tileRow">
-    <button class="tile tile-primary" id="toBattle">
-      <svg class="icon" width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="9" r="2.6"/><path d="M2.8 18.5c0-2.7 2.3-4.5 5.2-4.5s5.2 1.8 5.2 4.5"/><circle cx="17.5" cy="8.5" r="2.2"/><path d="M14.7 13.4c2.3.3 3.8 1.8 3.8 4.3"/></svg>
-      だれかと対戦する
+  <h1 class="logo">ぶしゅとり</h1>
+  <div class="modeList">
+    <button class="modeItem" id="toBattle">
+      <div class="modeNum">一</div>
+      <div class="modeTxt">
+        <div class="modeH">たいせん</div>
+      </div>
     </button>
-    <button class="tile" id="toSolo">
-      <svg class="icon" width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
-      ひとりで練習する
+    <button class="modeItem" id="toSolo">
+      <div class="modeNum">二</div>
+      <div class="modeTxt">
+        <div class="modeH">ひとりで</div>
+      </div>
     </button>
   </div>
 </div>
@@ -458,27 +639,27 @@
 
   <div style="text-align:center;margin-bottom:24px">
     <div class="avatarBig" id="profileAvatarBig">?</div>
-    <div style="font-size:18px;font-weight:900;color:var(--ink);margin-top:10px" id="profileNicknameDisplay">-</div>
-    <div style="font-size:10.5px;color:var(--ink-faint);letter-spacing:0.05em;margin-top:2px" id="profileCodeDisplay">コード ------</div>
+    <div style="font-size:var(--t-lg);font-weight:700;color:var(--ink);margin-top:var(--s3)" id="profileNicknameDisplay">-</div>
+    <div style="font-size:var(--t-xs);color:var(--ink-mid);letter-spacing:0.08em;margin-top:var(--s1)" id="profileCodeDisplay">コード ------</div>
   </div>
 
-  <div class="secTitle" style="text-align:left">ニックネームを変える</div>
+  <div class="secTitle">ニックネームを変える</div>
   <div style="display:flex;gap:8px;margin:10px 0 6px">
     <input class="codeinput" id="renameInput" placeholder="ニックネーム" maxlength="20" style="letter-spacing:normal;font-size:16px;">
     <button class="primary" id="renameBtn" style="flex:none">変更</button>
   </div>
   <div class="err hidden" id="renameErr" style="margin-bottom:14px"></div>
 
-  <div class="secTitle" style="text-align:left;margin-top:22px">自分のタイムアタック記録</div>
+  <div class="secTitle" style="margin-top:var(--s5)">自分のタイムアタック記録</div>
   <div id="profileStats" style="margin-top:10px"></div>
 
-  <div class="secTitle" style="text-align:left;margin-top:22px">ログアウト</div>
-  <div style="font-size:11px;color:var(--ink-faint);margin:6px 0 10px">
+  <div class="secTitle" style="margin-top:var(--s5)">ログアウト</div>
+  <div style="font-size:var(--t-xs);color:var(--ink-mid);margin:var(--s2) 0 var(--s3)">
     この端末からログアウトします。コードとパスワードのしくみがないため、
     一度ログアウトすると同じアカウントには戻れません。別の人がこの端末で
     使う場合などに利用してください。
   </div>
-  <button class="ghost" id="logoutBtn" style="color:var(--error)">ログアウトする</button>
+  <button id="logoutBtn" class="danger">ログアウトする</button>
 </div>
 
 <div id="friendsScreen" class="hidden">
@@ -498,7 +679,7 @@
   <div class="roomTicket" style="margin-bottom:16px">
     <div class="roomlabel">あなたの合言葉コード</div>
     <div class="roomcode" id="myCodeDisplay">------</div>
-    <button class="ghost" id="copyCodeBtn" style="margin-top:6px">コードをコピー</button>
+    <button id="copyCodeBtn" style="margin-top:var(--s3)">コードをコピー</button>
   </div>
 
   <div style="display:flex;gap:8px;margin-bottom:10px">
@@ -511,7 +692,7 @@
 
   <div id="friendsList"></div>
 
-  <div class="secTitle" style="margin:26px 0 10px">ランキング（タイムアタック）</div>
+  <div class="secTitle" style="margin:var(--s5) 0 var(--s3)">ランキング（タイムアタック）</div>
   <div class="segmented" id="rankLevelSeg">
     <button class="seg" data-ranklevel="low">初級</button>
     <button class="seg active" data-ranklevel="elem">中級</button>
@@ -578,17 +759,24 @@
 
 <div id="playScreen" class="hidden">
   <div class="topbar" id="topbarTime">
-    <div><div class="lbl">連続</div><div class="streak" id="streak">0</div></div>
-    <div class="timerWrap">
-      <svg class="ring" viewBox="0 0 52 52"><circle class="ringBg" cx="26" cy="26" r="22"/><circle class="ringFg" id="timerRingFg" cx="26" cy="26" r="22"/></svg>
-      <div class="timer" id="timer">30</div>
+    <button class="quitBtn" id="giveup">やめる</button>
+    <div class="topbarInfo hidden" id="topbarInfo">
+      <div class="streakBox"><span class="lbl">連続</span><span class="streak" id="streak">0</span></div>
+      <div class="timerWrap">
+        <svg class="ring" viewBox="0 0 52 52"><circle class="ringBg" cx="26" cy="26" r="22"/><circle class="ringFg" id="timerRingFg" cx="26" cy="26" r="22"/></svg>
+        <div class="timer" id="timer">30</div>
+      </div>
     </div>
   </div>
 
   <div class="quest">
-    <div class="radical" id="radical">—</div>
-    <div class="rad-name" id="radName"></div>
-    <div class="rad-meaning" id="radMeaning"></div>
+    <div class="radLine">
+      <div class="radical" id="radical">—</div>
+      <div class="radText">
+        <div class="rad-name" id="radName"></div>
+        <div class="rad-meaning" id="radMeaning"></div>
+      </div>
+    </div>
   </div>
 
   <div class="boxwrap hidden" id="boxwrap">
@@ -599,6 +787,11 @@
     <div class="boxgrid" id="boxGrid"></div>
   </div>
 
+  <div class="usedbox" id="usedbox">
+    <div class="head"><span>使った漢字</span><span id="usedCount">0字</span></div>
+    <div class="usedlist usedlist-row" id="usedList"><span class="usedempty">まだありません</span></div>
+  </div>
+
   <div class="board">
     <canvas id="can" width="300" height="300"></canvas>
     <div class="btns-secondary">
@@ -607,19 +800,14 @@
       <button class="passBtn hidden" id="passBtn">パス</button>
     </div>
     <button id="rec" class="primary btn-block">これでいく</button>
-    <div class="picker hidden" id="picker">
-      <div class="picker-label">書いた漢字を選んでください</div>
-      <div class="pick-row" id="pickRow"></div>
+    <div class="result">
+      <div class="picker hidden" id="picker">
+        <div class="picker-label">書いた漢字を選んでください</div>
+        <div class="pick-row" id="pickRow"></div>
+      </div>
+      <div class="msg" id="msg"></div>
     </div>
-    <div class="msg" id="msg"></div>
   </div>
-
-  <div class="usedbox" id="usedbox">
-    <div class="head"><span>使った漢字</span><span id="usedCount">0字</span></div>
-    <div class="usedlist" id="usedList"><span class="usedempty">まだありません</span></div>
-  </div>
-
-  <button class="back hidden" id="giveup">ここでやめる</button>
 </div>
 
 <div id="overScreen" class="over hidden">
@@ -653,8 +841,8 @@
   <div class="waitmsg hidden" id="battleBusy"></div>
 
   <div class="stack" id="battleChoice">
-    <button class="bigbtn" data-battle="quick">ランダムマッチング<small>だれかとすぐに対戦する</small></button>
-    <button class="bigbtn" data-battle="friend">フレンド対戦<small>部屋コードで友だちと対戦する</small></button>
+    <button class="bigbtn" data-battle="quick">すぐに対戦<small>あいている人をさがして、すぐに始める</small></button>
+    <button class="bigbtn" data-battle="friend">部屋コードで対戦<small>コードを教えあって、その相手と対戦する</small></button>
   </div>
 
   <div class="stack hidden" id="battleFriendPanel">
@@ -695,19 +883,24 @@
 
 <div id="battlePlayScreen" class="hidden">
   <div class="topbar">
-    <div id="bRoomCodeBox"><div class="lbl">部屋</div><div class="streak" id="bRoomCode">----</div></div>
-    <div class="timerWrap">
-      <svg class="ring" viewBox="0 0 52 52"><circle class="ringBg" cx="26" cy="26" r="22"/><circle class="ringFg" id="bTimerRingFg" cx="26" cy="26" r="22"/></svg>
-      <div class="timer" id="bTimer">-</div>
+    <button class="quitBtn danger hidden" id="bGiveUp">こうさんする</button>
+    <div class="topbarInfo">
+      <div class="streakBox" id="bRoomCodeBox"><span class="lbl">部屋</span><span class="streak" id="bRoomCode">----</span></div>
+      <div class="timerWrap">
+        <svg class="ring" viewBox="0 0 52 52"><circle class="ringBg" cx="26" cy="26" r="22"/><circle class="ringFg" id="bTimerRingFg" cx="26" cy="26" r="22"/></svg>
+        <div class="timer" id="bTimer">-</div>
+      </div>
     </div>
   </div>
 
   <div class="quest">
     <div class="turnstatus" id="bStatus">-</div>
-    <div id="bRadicalBox" class="hidden">
+    <div id="bRadicalBox" class="radLine hidden">
       <div class="radical" id="bRadical">—</div>
-      <div class="rad-name" id="bRadName"></div>
-      <div class="rad-meaning" id="bRadMeaning"></div>
+      <div class="radText">
+        <div class="rad-name" id="bRadName"></div>
+        <div class="rad-meaning" id="bRadMeaning"></div>
+      </div>
     </div>
   </div>
 
@@ -716,24 +909,10 @@
     <div class="radgrid" id="bOfferRow"></div>
   </div>
 
-  <div class="board hidden" id="bBoard">
-    <canvas id="canBattle" width="300" height="300"></canvas>
-    <div class="btns-secondary">
-      <button id="bUndo" class="ghost">一画戻す</button>
-      <button id="bErase" class="ghost">ぜんぶ消す</button>
-    </div>
-    <button id="bRec" class="primary btn-block">これでいく</button>
-    <div class="picker hidden" id="bPicker">
-      <div class="picker-label">書いた漢字を選んでください</div>
-      <div class="pick-row" id="bPickRow"></div>
-    </div>
-    <div class="msg" id="bMsg"></div>
-  </div>
-
   <div class="usedbox">
     <div class="head"><span>使った漢字</span><span id="bUsedCount">0字</span></div>
     <div class="usedfocus hidden" id="bUsedFocus">
-      <div class="usedfocus-head"><b id="bUsedFocusRad">—</b> でもう使った漢字</div>
+      <div class="usedfocus-head"><b id="bUsedFocusRad">—</b> で使った</div>
       <div class="usedfocus-list" id="bUsedFocusList"></div>
     </div>
     <div class="usedlane">
@@ -746,7 +925,21 @@
     </div>
   </div>
 
-  <button class="back hidden" id="bGiveUp">こうさんする</button>
+  <div class="board hidden" id="bBoard">
+    <canvas id="canBattle" width="300" height="300"></canvas>
+    <div class="btns-secondary">
+      <button id="bUndo" class="ghost">一画戻す</button>
+      <button id="bErase" class="ghost">ぜんぶ消す</button>
+    </div>
+    <button id="bRec" class="primary btn-block">これでいく</button>
+    <div class="result">
+      <div class="picker hidden" id="bPicker">
+        <div class="picker-label">書いた漢字を選んでください</div>
+        <div class="pick-row" id="bPickRow"></div>
+      </div>
+      <div class="msg" id="bMsg"></div>
+    </div>
+  </div>
 </div>
 
 <div id="battleOverScreen" class="over hidden">
@@ -842,6 +1035,8 @@ async function boot() {
   }
   KanjiCanvas.init('can');
   KanjiCanvas.init('canBattle');
+  // 画面の向きや大きさが変わったら、書き取り欄の大きさを測り直す
+  window.addEventListener('resize', () => { fitCanvas('can'); fitCanvas('canBattle'); });
   KanjiRecog.load(); // 最初の判定で待たされないよう、裏で読み込んでおく
   bind();
   bBind();
@@ -1026,14 +1221,14 @@ function startTime(level) {
   state.used = new Set(); state.streak = 0; state.recent = [];
   state.passesLeft = PASS_LIMIT;
   document.getElementById('streak').textContent = '0';
-  document.getElementById('topbarTime').classList.remove('hidden');
+  document.getElementById('topbarInfo').classList.remove('hidden');
   document.getElementById('boxwrap').classList.add('hidden');
   document.getElementById('usedbox').classList.remove('hidden');
-  document.getElementById('giveup').classList.add('hidden');
   document.getElementById('passBtn').classList.remove('hidden');
   renderPassBtn();
   renderUsed();
   show('playScreen');
+  fitCanvas('can');
   nextTurn();
 }
 
@@ -1044,16 +1239,45 @@ function startComplete(rad) {
     .sort((a,b) => (DATA.kanji[a].grade - DATA.kanji[b].grade));
   state.startedAt = Date.now();
   setRadical(rad);
-  document.getElementById('topbarTime').classList.add('hidden');
+  document.getElementById('topbarInfo').classList.add('hidden');
   document.getElementById('boxwrap').classList.remove('hidden');
   document.getElementById('usedbox').classList.add('hidden');
-  document.getElementById('giveup').classList.remove('hidden');
   document.getElementById('passBtn').classList.add('hidden');
   document.getElementById('boxTotal').textContent = state.target.length;
   renderBoxes();
   state.locked = false;
   clearBoard();
   show('playScreen');
+  fitCanvas('can');
+}
+
+// 書き取り欄は、まわりを入れて1画面に収まる大きさに合わせる。
+// キャンバスはCSSで伸縮させると描いた線がずれる（KanjiCanvasが画面上の座標を
+// そのまま canvas の座標として使うため）ので、width/height属性の実寸ごと変える。
+// 認識は書いた字の外接矩形で正規化しているので、大きさを変えても精度は変わらない。
+const CANVAS_MIN = 190;
+const CANVAS_MAX = 340;
+
+function applyCanvasSize(can, px) {
+  if (can.width === px) return;
+  can.width = can.height = px;   // 属性を変えると中身は消えるので、呼び出し側で描き直す
+  KanjiCanvas['w_' + can.id] = px;
+  KanjiCanvas['h_' + can.id] = px;
+}
+
+function fitCanvas(id) {
+  const can = document.getElementById(id);
+  if (!can || !can.offsetParent) return; // 表示されていないと余白を測れない
+  const maxW = Math.min(can.parentElement.clientWidth, CANVAS_MAX);
+  // いちど最小にして、画面にどれだけ余っているかを測る。
+  // documentElement.scrollHeight は画面の高さより小さくならないので、
+  // 中身そのものの高さが分かる body 側で測る。
+  applyCanvasSize(can, CANVAS_MIN);
+  const slack = window.innerHeight - document.body.offsetHeight;
+  applyCanvasSize(can, Math.max(CANVAS_MIN, Math.min(maxW, CANVAS_MIN + slack)));
+  KanjiCanvas.redraw(id);
+  // PC表示では書き取り欄の列幅をこの実寸に合わせる
+  document.documentElement.style.setProperty('--canvas-size', can.width + 'px');
 }
 
 function renderBoxes() {
@@ -1297,7 +1521,8 @@ function gameOver(reason) {
       unit.textContent = `/ ${state.target.length} 字`;
     }
   } else {
-    title.textContent = reason === 'exhausted' ? '出せる部首がなくなりました' : '時間切れ';
+    title.textContent = reason === 'giveup' ? 'とちゅうでやめました'
+      : reason === 'exhausted' ? '出せる部首がなくなりました' : '時間切れ';
     score.textContent = state.streak;
     unit.textContent = '連続で答えられました';
     Players.submitScore(state.level, state.streak);
@@ -1360,7 +1585,7 @@ async function refreshRemovals() {
   el.classList.remove('hidden');
   el.innerHTML = removals.map(r => `
     <div class="inviteCard" style="margin-bottom:8px">
-      <div style="font-size:13px;font-weight:700;color:var(--ink)">${r.from_nickname}さんとのフレンドが解除されました</div>
+      <div style="font-size:var(--t-sm);font-weight:700;color:var(--ink)">${r.from_nickname}さんとのフレンドが解除されました</div>
       <button class="ghost" data-removal-ok="${r.id}">確認した</button>
     </div>`).join('');
   el.querySelectorAll('[data-removal-ok]').forEach(b => {
@@ -1389,7 +1614,7 @@ async function refreshInviteDeclines() {
   el.classList.remove('hidden');
   el.innerHTML = declines.map(d => `
     <div class="inviteCard invite" style="margin-bottom:8px">
-      <div style="font-size:13px;font-weight:700;color:var(--ink)">${d.from_nickname}さんに対戦の誘いを断られました</div>
+      <div style="font-size:var(--t-sm);font-weight:700;color:var(--ink)">${d.from_nickname}さんに対戦の誘いを断られました</div>
       <button class="ghost" data-decline-ok="${d.id}">確認した</button>
     </div>`).join('');
   el.querySelectorAll('[data-decline-ok]').forEach(b => {
@@ -1411,7 +1636,7 @@ async function refreshInviteCancels() {
   el.classList.remove('hidden');
   el.innerHTML = cancels.map(c => `
     <div class="inviteCard invite" style="margin-bottom:8px">
-      <div style="font-size:13px;font-weight:700;color:var(--ink)">${c.from_nickname}さんが対戦の誘いを取り消しました</div>
+      <div style="font-size:var(--t-sm);font-weight:700;color:var(--ink)">${c.from_nickname}さんが対戦の誘いを取り消しました</div>
       <button class="ghost" data-cancel-ok="${c.id}">確認した</button>
     </div>`).join('');
   el.querySelectorAll('[data-cancel-ok]').forEach(b => {
@@ -1432,9 +1657,9 @@ async function refreshFriendRequests() {
   el.classList.remove('hidden');
   el.innerHTML = requests.map(r => `
     <div class="inviteCard" style="margin-bottom:8px">
-      <div style="font-size:13px;font-weight:700;color:var(--ink)">${r.nickname}さんからフレンド申請</div>
+      <div style="font-size:var(--t-sm);font-weight:700;color:var(--ink)">${r.nickname}さんからフレンド申請</div>
       <div style="display:flex;gap:6px">
-        <button class="primary" data-req-accept="${r.code}" style="padding:9px 14px;font-size:12.5px">承認</button>
+        <button class="primary" data-req-accept="${r.code}" style="padding:var(--s2) var(--s3);font-size:var(--t-xs)">承認</button>
         <button class="ghost" data-req-decline="${r.code}">断る</button>
       </div>
     </div>`).join('');
@@ -1463,11 +1688,11 @@ async function refreshInvites() {
   el.innerHTML = invites.map(inv => `
     <div class="inviteCard invite" style="margin-bottom:8px">
       <div>
-        <div style="font-size:13px;font-weight:700;color:var(--ink)">${inv.from_nickname}さんから対戦の誘い</div>
-        <div style="font-size:10.5px;color:var(--ink-soft)">難易度: ${LEVEL_LABEL[inv.level] || inv.level}</div>
+        <div style="font-size:var(--t-sm);font-weight:700;color:var(--ink)">${inv.from_nickname}さんから対戦の誘い</div>
+        <div style="font-size:var(--t-xs);color:var(--ink-mid)">難易度: ${LEVEL_LABEL[inv.level] || inv.level}</div>
       </div>
       <div style="display:flex;gap:6px">
-        <button class="primary" data-accept="${inv.id}" data-room="${inv.room_code}" style="padding:9px 14px;font-size:12.5px">参加する</button>
+        <button class="primary" data-accept="${inv.id}" data-room="${inv.room_code}" style="padding:var(--s2) var(--s3);font-size:var(--t-xs)">参加する</button>
         <button class="ghost" data-decline="${inv.id}">断る</button>
       </div>
     </div>`).join('');
@@ -1762,9 +1987,9 @@ const BATTLE_PARENT_STEP = {
 };
 
 const BATTLE_STEP_TITLE = {
-  battleChoice: 'だれかと対戦する', battleFriendPanel: 'フレンド対戦',
+  battleChoice: 'だれかと対戦する', battleFriendPanel: '部屋コードで対戦',
   battleQuickPanel: '難易度をえらぶ', battleCreatePanel: '難易度をえらぶ',
-  battleJoinPanel: '部屋に入る', battleWaiting: 'フレンド対戦', quickWaiting: 'ランダムマッチング',
+  battleJoinPanel: '部屋に入る', battleWaiting: '部屋コードで対戦', quickWaiting: 'すぐに対戦',
 };
 
 function battleShowStep(step) {
@@ -1956,10 +2181,11 @@ function onBDefend(msg) {
   document.getElementById('bOfferBox').classList.add('hidden');
 
   if (bstate.isDefending) {
-    document.getElementById('bStatus').textContent = `${msg.seconds}秒以内に、この部首を含む漢字を書いてください`;
+    document.getElementById('bStatus').textContent = 'この部首を含む漢字を書いてください';
     document.getElementById('bBoard').classList.remove('hidden');
     document.getElementById('bGiveUp').classList.remove('hidden');
     KanjiCanvas.erase('canBattle');
+    fitCanvas('canBattle');
   } else {
     document.getElementById('bStatus').textContent = '相手が書いています…';
     document.getElementById('bGiveUp').classList.add('hidden');

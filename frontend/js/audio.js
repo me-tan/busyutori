@@ -1,5 +1,12 @@
 "use strict";
-/* 効果音・BGMの再生と音量設定の管理。localStorageに音量を保存する。 */
+/* 効果音・BGMの再生と音量設定の管理。localStorageに音量を保存する。
+ *
+ * <audio>.volume は使わない。iOS Safari（および他のiOSブラウザ全般。WebKit共通の
+ * 制約）はJSからのvolume代入を無視し、常に端末のハード音量で再生してしまうため、
+ * スライダーを動かしても実際の音量が変わらないという不具合になる。
+ * 音量調整はWeb Audio APIのGainNodeで行う（AudioContextを経由した音声処理は
+ * volume代入の制約を受けない）。
+ */
 (function () {
   const SFX_BASE = 'assets/sfx/';
   const BGM_BASE = 'assets/bgm/';
@@ -28,15 +35,49 @@
   }
 
   const settings = loadSettings();
+  const KBAudio = {};
+
+  // AudioContextはユーザー操作（タップ等）の中でないとsuspendedのままになる
+  // ブラウザが多いため、初回のplay/playBgm呼び出し時に遅延生成・resumeする。
+  let ctx = null;
+  let sfxGain = null;
+  let bgmGain = null;
+  function ensureContext() {
+    if (ctx) { if (ctx.state === 'suspended') ctx.resume().catch(() => {}); return ctx; }
+    const Ctx = window.AudioContext || window.webkitAudioContext;
+    if (!Ctx) return null; // 極端に古い環境向けのフォールバックは持たない（対応環境で十分普及しているため）
+    ctx = new Ctx();
+    sfxGain = ctx.createGain();
+    sfxGain.gain.value = settings.muted ? 0 : settings.se;
+    sfxGain.connect(ctx.destination);
+    bgmGain = ctx.createGain();
+    bgmGain.gain.value = settings.muted ? 0 : settings.bgm;
+    bgmGain.connect(ctx.destination);
+    return ctx;
+  }
+
+  // <audio>要素をAudioContextのグラフにつなぐ。1要素につき1回だけ接続できる
+  // （createMediaElementSourceは同じ要素に対して2回呼べない）ので、
+  // 要素ごとに生成したノードをWeakMapで覚えておく。
+  const sourceNodes = new WeakMap();
+  function connectToGain(audioEl, gainNode) {
+    if (!ctx) return;
+    let src = sourceNodes.get(audioEl);
+    if (!src) {
+      src = ctx.createMediaElementSource(audioEl);
+      sourceNodes.set(audioEl, src);
+    }
+    src.connect(gainNode);
+  }
+
   let bgmAudio = null;
   let bgmKey = null;
 
-  const KBAudio = {};
-
   KBAudio.play = function (name) {
     if (settings.muted || settings.se <= 0 || !SFX_FILES[name]) return;
+    const c = ensureContext();
     const a = new Audio(SFX_BASE + SFX_FILES[name]);
-    a.volume = settings.se;
+    if (c) connectToGain(a, sfxGain);
     a.play().catch(() => {});
   };
 
@@ -44,10 +85,11 @@
     if (bgmKey === name && bgmAudio && !bgmAudio.paused) return;
     KBAudio.stopBgm();
     if (!BGM_FILES[name]) return;
+    const c = ensureContext();
     bgmKey = name;
     bgmAudio = new Audio(BGM_BASE + BGM_FILES[name]);
     bgmAudio.loop = true;
-    bgmAudio.volume = settings.muted ? 0 : settings.bgm;
+    if (c) connectToGain(bgmAudio, bgmGain);
     bgmAudio.play().catch(() => {});
   };
 
@@ -60,16 +102,18 @@
 
   KBAudio.setSeVolume = function (v) {
     settings.se = Math.max(0, Math.min(1, v));
+    if (sfxGain) sfxGain.gain.value = settings.muted ? 0 : settings.se;
     saveSettings();
   };
   KBAudio.setBgmVolume = function (v) {
     settings.bgm = Math.max(0, Math.min(1, v));
-    if (bgmAudio) bgmAudio.volume = settings.muted ? 0 : settings.bgm;
+    if (bgmGain) bgmGain.gain.value = settings.muted ? 0 : settings.bgm;
     saveSettings();
   };
   KBAudio.setMuted = function (m) {
     settings.muted = !!m;
-    if (bgmAudio) bgmAudio.volume = settings.muted ? 0 : settings.bgm;
+    if (sfxGain) sfxGain.gain.value = settings.muted ? 0 : settings.se;
+    if (bgmGain) bgmGain.gain.value = settings.muted ? 0 : settings.bgm;
     saveSettings();
   };
 
