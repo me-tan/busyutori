@@ -21,9 +21,11 @@
 - パスワード・メールは持たない。**tokenを紛失するとそのプロフィールは復旧できない**
   （対象年齢・スコープ的にこの割り切りを採用している）。
 
-フレンド追加は一方向・承認不要（コードを入れた時点で自分の一覧に載る。相手が
-追加し返す必要はない）。ランキングは見知らぬ相手のニックネームを公開しないよう、
-自分とフレンドだけの範囲に限定している（全体ランキングは今回作らない）。
+フレンドは申請→承認の相互方式（`friendships`テーブル、`status: pending|accepted`）。
+コードを入れると相手に申請が届き、相手が承認して初めてフレンドになる。両者が
+互いに申請し合っていた場合はクロスしたとみなして即承認になる。ランキングは
+見知らぬ相手のニックネームを公開しないよう、自分とフレンドだけの範囲に
+限定している（全体ランキングは今回作らない）。
 
 対戦への招待は、対戦バックエンド（`backend/`, FastAPI）の部屋コードをこのAPI経由で
 フレンドに渡すだけの「メールボックス」。リアルタイムのプッシュ通知はできないため、
@@ -35,11 +37,15 @@
 | メソッド/パス | 認証 | 内容 |
 |---|---|---|
 | `POST /api/players` | 不要 | `{nickname}` → プロフィール作成。`{code, token, nickname}`を返す（tokenが渡るのはこの時だけ） |
+| `GET /api/players/me` | 必要 | `{code, nickname, best}` → 自分のプロフィール画面用 |
 | `GET /api/players/:code` | 不要 | `{code, nickname}`。コードからの照会用 |
 | `PATCH /api/players/me` | 必要 | `{nickname}` → 改名 |
-| `POST /api/friends` | 必要 | `{code}` → フレンド追加（既に追加済みでも200）。相手の`{code, nickname}`を返す |
-| `GET /api/friends` | 必要 | `{friends: [{code, nickname, best: {low?, elem?, all?}}]}`。`best`はタイムアタックの難易度別ベストストリーク |
-| `DELETE /api/friends/:code` | 必要 | フレンド解除 |
+| `POST /api/friends` | 必要 | `{code}` → フレンド申請を送る（相手が先に送っていればクロス承認）。`{code, nickname, status: "pending"\|"accepted"}`を返す |
+| `GET /api/friends` | 必要 | `{friends: [{code, nickname, best: {low?, elem?, all?}}]}`。承認済みのみ |
+| `GET /api/friends/requests` | 必要 | `{requests: [{code, nickname, created_at}]}`。自分あての未承認の申請 |
+| `POST /api/friends/:code/accept` | 必要 | `code`からの申請を承認する |
+| `POST /api/friends/:code/decline` | 必要 | `code`からの申請を断る |
+| `DELETE /api/friends/:code` | 必要 | フレンド解除（承認済み・未承認どちらでも） |
 | `POST /api/scores` | 必要 | `{level, streak}` → タイムアタック結果を記録（追記のみ。ベストは`MAX(streak)`で都度計算） |
 | `GET /api/ranking?level=elem` | 必要 | `{ranking: [{code, nickname, best, isMe}]}`（自分＋フレンドのみ、best降順） |
 | `POST /api/invites` | 必要 | `{code, room_code, level}` → `code`のフレンドを対戦に誘う（`code`がフレンドでないと400） |
@@ -52,7 +58,9 @@
 ## データ
 
 スキーマは`workers/migrations/`（`0001_init.sql`: players/friends/scores、
-`0002_invites.sql`: invites）。D1無料枠は1日あたり読み取り500万行・書き込み10万行・
+`0002_invites.sql`: invites、`0003_friend_requests.sql`: friendships）。
+`friends`テーブルは`0003`で使わなくなったが、データはそのまま残してある
+（削除していない）。D1無料枠は1日あたり読み取り500万行・書き込み10万行・
 容量5GB（2026年9月時点、超過するとその日はエラーになる）。この規模のアプリなら十分。
 
 ## セットアップ・デプロイ
@@ -62,7 +70,7 @@
    `wrangler.jsonc`の`d1_databases[0].database_id`に書き込む。
 3. `workers/migrations/`配下のファイルを番号順にすべて適用する
    （`wrangler d1 execute kanjinage-users --remote --file=workers/migrations/0001_init.sql`、
-   続けて`0002_invites.sql`も）。
+   続けて`0002_invites.sql`、`0003_friend_requests.sql`も）。
 4. `wrangler deploy` でフロントエンド（`frontend/`）とWorker（`workers/src/index.js`）を
    まとめてデプロイする。
 
@@ -76,5 +84,6 @@
 ```
 wrangler d1 execute kanjinage-users --local --file=workers/migrations/0001_init.sql
 wrangler d1 execute kanjinage-users --local --file=workers/migrations/0002_invites.sql
+wrangler d1 execute kanjinage-users --local --file=workers/migrations/0003_friend_requests.sql
 wrangler dev --local
 ```

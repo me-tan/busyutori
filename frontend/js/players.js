@@ -55,6 +55,27 @@
     return data.friends;
   }
 
+  async function listFriendRequests() {
+    const res = await fetch("/api/friends/requests", { headers: authHeaders() });
+    const data = await readJson(res);
+    return data.requests;
+  }
+
+  async function acceptFriendRequest(code) {
+    const res = await fetch("/api/friends/" + encodeURIComponent(code) + "/accept", { method: "POST", headers: authHeaders() });
+    return readJson(res);
+  }
+
+  async function declineFriendRequest(code) {
+    const res = await fetch("/api/friends/" + encodeURIComponent(code) + "/decline", { method: "POST", headers: authHeaders() });
+    return readJson(res);
+  }
+
+  async function getMe() {
+    const res = await fetch("/api/players/me", { headers: authHeaders() });
+    return readJson(res);
+  }
+
   function submitScore(level, streak) {
     if (!getProfile()) return;
     fetch("/api/scores", { method: "POST", headers: authHeaders(), body: JSON.stringify({ level, streak }) }).catch(() => {});
@@ -85,8 +106,9 @@
   }
 
   window.Players = {
-    getProfile, saveProfile, clearProfile,
+    getProfile, saveProfile, clearProfile, getMe,
     createProfile, renameProfile, addFriend, removeFriend, listFriends, submitScore,
+    listFriendRequests, acceptFriendRequest, declineFriendRequest,
     listRanking, sendInvite, listInvites, dismissInvite,
   };
 })();
