@@ -45,7 +45,7 @@
 | 項目 | 内容 |
 |---|---|
 | フロントエンド | 静的サイト（HTML/CSS/バニラJS、ビルド不要） |
-| 手書き認識 | [KanjiCanvas](https://github.com/asdfjkl/kanjicanvas)（クライアントサイドJS、MIT） |
+| 手書き認識 | [DaKanji単漢字CNN](https://github.com/CaptainDario/DaKanji-Single-Kanji-Recognition)（ONNX 2.2MB、MIT）を[ONNX Runtime Web](https://onnxruntime.ai/)でブラウザ内実行。描画とストローク記録は[KanjiCanvas](https://github.com/asdfjkl/kanjicanvas)（MIT） |
 | バックエンド | Python 3.10以上 + [FastAPI](https://fastapi.tiangolo.com/)（対戦のルーム管理・WebSocket） |
 | フレンド機能 | Cloudflare Workers + D1（`workers/`。ニックネーム・フレンド・記録の永続化） |
 | データ | `radicals.json`（CHISE IDS + KANJIDIC2由来、`scripts/build_radicals.py` で生成） |
@@ -60,8 +60,7 @@
 kanjibattle/
 ├── README.md
 ├── LICENSE                        本プロジェクトのライセンス（MIT）
-├── third_party-licenses/
-│   └── kanjicanvas-LICENSE.TXT    KanjiCanvasのライセンス（同梱必須）
+├── third_party-licenses/          同梱物のライセンス（KanjiCanvas・認識モデル・ONNX Runtime）
 ├── docs/
 │   ├── GAME_DESIGN.md             ルール・データ仕様・設計判断の理由
 │   ├── BACKEND.md                 対戦APIのプロトコル仕様
@@ -70,12 +69,14 @@ kanjibattle/
 ├── frontend/                      静的サイト（そのままどこにでもデプロイ可能）
 │   ├── index.html                 メイン画面（HTML/CSS/JSの本体）
 │   ├── js/
-│   │   ├── vendor/                外部ライブラリ（KanjiCanvas）
+│   │   ├── vendor/                外部ライブラリ（KanjiCanvas、ONNX Runtime Web）
+│   │   ├── recognizer.js          手書き漢字の認識（CNNモデルを動かす）
 │   │   ├── config.js              対戦バックエンドAPIのURL設定
 │   │   ├── net.js                 オンライン対戦の通信クライアント
 │   │   ├── audio.js               効果音・BGMの再生
 │   │   └── players.js             フレンド機能のクライアント（/api/* は同一オリジン）
 │   ├── assets/                    効果音・BGM（Kenney, CC0）
+│   ├── models/                    手書き認識のCNNモデルとラベル
 │   ├── data/
 │   │   └── radicals.json          部首・漢字データ
 │   └── dev/                       手書き判定ロジックの検証用ページ
@@ -144,7 +145,10 @@ python3 -m http.server 5500
 
 ## ライセンス
 
-本プロジェクトは [LICENSE](LICENSE)（MIT）。
-同梱している [KanjiCanvas](https://github.com/asdfjkl/kanjicanvas) は
-[third_party-licenses/kanjicanvas-LICENSE.TXT](third_party-licenses/kanjicanvas-LICENSE.TXT)
-（MIT、バックリンク条項あり）に従う。
+本プロジェクトは [LICENSE](LICENSE)（MIT）。同梱物はそれぞれ以下に従う。
+
+| 同梱物 | ライセンス |
+|---|---|
+| [KanjiCanvas](https://github.com/asdfjkl/kanjicanvas) | [kanjicanvas-LICENSE.TXT](third_party-licenses/kanjicanvas-LICENSE.TXT)（MIT、バックリンク条項あり） |
+| [DaKanji単漢字認識モデル](https://github.com/CaptainDario/DaKanji-Single-Kanji-Recognition) | [dakanji-single-kanji-recognition-LICENSE.TXT](third_party-licenses/dakanji-single-kanji-recognition-LICENSE.TXT)（MIT） |
+| [ONNX Runtime Web](https://onnxruntime.ai/) | [onnxruntime-LICENSE.TXT](third_party-licenses/onnxruntime-LICENSE.TXT)（MIT） |
