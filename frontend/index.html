@@ -4,113 +4,112 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>ぶしゅとり</title>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@500;700;900&family=Noto+Serif+JP:wght@700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@400;500;600;700&family=BIZ+UDPGothic:wght@400;700&display=swap">
 <style>
+  /* 配色は日本の伝統色から（生成り・墨・紅赤）。彩度を落とした3色に絞り、
+     アクセントは紅赤1色だけを使う（和風配色は色数を増やすほど安っぽくなる）。
+     見出し・かな題字・漢字表示はすべてShippori Mincho（常用漢字1542字＋
+     部首65字を検証済み、欠字なし）。UI本文はBIZ UDPGothic（UD書体で可読性を
+     落とさない）。角丸のピルや影を多用する丸ゴシック基調のデザインをやめている。 */
   :root {
-    --paper: #F7F3EC; --card: #fff; --ink: #262019; --ink-soft: #8A8074; --ink-faint: #B0A691;
-    --border: #E4DCCB; --accent: #B8391F; --accent-dark: #8F2B16;
-    --success: #3F7D53; --success-bg: #EAF3EC; --error: #A8433A;
-    --font-ui: "Zen Maru Gothic", "Hiragino Maru Gothic ProN", "Hiragino Sans", "Noto Sans JP", sans-serif;
-    --font-kanji: "Noto Serif JP", "Hiragino Mincho ProN", serif;
+    --paper: #F7F3E9; --surface: #FCFAF4; --card: #fff; --ink: #23201C; --ink-soft: #6B6459; --ink-faint: #A79E8D;
+    --border: rgba(35,32,28,0.14); --border-strong: rgba(35,32,28,0.4); --accent: #C13A38; --accent-dark: #9A2B2A;
+    --success: #5C7A52; --success-bg: #EEF1E7; --error: #96332F;
+    --font-ui: "BIZ UDPGothic", "Hiragino Sans", "Noto Sans JP", sans-serif;
+    --font-mincho: "Shippori Mincho", "Hiragino Mincho ProN", serif;
+    --font-kanji: "Shippori Mincho", "Hiragino Mincho ProN", serif;
   }
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   body {
     font-family: var(--font-ui);
     max-width: 480px; margin: 0 auto; padding: 22px 18px;
-    background: var(--paper); color: var(--ink);
+    color: var(--ink);
+    /* 和紙の繊維のような、ごく薄い斑点のテクスチャ。模様を敷き詰めるのではなく
+       ノイズ量を最小限にとどめる（和風は模様の量ではなく余白で品を出す）。 */
+    background-color: var(--paper);
+    background-image:
+      radial-gradient(rgba(35,32,28,0.028) 1px, transparent 1.3px),
+      radial-gradient(rgba(35,32,28,0.022) 1px, transparent 1.3px);
+    background-size: 11px 11px, 17px 17px; background-position: 0 0, 5px 8px;
+    background-attachment: fixed;
   }
   .hidden { display: none !important; }
   /* 画面全体を白い角丸カードで囲うのをやめた（ページ背景と別色の箱に収まっている
      ように見えるのが「作り物っぽい」印象の一因だったため）。各画面はページの
      背景の上に直接、bodyの余白だけで配置する。 */
-  .navbar { display: flex; align-items: center; gap: 4px; margin-bottom: 20px; min-height: 36px; }
+  .navbar { display: flex; align-items: center; gap: 12px; margin-bottom: 26px; min-height: 36px; }
   .navBack { width: 36px; height: 36px; border-radius: 50%; background: transparent; border: none;
              color: var(--ink); display: flex; align-items: center; justify-content: center;
              flex: none; cursor: pointer; padding: 0; }
-  .navBack:active { background: #F1EAD9; }
-  .navTitle { font-size: 16px; font-weight: 900; color: var(--ink); }
+  .navBack:active { background: rgba(35,32,28,0.06); }
+  .navTitle { font-family: var(--font-mincho); font-size: 17px; font-weight: 600; color: var(--ink); letter-spacing: 0.04em; }
 
-  h1 { font-size: 24px; font-weight: 900; margin: 0 0 6px; text-align: center; }
+  h1 { font-family: var(--font-mincho); font-size: 26px; font-weight: 600; letter-spacing: 0.22em; text-indent: 0.22em;
+       margin: 0 0 8px; text-align: center; }
   h1 .accent { color: var(--accent); }
-  .tag { font-size: 12.5px; color: var(--ink-soft); margin-bottom: 18px; text-align: center; }
+  .tag { font-size: 11.5px; letter-spacing: 0.06em; color: var(--ink-soft); margin-bottom: 18px; text-align: center; }
 
-  .tileRow { display: flex; gap: 14px; }
-  .tile {
-    flex: 1; aspect-ratio: 1; display: flex; flex-direction: column; align-items: center;
-    justify-content: center; gap: 12px; background: var(--card); border: 1.5px solid var(--border);
-    border-radius: 20px; color: var(--ink); font-family: inherit; font-weight: 700; font-size: 14.5px;
-    cursor: pointer; padding: 16px; text-align: center;
-  }
-  .tile:active { background: #F7F1E4; }
-  .tile-primary { background: var(--accent); border-color: var(--accent-dark); color: #fff; }
-  .tile-primary:active { background: var(--accent-dark); }
-  .secTitle { font-size: 12.5px; color: var(--ink-soft); font-weight: 700; margin-bottom: 10px; text-align: center; }
+  .secTitle { font-size: 12px; letter-spacing: 0.05em; color: var(--ink-soft); font-weight: 700; margin-bottom: 10px; text-align: center; }
 
   button {
-    padding: 11px 16px; font-size: 13.5px; font-family: inherit; font-weight: 700;
-    border: none; border-radius: 12px; cursor: pointer; background: #F1EAD9; color: var(--ink);
+    padding: 12px 16px; font-size: 13.5px; font-family: var(--font-ui); font-weight: 700;
+    border: 1px solid var(--border); cursor: pointer; background: var(--surface); color: var(--ink);
   }
   button.primary {
-    background: var(--accent); color: #fff; border-bottom: 3px solid var(--accent-dark);
-    font-size: 15px; padding: 14px;
+    background: var(--ink); color: var(--paper); border: none;
+    font-family: var(--font-mincho); font-weight: 500; font-size: 16px; letter-spacing: 0.24em; text-indent: 0.24em;
+    padding: 15px;
   }
-  button.ghost { background: transparent; color: var(--ink-soft); padding: 6px 4px; }
+  button.primary:active { background: #3A342C; }
+  button.ghost { background: transparent; color: var(--ink-soft); padding: 6px 4px; border: none; }
   button:disabled { opacity: .5; cursor: default; }
-  .back { margin-top: 16px; width: 100%; background: transparent; color: var(--ink-soft); }
-  .passBtn { background: #F1EAD9; color: var(--ink); border: 1.5px dashed var(--border); }
-  .passBtn:active { background: #E8DFC8; }
+  .back { margin-top: 16px; width: 100%; background: transparent; color: var(--ink-soft); border: none; }
+  .passBtn { background: var(--surface); color: var(--ink-soft); border: 1px dashed var(--border-strong); }
+  .passBtn:active { background: #F1EAD8; }
 
-  .avatarChip { width: 34px; height: 34px; border-radius: 50%; background: #FDEDE5; color: var(--accent);
-                display: flex; align-items: center; justify-content: center; font-size: 15px; font-weight: 900;
-                flex: none; border: none; cursor: pointer; padding: 0; }
-  .avatarBig { width: 64px; height: 64px; border-radius: 50%; background: #FDEDE5; color: var(--accent);
-               display: flex; align-items: center; justify-content: center; font-size: 26px; font-weight: 900;
-               margin: 0 auto; }
-  .statRow { display: flex; align-items: center; justify-content: space-between; padding: 12px 2px; border-bottom: 1px solid var(--border); }
-  .statRow .lv { font-size: 13.5px; font-weight: 700; color: var(--ink); }
-  .statRow .sc { font-size: 20px; font-weight: 900; color: var(--accent); }
-  .topnav { display: flex; align-items: center; gap: 10px; margin-bottom: 22px; }
+  .avatarChip { width: 36px; height: 36px; border: 1px solid var(--accent); background: transparent; color: var(--accent);
+                display: flex; align-items: center; justify-content: center; font-family: var(--font-mincho);
+                font-size: 16px; font-weight: 500; flex: none; cursor: pointer; padding: 0; transform: rotate(-2deg); }
+  .avatarBig { width: 60px; height: 60px; border: 1px solid var(--accent); background: transparent; color: var(--accent);
+               display: flex; align-items: center; justify-content: center; font-family: var(--font-mincho);
+               font-size: 24px; font-weight: 500; margin: 0 auto; transform: rotate(-2deg); }
+  .statRow { display: flex; align-items: center; justify-content: space-between; padding: 13px 2px; border-bottom: 1px solid var(--border); }
+  .statRow .lv { font-size: 13px; font-weight: 700; color: var(--ink-soft); letter-spacing: 0.04em; }
+  .statRow .sc { font-family: var(--font-mincho); font-size: 22px; font-weight: 600; color: var(--ink); }
+  .topnav { display: flex; align-items: center; gap: 11px; margin-bottom: 26px; }
   .topnavName { font-size: 13px; line-height: 1.5; text-align: left; }
-  .topnavName div:first-child { font-weight: 700; color: var(--ink); }
-  .topnavName div:last-child { font-size: 9px; color: var(--ink-faint); letter-spacing: 0.05em; }
+  .topnavName div:first-child { font-family: var(--font-mincho); font-weight: 500; color: var(--ink); letter-spacing: 0.03em; }
+  .topnavName div:last-child { font-size: 9px; color: var(--ink-faint); letter-spacing: 0.08em; }
   .iconBtn { position: relative; width: 36px; height: 36px; border-radius: 50%; background: transparent; border: none;
              color: var(--ink-soft); display: flex; align-items: center; justify-content: center;
              flex: none; cursor: pointer; padding: 0; }
-  .iconBtn:active { background: #F1EAD9; }
-  .badgeDot { position: absolute; top: 2px; right: 2px; width: 10px; height: 10px; border-radius: 50%;
-              background: var(--error); border: 2px solid var(--card); }
-  .badgeDot.invite { right: auto; left: 2px; background: var(--success); }
+  .iconBtn:active { background: rgba(35,32,28,0.06); }
+  .badgeDot { position: absolute; top: 4px; right: 4px; width: 7px; height: 7px; border-radius: 50%;
+              background: var(--accent); border: none; }
+  .badgeDot.invite { right: auto; left: 4px; background: var(--success); }
 
-  /* リストの外枠・角丸はstack自身が持ち、overflow:hiddenで子を切り抜く。
-     行ごとに角丸を出し分ける方式は、真ん中の行だけ既定のborder-radiusが
-     上書きされずに残るミスが起きやすいので採用しない。 */
-  .stack { display: flex; flex-direction: column; gap: 0;
-           border: 1.5px solid var(--border); border-radius: 14px; overflow: hidden; }
+  /* リストは角丸をやめ、細い墨色の罫だけで区切る（帳面の罫線のイメージ） */
+  .stack { display: flex; flex-direction: column; gap: 0; border-top: 1px solid var(--border); }
   .bigbtn {
-    position: relative; display: block; width: 100%; text-align: left; font-family: inherit;
-    background: var(--card); border: none; border-radius: 0; color: var(--ink);
-    padding: 16px 34px 16px 16px; font-size: 16px; font-weight: 700; cursor: pointer;
+    position: relative; display: block; width: 100%; text-align: left; font-family: var(--font-ui);
+    background: transparent; border: none; color: var(--ink);
+    padding: 18px 30px 18px 2px; font-size: 15px; font-weight: 700; cursor: pointer;
+    border-bottom: 1px solid var(--border);
   }
-  .stack .bigbtn:not(:last-child) { border-bottom: 1px solid var(--border); }
-  /* アイコン付きの行は、区切り線をアイコン分だけ内側にずらす（iOSの設定リストと同じ見せ方） */
-  .stack .bigbtn.has-icon:not(:last-child) { border-bottom: none; }
-  .stack .bigbtn.has-icon:not(:last-child)::before {
-    content: ""; position: absolute; left: 54px; right: 16px; bottom: 0; height: 1px; background: var(--border);
-  }
-  .bigbtn:active { background: #F7F1E4; }
+  .bigbtn.has-icon { padding-left: 44px; }
+  .bigbtn:active { background: rgba(35,32,28,0.035); }
   .bigbtn::after {
-    content: ""; position: absolute; right: 18px; top: 50%; width: 7px; height: 7px;
-    border-right: 2px solid var(--ink-faint); border-bottom: 2px solid var(--ink-faint);
+    content: ""; position: absolute; right: 4px; top: 50%; width: 6px; height: 6px;
+    border-right: 1.5px solid var(--ink-faint); border-bottom: 1.5px solid var(--ink-faint);
     transform: translateY(-60%) rotate(-45deg);
   }
-  .bigbtn small { display: block; font-size: 11.5px; color: var(--ink-faint); font-weight: 500; margin-top: 3px; line-height: 1.5; }
-  .bigbtn.has-icon { padding-left: 54px; }
-  .bigbtn .icon { position: absolute; left: 16px; top: 16px; }
+  .bigbtn small { display: block; font-size: 11.5px; color: var(--ink-faint); font-weight: 500; margin-top: 5px; line-height: 1.6; }
+  .bigbtn .icon { position: absolute; left: 2px; top: 18px; color: var(--accent); }
 
   .settingsList { border-top: 1px solid var(--border); }
   .settingRow {
     display: flex; align-items: center; justify-content: space-between; gap: 16px;
-    padding: 16px 2px; border-bottom: 1px solid var(--border);
+    padding: 18px 2px; border-bottom: 1px solid var(--border);
   }
   .settingLbl { display: flex; align-items: center; gap: 10px; font-size: 14px; font-weight: 700; color: var(--ink); }
   .settingLbl svg { color: var(--ink-soft); flex: none; }
@@ -118,173 +117,187 @@
 
   .friendsList { border-top: 1px solid var(--border); }
   .friendRow { display: flex; align-items: center; justify-content: space-between; gap: 10px;
-               padding: 14px 2px; border-bottom: 1px solid var(--border); }
+               padding: 15px 2px; border-bottom: 1px solid var(--border); }
   .friendName { font-size: 14px; font-weight: 700; color: var(--ink); }
-  .friendCode { font-size: 10px; color: var(--ink-faint); letter-spacing: 0.05em; }
+  .friendCode { font-size: 10px; color: var(--ink-faint); letter-spacing: 0.06em; }
   .friendBest { display: flex; gap: 8px; font-size: 11px; color: var(--ink-soft); flex: none; }
-  .friendBest b { color: var(--accent); font-size: 13px; }
+  .friendBest b { font-family: var(--font-mincho); color: var(--ink); font-size: 13px; font-weight: 600; }
   .friendRemove { background: transparent; border: none; color: var(--ink-faint); font-size: 11px;
                   font-weight: 700; padding: 4px; flex: none; }
   .friendActions { display: flex; align-items: center; gap: 6px; flex: none; }
-  .inviteBtn { display: flex; align-items: center; gap: 5px; background: #FDEDE5; border: none;
-               border-radius: 10px; padding: 8px 12px; color: var(--accent); font-size: 11px;
-               font-weight: 700; font-family: inherit; }
-  .inviteBtn.cancel { background: #F1EAD9; color: var(--ink-soft); }
+  .inviteBtn { display: flex; align-items: center; gap: 5px; background: transparent; border: 1px solid var(--accent);
+               padding: 7px 11px; color: var(--accent); font-size: 11px;
+               font-weight: 700; font-family: var(--font-ui); }
+  .inviteBtn.cancel { border-color: var(--border-strong); color: var(--ink-soft); }
   .levelPicker { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
-  .levelPickBtn { background: var(--accent); color: #fff; border: none; border-radius: 10px;
-                  padding: 8px 10px; font-size: 11px; font-weight: 700; font-family: inherit; }
-  .levelPickBtn:active { background: var(--accent-dark); }
+  .levelPickBtn { background: var(--ink); color: var(--paper); border: none;
+                  padding: 8px 10px; font-size: 11px; font-weight: 700; font-family: var(--font-ui); }
+  .levelPickBtn:active { background: #3A342C; }
 
-  .segmented { display: flex; border: 1px solid var(--border); border-radius: 10px; overflow: hidden;
-               margin-bottom: 12px; }
-  .seg { flex: 1; background: var(--card); border: none; border-radius: 0; padding: 9px 4px;
-         font-size: 12.5px; font-weight: 700; color: var(--ink-soft); }
-  .seg:not(:last-child) { border-right: 1px solid var(--border); }
-  .seg.active { background: var(--accent); color: #fff; }
+  /* タブは箱で囲まず、選択中の下だけ紅赤の線を引く（帳面の付箋のイメージ） */
+  .segmented { display: flex; gap: 22px; border-bottom: 1px solid var(--border); margin-bottom: 20px; }
+  .seg { background: transparent; border: none; padding: 8px 2px 12px; font-family: var(--font-ui);
+         font-size: 13px; font-weight: 700; color: var(--ink-faint); letter-spacing: 0.04em; }
+  .seg.active { color: var(--ink); box-shadow: inset 0 -2px 0 var(--accent); }
 
-  .rankRow { display: flex; align-items: center; gap: 12px; padding: 12px 2px; border-bottom: 1px solid var(--border); }
-  .rankRow.me { background: #FDF6EC; border-radius: 8px; }
-  .rankBadge { width: 22px; height: 22px; border-radius: 50%; flex: none; font-size: 11px; font-weight: 900;
-               display: flex; align-items: center; justify-content: center; background: var(--border); color: var(--ink-soft); }
-  .rankBadge.gold { background: #F0C75E; color: #7A5A0E; }
-  .rankBadge.silver { background: #D9D2C4; color: #6B6152; }
-  .rankBadge.bronze { background: #EDE4D3; color: #9A9080; }
+  .rankRow { display: flex; align-items: center; gap: 12px; padding: 13px 2px; border-bottom: 1px solid var(--border); }
+  .rankRow.me { box-shadow: inset 2px 0 0 var(--accent); padding-left: 10px; }
+  .rankBadge { width: 20px; height: 20px; border-radius: 50%; flex: none; font-family: var(--font-mincho);
+               font-size: 11px; font-weight: 600;
+               display: flex; align-items: center; justify-content: center; background: transparent;
+               border: 1px solid var(--border-strong); color: var(--ink-soft); }
+  .rankBadge.gold { background: #E6B84D; border-color: #E6B84D; color: #5C4310; }
+  .rankBadge.silver { background: #C9C2B0; border-color: #C9C2B0; color: #4E4A3E; }
+  .rankBadge.bronze { background: #D0A97A; border-color: #D0A97A; color: #4E3A20; }
   .rankName { flex: 1; font-size: 14px; font-weight: 700; color: var(--ink); }
-  .rankScore { font-size: 17px; font-weight: 900; color: var(--accent); }
+  .rankScore { font-family: var(--font-mincho); font-size: 18px; font-weight: 600; color: var(--ink); }
 
-  .inviteCard { border: 1.5px solid var(--accent); border-radius: 14px; padding: 14px 16px;
-                display: flex; align-items: center; justify-content: space-between; gap: 12px; background: #FDF3EE; }
-  .inviteCard.invite { border-color: var(--success); background: var(--success-bg); }
-  .inviteCard.invite button.primary { background: var(--success); border-bottom-color: #2E5D3E; }
+  .inviteCard { border: 1px solid var(--accent); padding: 15px 16px;
+                display: flex; align-items: center; justify-content: space-between; gap: 12px; background: var(--surface); }
+  .inviteCard.invite { border-color: var(--success); }
+  .inviteCard.invite button.primary { background: var(--success); }
 
-  .radgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(84px,1fr)); gap: 9px; }
+  .radgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(84px,1fr)); gap: 1px; background: var(--border); }
   .radbtn {
-    background: var(--card); border: 1px solid var(--border); border-radius: 12px;
-    padding: 10px 4px 8px; text-align: center; cursor: pointer;
+    background: var(--surface); border: none;
+    padding: 12px 4px 10px; text-align: center; cursor: pointer;
   }
-  .radbtn:active { border-color: var(--accent); }
-  .radbtn.done { border-color: var(--success); background: var(--success-bg); }
-  .radbtn .r { font-family: var(--font-kanji); font-size: 28px; line-height: 1.1; font-weight: 700; }
+  .radbtn:active { background: #F1EAD8; }
+  .radbtn.done { background: var(--success-bg); }
+  .radbtn .r { font-family: var(--font-kanji); font-size: 28px; line-height: 1.1; font-weight: 500; }
   .radbtn .n { font-size: 10px; color: var(--ink-faint); }
   .radbtn .c { font-size: 11px; color: var(--accent); font-weight: 700; }
   .radbtn.done .c { color: var(--success); }
 
   .topbar {
     display: flex; align-items: center; justify-content: space-between;
-    background: var(--card); border: 1px solid var(--border); border-radius: 14px;
-    padding: 12px 18px; margin-bottom: 14px;
+    border-bottom: 1px solid var(--border); padding: 4px 2px 18px; margin-bottom: 18px;
   }
   .topbar:has(#bRoomCodeBox.hidden) { justify-content: center; }
-  .lbl { font-size: 10.5px; color: var(--ink-soft); font-weight: 700; }
-  .streak { font-size: 24px; font-weight: 900; font-variant-numeric: tabular-nums; }
+  .lbl { font-size: 10px; color: var(--ink-soft); font-weight: 700; letter-spacing: 0.1em; }
+  .streak { font-family: var(--font-mincho); font-size: 26px; font-weight: 600; font-variant-numeric: tabular-nums; }
 
-  .timerWrap { position: relative; width: 52px; height: 52px; flex: none; }
+  .timerWrap { position: relative; width: 48px; height: 48px; flex: none; }
   .timerWrap .ring { position: absolute; inset: 0; transform: rotate(-90deg); }
-  .timerWrap .ringBg { fill: none; stroke: var(--border); stroke-width: 4; }
+  .timerWrap .ringBg { fill: none; stroke: var(--border); stroke-width: 3; }
   .timerWrap .ringFg {
-    fill: none; stroke: var(--accent); stroke-width: 4; stroke-linecap: round;
+    fill: none; stroke: var(--accent); stroke-width: 3; stroke-linecap: round;
     stroke-dasharray: 138; stroke-dashoffset: 0; transition: stroke-dashoffset .2s linear, stroke .2s ease;
   }
   .timerWrap .ringFg.low { stroke: var(--error); }
   .timer {
     position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
-    font-size: 17px; font-weight: 900; font-variant-numeric: tabular-nums; color: var(--ink);
+    font-family: var(--font-mincho); font-size: 16px; font-weight: 600; font-variant-numeric: tabular-nums; color: var(--ink);
   }
   .timer.low { color: var(--error); }
 
-  .quest { background: var(--card); border: 1px solid var(--border); border-radius: 14px;
-           padding: 18px; margin-bottom: 14px; text-align: center; }
-  /* タイマー行と部首カードを1枚の続いたカードに見せる（箱の重なりを減らす） */
-  #topbarTime, #battlePlayScreen > .topbar {
-    border-radius: 14px 14px 0 0; border-bottom: none; margin-bottom: 0;
-  }
-  #playScreen > .quest, #battlePlayScreen > .quest {
-    border-radius: 0 0 14px 14px; border-top: 1px dashed var(--border); padding-top: 16px;
-  }
-  .radical { font-family: var(--font-kanji); font-size: 58px; line-height: 1; font-weight: 700; }
-  .rad-name { font-size: 13px; color: #6B6152; font-weight: 700; margin-top: 8px; }
-  .rad-meaning { font-size: 11px; color: var(--ink-faint); }
+  .quest { padding: 0 0 24px; margin-bottom: 4px; text-align: center; border-bottom: 1px dashed var(--border); }
+  .radical { font-family: var(--font-kanji); font-size: 60px; line-height: 1; font-weight: 500; }
+  .rad-name { font-family: var(--font-mincho); font-size: 13.5px; letter-spacing: 0.2em; color: var(--ink-soft); margin-top: 12px; font-weight: 500; }
+  .rad-meaning { font-size: 11px; color: var(--ink-faint); margin-top: 2px; }
 
-  .boxwrap { border-top: 1px solid var(--border); padding: 14px 2px 0; margin-bottom: 14px; }
+  .boxwrap { border-top: 1px solid var(--border); padding: 16px 2px 0; margin-bottom: 14px; }
   .boxhead { display:flex; justify-content:space-between; align-items:baseline;
              font-size: 10.5px; color: var(--ink-soft); font-weight:700; margin-bottom:10px; }
-  .boxhead b { font-size: 15px; color: var(--accent); }
-  .boxgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(42px,1fr)); gap: 6px; }
+  .boxhead b { font-family: var(--font-mincho); font-size: 16px; color: var(--ink); font-weight: 600; }
+  .boxgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(42px,1fr)); gap: 1px; background: var(--border); }
   .box {
-    aspect-ratio: 1; border: 1.5px dashed var(--border); border-radius: 8px;
+    aspect-ratio: 1; border: none;
     display: flex; align-items: center; justify-content: center;
-    font-family: var(--font-kanji); font-size: 22px; background: #FBF8F2; color: var(--ink);
-    font-weight: 700;
+    font-family: var(--font-kanji); font-size: 22px; background: var(--surface); color: var(--ink);
+    font-weight: 500;
   }
-  .box.filled { border: 1.5px solid var(--success); background: var(--success-bg); }
+  .box.filled { background: var(--success-bg); color: var(--success); }
 
-  .board { margin-bottom: 14px; }
+  .board { margin-bottom: 16px; }
+  /* 原稿用紙の書き取り欄をモチーフに、中央十字ガイドとトンボ（角の目印）を置く。
+     字の中心を取りやすくする実用上のガイドでもある。 */
   #can, #canBattle {
-    border: 1.5px solid var(--ink); border-radius: 6px; background-color: #FFFEFB;
+    border: 1px solid var(--border-strong); background-color: var(--surface);
     background-image:
-      linear-gradient(to right, var(--border) 1px, transparent 1px),
-      linear-gradient(to bottom, var(--border) 1px, transparent 1px);
-    background-size: 1px 100%, 100% 1px; background-position: center, center; background-repeat: no-repeat;
+      linear-gradient(rgba(35,32,28,0.16) 1px, transparent 0), linear-gradient(90deg, rgba(35,32,28,0.16) 1px, transparent 0);
+    background-size: 1px 9px, 9px 1px; background-position: center, center; background-repeat: repeat-y, repeat-x;
     touch-action: none; display: block; margin: 0 auto; cursor: crosshair;
   }
-  .btns-secondary { display: flex; gap: 12px; justify-content: center; margin-top: 14px; flex-wrap: wrap; }
-  .btn-block { display: block; width: 100%; margin-top: 10px; }
+  .btns-secondary { display: flex; gap: 4px; justify-content: center; margin-top: 16px; flex-wrap: wrap; }
+  .btn-block { display: block; width: 100%; margin-top: 12px; }
 
-  .picker { margin-top: 14px; }
-  .picker-label { font-size: 11.5px; color: var(--ink-soft); font-weight: 700; margin-bottom: 8px; text-align: center; }
+  .picker { margin-top: 16px; }
+  .picker-label { font-size: 11px; letter-spacing: 0.04em; color: var(--ink-soft); font-weight: 700; margin-bottom: 9px; text-align: center; }
   .pick-row { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
-  .pick { font-family: var(--font-kanji); font-size: 32px; padding: 8px 16px; border: 1px solid var(--border);
-          border-radius: 12px; background: var(--card); cursor: pointer; line-height: 1.2; font-weight: 700; }
-  .pick:active { background: #FBF3E9; border-color: var(--accent); }
+  .pick { font-family: var(--font-kanji); font-size: 32px; padding: 9px 18px; border: 1px solid var(--border);
+          background: var(--surface); cursor: pointer; line-height: 1.2; font-weight: 500; }
+  .pick:active { background: #F1EAD8; border-color: var(--accent); }
   .pick small { display: block; font-family: var(--font-ui); font-size: 11px; color: var(--ink-faint); font-weight: 700; }
 
-  .msg { text-align: center; font-size: 16px; font-weight: 900; margin-top: 14px; min-height: 24px; }
+  .msg { text-align: center; font-family: var(--font-mincho); font-size: 16px; font-weight: 600; margin-top: 16px; min-height: 24px; }
   .msg.ok { color: var(--success); } .msg.ng { color: var(--error); }
   .msg.ok::before { content: "✓ "; } .msg.ng::before { content: "✕ "; }
 
-  .usedbox { border-top: 1px solid var(--border); padding: 14px 2px 0; margin-bottom: 14px; }
+  .usedbox { border-top: 1px solid var(--border); padding: 16px 2px 0; margin-bottom: 14px; }
   .usedbox .head { display:flex; justify-content:space-between; align-items:baseline;
-                   font-size:10.5px; color: var(--ink-soft); font-weight:700; margin-bottom:8px; }
-  .usedlist { font-family: var(--font-kanji); font-size:19px; line-height:1.7; word-break:break-all;
-              max-height:96px; overflow-y:auto; font-weight: 700; }
-  .usedlist span { margin-right:6px; color: var(--ink-faint); }
-  .usedlist span.cur { color: var(--ink); font-weight:700; }
+                   font-size:10.5px; color: var(--ink-soft); font-weight:700; margin-bottom:9px; }
+  .usedlist { font-family: var(--font-kanji); font-size:19px; line-height:1.8; word-break:break-all;
+              max-height:96px; overflow-y:auto; font-weight: 500; }
+  .usedlist span { margin-right:8px; color: var(--ink-faint); }
+  .usedlist span.cur { color: var(--ink); font-weight:500; }
   .usedempty { font-family: var(--font-ui); font-size:12px; color: var(--ink-faint); }
 
   .over { text-align: center; padding: 8px 4px; }
-  .over h2 { font-size: 15px; font-weight: 700; color: var(--ink-soft); margin: 0 0 4px; }
-  .over .score { font-size: 58px; font-weight: 900; color: var(--accent); line-height: 1; }
+  .over h2 { font-family: var(--font-mincho); font-size: 15px; font-weight: 500; color: var(--ink-soft); margin: 0 0 4px; letter-spacing: 0.1em; }
+  .over .score { font-family: var(--font-mincho); font-size: 56px; font-weight: 600; color: var(--accent); line-height: 1; }
   .over .score.gold { color: var(--success); }
-  .over .unit { font-size: 12.5px; color: var(--ink-soft); font-weight: 700; margin-top: 2px; }
+  .over .unit { font-size: 12px; color: var(--ink-soft); font-weight: 700; margin-top: 4px; letter-spacing: 0.02em; }
 
-  .reveal { margin-top: 22px; padding-top: 20px; border-top: 1px solid var(--border); }
-  .reveal-rad { font-family: var(--font-kanji); font-size: 34px; font-weight: 700; line-height: 1; }
+  .reveal { margin-top: 24px; padding-top: 22px; border-top: 1px dashed var(--border); }
+  .reveal-rad { font-family: var(--font-kanji); font-size: 34px; font-weight: 500; line-height: 1; }
   .reveal-name { font-size: 11.5px; color: var(--ink-faint); margin-top: 4px; }
-  .reveal-lead { font-size: 13.5px; margin: 14px 0 4px; }
-  .reveal-lead b { font-size: 20px; color: var(--accent); }
+  .reveal-lead { font-size: 13px; margin: 16px 0 4px; }
+  .reveal-lead b { font-family: var(--font-mincho); font-size: 19px; font-weight: 600; color: var(--accent); }
   .reveal-sub { font-size: 11px; color: var(--ink-faint); margin-bottom: 14px; }
-  .reveal-origin { font-size: 11.5px; color: var(--ink-soft); line-height: 1.7; margin-bottom: 14px; text-align: left; }
-  .kgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(58px,1fr)); gap: 8px; text-align:center; }
-  .kcell { background: var(--card); border:1px dashed var(--border); border-radius:10px; padding:8px 2px 6px; }
-  .kcell .k { font-family: var(--font-kanji); font-size: 22px; line-height: 1.2; font-weight: 700; }
+  .reveal-origin { font-size: 11.5px; color: var(--ink-soft); line-height: 1.8; margin-bottom: 16px; text-align: left; }
+  .kgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(58px,1fr)); gap: 1px; background: var(--border); text-align:center; }
+  .kcell { background: var(--surface); border: none; padding:9px 2px 7px; }
+  .kcell .k { font-family: var(--font-kanji); font-size: 22px; line-height: 1.2; font-weight: 500; }
   .kcell .r { font-size: 9px; color: var(--ink-soft); margin-top:2px; }
   .kcell .g { font-size: 8px; color: var(--ink-faint); }
   .more { font-size: 11.5px; color: var(--ink-faint); margin-top:10px; }
   .gotbox { margin-top: 18px; font-size: 11.5px; color: var(--ink-soft); }
-  .gotbox .gk { font-family: var(--font-kanji); font-size: 18px; color: var(--success); font-weight:700; margin-right:4px; }
+  .gotbox .gk { font-family: var(--font-kanji); font-size: 18px; color: var(--success); font-weight:500; margin-right:4px; }
 
   .err { color: var(--error); font-size:13px; line-height:1.8; }
 
-  .roomTicket { border: 1.5px dashed var(--accent); border-radius: 14px; padding: 18px; text-align: center; }
-  .roomcode { font-size: 36px; font-weight: 900; letter-spacing: 8px; color: var(--accent); }
-  .codeinput { width:100%; padding:12px; font-size:19px; text-align:center; letter-spacing:6px;
-               font-family: inherit; border:1.5px dashed var(--border); border-radius:12px; box-sizing:border-box; }
+  /* モード選択の大きな一覧。番号は漢数字で振り、タイルやアイコンに頼らない */
+  .modeList { margin-top: 44px; border-top: 1px solid var(--border); }
+  .modeItem { display: flex; align-items: flex-start; gap: 18px; width: 100%; text-align: left;
+              background: none; border: none; border-bottom: 1px solid var(--border);
+              padding: 24px 2px; font-family: var(--font-ui); min-height: 88px; cursor: pointer; }
+  .modeItem:active { background: rgba(35,32,28,0.035); }
+  .modeNum { font-family: var(--font-mincho); font-size: 15px; color: var(--accent); flex: none; padding-top: 4px; width: 16px; }
+  .modeTxt { flex: 1; }
+  .modeH { font-family: var(--font-mincho); font-size: 19px; font-weight: 500; letter-spacing: 0.08em; color: var(--ink); }
+  .modeD { font-size: 11.5px; color: var(--ink-soft); margin-top: 7px; line-height: 1.7; }
+  .modeArrow { color: var(--ink-faint); flex: none; padding-top: 6px; }
+
+  /* 帳面の記入欄のような下線だけの入力欄。ニックネーム・ユーザー名・パスワード等の
+     文字入力に使う（部屋コードのような「コード」入力は引き続き.codeinputを使う） */
+  .field { margin-bottom: 24px; }
+  .fieldLbl { font-size: 10.5px; letter-spacing: 0.12em; color: var(--ink-faint); margin-bottom: 8px; }
+  .fieldInput { width: 100%; border: none; background: transparent; padding: 4px 2px 9px;
+                border-bottom: 1px solid var(--border-strong); font-family: var(--font-mincho);
+                font-size: 16px; color: var(--ink); box-sizing: border-box; }
+  .fieldInput::placeholder { color: var(--ink-faint); }
+
+  .roomTicket { border: 1px solid var(--accent); padding: 20px; text-align: center; }
+  .roomcode { font-family: var(--font-mincho); font-size: 34px; font-weight: 600; letter-spacing: 0.3em; text-indent: 0.3em; color: var(--accent); }
+  .codeinput { width:100%; padding:13px; font-size:18px; text-align:center; letter-spacing:0.24em; text-indent: 0.24em;
+               font-family: var(--font-mincho); border: 1px solid var(--border-strong); background: var(--surface); box-sizing:border-box; }
   .waitmsg { margin-top:10px; color: var(--ink-soft); font-size:13px; text-align:center; }
   .turnstatus { font-size:14px; font-weight:700; color: var(--ink); margin-bottom:10px; text-align:center; }
-  .turnstatus.myturn { background: var(--accent); color: #fff; padding: 10px 14px; border-radius: 12px;
+  .turnstatus.myturn { background: var(--ink); color: var(--paper); padding: 11px 14px;
                         animation: turnPulse 1s ease-in-out 2; }
-  @keyframes turnPulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.04); } }
-  .roomlabel { font-size:11px; color: var(--ink-faint); font-weight:700; text-align:center; }
+  @keyframes turnPulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.03); } }
+  .roomlabel { font-size:11px; color: var(--ink-faint); font-weight:700; text-align:center; letter-spacing: 0.04em; }
 
   input[type="range"], input[type="checkbox"] { accent-color: var(--accent); }
 
@@ -293,8 +306,7 @@
      画面に収まりやすくする。 */
   @media (max-width: 899px) {
     body { padding: 14px 16px 24px; }
-    .quest { padding: 12px 14px; }
-    #playScreen > .quest, #battlePlayScreen > .quest { padding-top: 12px; }
+    .quest { padding-bottom: 16px; }
     .turnstatus { margin-bottom: 6px; }
     .turnstatus.myturn { padding: 7px 12px; }
     .radical { font-size: 42px; }
@@ -314,9 +326,7 @@
     #overScreen, #battleOverScreen {
       max-width: 560px; margin: 64px auto 0;
     }
-    #modeScreen { max-width: 760px; margin: 72px auto 0; }
-    #modeScreen .tile { padding: 32px; font-size: 17px; }
-    #modeScreen .tile .icon { width: 52px; height: 52px; }
+    #modeScreen { max-width: 560px; margin: 72px auto 0; }
 
     #playScreen, #battlePlayScreen {
       display: grid; grid-template-columns: 1fr 340px; column-gap: 32px; align-items: start;
@@ -339,42 +349,53 @@
 <body>
 
 <div id="loginScreen">
-  <h1 style="text-align:center"><span class="accent">ぶしゅ</span>とり</h1>
-  <div class="tag">部首をつないで、漢字をつぎつぎ書くゲーム</div>
-  <div id="loadErr" class="err hidden"></div>
+  <div style="position:relative;padding-top:8px">
+    <h1 style="text-align:left;margin-left:2px">ぶしゅとり</h1>
+    <div class="tag" style="text-align:left;margin-left:2px">部首をつないで、漢字を書きつぐ</div>
+    <div style="position:absolute;right:2px;top:0;width:44px;height:44px;border:1px solid var(--accent);
+                color:var(--accent);display:flex;align-items:center;justify-content:center;transform:rotate(-3deg)">
+      <span style="font-family:var(--font-mincho);font-size:12px;font-weight:500;writing-mode:vertical-rl;letter-spacing:0.14em">部首</span>
+    </div>
+  </div>
+  <div id="loadErr" class="err hidden" style="margin-top:16px"></div>
 
-  <div class="segmented" style="margin:14px 0 16px">
+  <div class="segmented" style="margin-top:34px">
     <button class="seg active" id="authTabSignup">はじめて</button>
     <button class="seg" id="authTabLogin">ログイン</button>
   </div>
 
   <div id="signupForm">
-    <div class="secTitle" style="text-align:left">ニックネームをきめてね</div>
-    <input class="codeinput" id="nicknameInput" placeholder="れい: たろう" maxlength="20"
-           style="letter-spacing:normal;font-size:16px;text-align:left;margin-bottom:10px">
-    <div class="secTitle" style="text-align:left">ユーザー名（ログインにつかう）</div>
-    <input class="codeinput" id="usernameInput" placeholder="れい: taro2015" maxlength="20"
-           style="letter-spacing:normal;font-size:16px;text-align:left;margin-bottom:10px">
-    <div class="secTitle" style="text-align:left">パスワード（4文字以上）</div>
-    <input class="codeinput" id="passwordInput" type="password" placeholder="わすれないでね" maxlength="64"
-           style="letter-spacing:normal;font-size:16px;text-align:left;">
-    <div class="err hidden" id="profileErr" style="margin-top:10px"></div>
-    <button class="primary btn-block" id="createProfileBtn" style="margin-top:10px">はじめる</button>
-    <div style="font-size:10.5px;color:var(--ink-faint);margin-top:12px;line-height:1.6;text-align:center;">
+    <div class="field">
+      <div class="fieldLbl">なまえ</div>
+      <input class="fieldInput" id="nicknameInput" placeholder="れい: たろう" maxlength="20">
+    </div>
+    <div class="field">
+      <div class="fieldLbl">ユーザー名（ログインにつかう）</div>
+      <input class="fieldInput" id="usernameInput" placeholder="れい: taro2015" maxlength="20">
+    </div>
+    <div class="field">
+      <div class="fieldLbl">パスワード（4文字以上）</div>
+      <input class="fieldInput" id="passwordInput" type="password" placeholder="わすれないでね" maxlength="64">
+    </div>
+    <div class="err hidden" id="profileErr" style="margin-bottom:10px"></div>
+    <button class="primary btn-block" id="createProfileBtn">はじめる</button>
+    <div style="font-size:10.5px;color:var(--ink-faint);margin-top:16px;line-height:1.7;text-align:center;">
       はじめると、あなた専用の合言葉コードが発行されます。<br>フレンドに教えて対戦・記録くらべができます。
       ユーザー名とパスワードは、別の端末からログインするときに使います。
     </div>
   </div>
 
   <div id="loginForm" class="hidden">
-    <div class="secTitle" style="text-align:left">ユーザー名</div>
-    <input class="codeinput" id="loginUsernameInput" placeholder="ユーザー名" maxlength="20"
-           style="letter-spacing:normal;font-size:16px;text-align:left;margin-bottom:10px">
-    <div class="secTitle" style="text-align:left">パスワード</div>
-    <input class="codeinput" id="loginPasswordInput" type="password" placeholder="パスワード" maxlength="64"
-           style="letter-spacing:normal;font-size:16px;text-align:left;">
-    <div class="err hidden" id="loginErr" style="margin-top:10px"></div>
-    <button class="primary btn-block" id="loginBtn" style="margin-top:10px">ログインする</button>
+    <div class="field">
+      <div class="fieldLbl">ユーザー名</div>
+      <input class="fieldInput" id="loginUsernameInput" placeholder="ユーザー名" maxlength="20">
+    </div>
+    <div class="field">
+      <div class="fieldLbl">パスワード</div>
+      <input class="fieldInput" id="loginPasswordInput" type="password" placeholder="パスワード" maxlength="64">
+    </div>
+    <div class="err hidden" id="loginErr" style="margin-bottom:10px"></div>
+    <button class="primary btn-block" id="loginBtn">ログインする</button>
   </div>
 </div>
 
@@ -398,16 +419,28 @@
       </svg>
     </button>
   </div>
-  <h1><span class="accent">ぶしゅ</span>とり</h1>
-  <div class="tag">部首をつないで、漢字をつぎつぎ書くゲーム</div>
-  <div class="tileRow">
-    <button class="tile tile-primary" id="toBattle">
-      <svg class="icon" width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="9" r="2.6"/><path d="M2.8 18.5c0-2.7 2.3-4.5 5.2-4.5s5.2 1.8 5.2 4.5"/><circle cx="17.5" cy="8.5" r="2.2"/><path d="M14.7 13.4c2.3.3 3.8 1.8 3.8 4.3"/></svg>
-      だれかと対戦する
+  <h1 style="text-align:left;margin-left:2px;margin-top:36px">ぶしゅとり</h1>
+  <div class="tag" style="text-align:left;margin-left:2px">部首をつないで、漢字を書きつぐ</div>
+  <div class="modeList">
+    <button class="modeItem" id="toBattle">
+      <div class="modeNum">一</div>
+      <div class="modeTxt">
+        <div class="modeH">たいせん</div>
+        <div class="modeD">友だちと部首を投げ合う。書けなくなったら負け</div>
+      </div>
+      <div class="modeArrow">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
+      </div>
     </button>
-    <button class="tile" id="toSolo">
-      <svg class="icon" width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
-      ひとりで練習する
+    <button class="modeItem" id="toSolo">
+      <div class="modeNum">二</div>
+      <div class="modeTxt">
+        <div class="modeH">ひとりで</div>
+        <div class="modeD">30秒で何字書けるか。部首ごとの書き出しもこちら</div>
+      </div>
+      <div class="modeArrow">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
+      </div>
     </button>
   </div>
 </div>
