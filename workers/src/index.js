@@ -24,7 +24,9 @@ const DECLINE_TTL_MS = 24 * 60 * 60 * 1000; // 対戦の誘いを断られた通
 function json(data, status = 200) {
   return new Response(JSON.stringify(data), {
     status,
-    headers: { "Content-Type": "application/json; charset=utf-8" },
+    // 全員がログイン済みの個人向けAPIなので、CDN/ブラウザにキャッシュされて
+    // 古いデータが返り続けることがないよう明示的に無効化する。
+    headers: { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" },
   });
 }
 function err(status, message) {
@@ -404,6 +406,15 @@ async function handleApi(request, env, url) {
       .prepare("INSERT INTO invites (from_code, to_code, room_code, level, created_at) VALUES (?, ?, ?, ?, ?)")
       .bind(me.code, toCode, roomCode, level, Date.now())
       .run();
+    return json({ ok: true });
+  }
+
+  // DELETE /api/invites/room/:room_code — 誘った側が、相手の返事を待たずに誘いを取り消す
+  if (method === "DELETE" && parts.length === 4 && parts[1] === "invites" && parts[2] === "room") {
+    const me = await requireAuth(request, db);
+    if (!me) return err(401, "認証が必要です");
+    const roomCode = parts[3];
+    await db.prepare("DELETE FROM invites WHERE from_code = ? AND room_code = ?").bind(me.code, roomCode).run();
     return json({ ok: true });
   }
 

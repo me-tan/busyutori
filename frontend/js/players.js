@@ -116,6 +116,11 @@
     return readJson(res);
   }
 
+  async function cancelInvite(roomCode) {
+    const res = await fetch("/api/invites/room/" + encodeURIComponent(roomCode), { method: "DELETE", headers: authHeaders() });
+    return readJson(res);
+  }
+
   async function listInvites() {
     const res = await fetch("/api/invites", { headers: authHeaders() });
     const data = await readJson(res);
@@ -148,7 +153,7 @@
     createProfile, login, renameProfile, addFriend, removeFriend, listFriends, submitScore,
     listRemovals, dismissRemoval,
     listFriendRequests, acceptFriendRequest, declineFriendRequest,
-    listRanking, sendInvite, listInvites, dismissInvite, declineInvite,
+    listRanking, sendInvite, cancelInvite, listInvites, dismissInvite, declineInvite,
     listInviteDeclines, dismissInviteDecline,
   };
 })();

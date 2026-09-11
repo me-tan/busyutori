@@ -127,6 +127,7 @@
   .inviteBtn { display: flex; align-items: center; gap: 5px; background: #FDEDE5; border: none;
                border-radius: 10px; padding: 8px 12px; color: var(--accent); font-size: 11px;
                font-weight: 700; font-family: inherit; }
+  .inviteBtn.cancel { background: #F1EAD9; color: var(--ink-soft); }
 
   .segmented { display: flex; border: 1px solid var(--border); border-radius: 10px; overflow: hidden;
                margin-bottom: 12px; }
@@ -832,6 +833,7 @@ const BGM_SCREENS = new Set(['loginScreen','modeScreen','soloScreen','settingsSc
 const LEVEL_LABEL = { low: '初級', elem: '中級', all: '上級' };
 let currentScreen = null;
 let currentRankLevel = 'elem';
+let pendingInvite = null; // { code, roomCode } 自分が送って返事待ちの対戦の誘い
 function show(id) {
   currentScreen = id;
   SCREENS.forEach(s => document.getElementById(s).classList.toggle('hidden', s !== id));
@@ -1252,6 +1254,7 @@ async function refreshInviteDeclines() {
   refreshInviteBadge();
   if (declines.length && currentScreen !== 'battlePlayScreen') {
     // 断られた誘いの部屋を後始末し、「誘っています…」のまま固まったボタンを元に戻す
+    pendingInvite = null;
     bReset();
     refreshFriendsList();
   }
@@ -1342,7 +1345,6 @@ async function acceptInvite(id, roomCode) {
 
 async function inviteFriend(code, btn) {
   setFriendsErr('');
-  const original = btn.textContent;
   btn.disabled = true; btn.textContent = '誘っています…';
   bReset();
   try {
@@ -1352,10 +1354,23 @@ async function inviteFriend(code, btn) {
     bstate.code = room.code; bstate.myId = room.player_id; bstate.level = level;
     bEnterWaiting('相手を待っています…');
     bConnect();
+    pendingInvite = { code, roomCode: room.code };
   } catch (e) {
     setFriendsErr('誘えませんでした。通信環境を確認してください。');
-    btn.disabled = false; btn.textContent = original;
+    pendingInvite = null;
   }
+  refreshFriendsList();
+}
+
+async function cancelPendingInvite(btn) {
+  if (!pendingInvite) return;
+  btn.disabled = true; btn.textContent = '取り消しています…';
+  const { roomCode } = pendingInvite;
+  await Players.cancelInvite(roomCode).catch(() => {});
+  if (bstate.code === roomCode) Net.cancelRoom(bstate.code, bstate.myId);
+  pendingInvite = null;
+  bReset();
+  refreshFriendsList();
 }
 
 async function refreshFriendsList() {
@@ -1376,14 +1391,18 @@ async function refreshFriendsList() {
       .filter(l => f.best[l] != null)
       .map(l => `<span>${LEVEL_LABEL[l]} <b>${f.best[l]}</b></span>`)
       .join('');
+    const isPending = pendingInvite && pendingInvite.code === f.code;
+    const inviteButton = isPending
+      ? `<button class="inviteBtn cancel" data-cancel-invite="${f.code}">誘いを取り消す</button>`
+      : `<button class="inviteBtn" data-invite="${f.code}">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4 20-7z"/></svg>
+          対戦に誘う
+        </button>`;
     return `<div class="friendRow">
       <div><div class="friendName">${f.nickname}</div><div class="friendCode">${f.code}</div></div>
       <div class="friendBest">${best || 'まだ記録なし'}</div>
       <div class="friendActions">
-        <button class="inviteBtn" data-invite="${f.code}">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4 20-7z"/></svg>
-          対戦に誘う
-        </button>
+        ${inviteButton}
         <button class="friendRemove" data-code="${f.code}" data-nickname="${f.nickname}">削除</button>
       </div>
     </div>`;
@@ -1397,8 +1416,11 @@ async function refreshFriendsList() {
       refreshRanking(currentRankLevel);
     };
   });
-  listEl.querySelectorAll('.inviteBtn').forEach(b => {
+  listEl.querySelectorAll('.inviteBtn[data-invite]').forEach(b => {
     b.onclick = () => inviteFriend(b.dataset.invite, b);
+  });
+  listEl.querySelectorAll('.inviteBtn[data-cancel-invite]').forEach(b => {
+    b.onclick = () => cancelPendingInvite(b);
   });
 }
 
@@ -1502,9 +1524,17 @@ function bind() {
     try { await Players.login(username, password); renderModeScreen(); show('modeScreen'); }
     catch (e) { setLoginErr(e.message || 'ログインできませんでした'); }
   };
-  document.getElementById('copyCodeBtn').onclick = () => {
+  document.getElementById('copyCodeBtn').onclick = async () => {
     const p = Players.getProfile();
-    if (p && navigator.clipboard) navigator.clipboard.writeText(p.code).catch(() => {});
+    if (!p || !navigator.clipboard) return;
+    const btn = document.getElementById('copyCodeBtn');
+    try {
+      await navigator.clipboard.writeText(p.code);
+      clearTimeout(btn._resetTimer);
+      if (!btn.dataset.original) btn.dataset.original = btn.textContent;
+      btn.textContent = '✓ コピーしました';
+      btn._resetTimer = setTimeout(() => { btn.textContent = btn.dataset.original; }, 1500);
+    } catch (e) {}
   };
   document.getElementById('logoutBtn').onclick = () => {
     if (!confirm('ログアウトしますか？この端末には戻れなくなります。')) return;
@@ -1688,6 +1718,7 @@ function bConnect() {
 }
 
 function onBStart() {
+  pendingInvite = null;
   clearTimeout(bstate.quickTimeoutId);
   document.getElementById('bRoomCode').textContent = bstate.code;
   document.getElementById('bGiveUp').classList.add('hidden');

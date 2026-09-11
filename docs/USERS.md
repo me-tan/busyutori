@@ -73,6 +73,7 @@
 | `POST /api/scores` | 必要 | `{level, streak}` → タイムアタック結果を記録（追記のみ。ベストは`MAX(streak)`で都度計算） |
 | `GET /api/ranking?level=elem` | 必要 | `{ranking: [{code, nickname, best, isMe}]}`（自分＋フレンドのみ、best降順） |
 | `POST /api/invites` | 必要 | `{code, room_code, level}` → `code`のフレンドを対戦に誘う（`code`がフレンドでないと400） |
+| `DELETE /api/invites/room/:room_code` | 必要 | 誘った側が、相手の返事を待たずに自分の誘いを取り消す |
 | `GET /api/invites` | 必要 | `{invites: [{id, from_code, from_nickname, room_code, level, created_at}]}`。自分あての新しい誘い（10分以内） |
 | `DELETE /api/invites/:id` | 必要 | 誘いを消す（参加した後の後始末。通知は残さない） |
 | `POST /api/invites/:id/decline` | 必要 | 誘いを断る。誘った側に`invite_declines`で通知を残す |
