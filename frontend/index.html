@@ -278,6 +278,9 @@
                font-family: inherit; border:1.5px dashed var(--border); border-radius:12px; box-sizing:border-box; }
   .waitmsg { margin-top:10px; color: var(--ink-soft); font-size:13px; text-align:center; }
   .turnstatus { font-size:14px; font-weight:700; color: var(--ink); margin-bottom:10px; text-align:center; }
+  .turnstatus.myturn { background: var(--accent); color: #fff; padding: 10px 14px; border-radius: 12px;
+                        animation: turnPulse 1s ease-in-out 2; }
+  @keyframes turnPulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.04); } }
   .roomlabel { font-size:11px; color: var(--ink-faint); font-weight:700; text-align:center; }
 
   input[type="range"], input[type="checkbox"] { accent-color: var(--accent); }
@@ -1792,6 +1795,7 @@ function onBOffer(msg) {
   KanjiCanvas.erase('canBattle');
   document.getElementById('bPicker').classList.add('hidden');
   bSetMsg('', '');
+  document.getElementById('bStatus').classList.remove('myturn');
 
   const iAmAttacker = msg.attacker === bstate.myId;
   document.getElementById('bOfferBox').classList.toggle('hidden', !iAmAttacker);
@@ -1800,7 +1804,10 @@ function onBOffer(msg) {
   document.getElementById('bTimer').textContent = '-';
 
   if (iAmAttacker) {
-    document.getElementById('bStatus').textContent = '部首をえらんで、相手に投げてください';
+    const statusEl = document.getElementById('bStatus');
+    statusEl.textContent = 'あなたの番です。部首をえらんで、相手に投げてください';
+    statusEl.classList.add('myturn');
+    KBAudio.play('tap');
     document.getElementById('bOfferRow').innerHTML = msg.choices.map(c =>
       `<div class="radbtn" data-radical="${c.radical}">` +
       `<div class="r">${c.radical}</div><div class="n">${c.name}</div></div>`
@@ -1808,7 +1815,8 @@ function onBOffer(msg) {
     document.querySelectorAll('#bOfferRow .radbtn').forEach(el => {
       el.onclick = () => {
         document.getElementById('bOfferBox').classList.add('hidden');
-        document.getElementById('bStatus').textContent = '相手が書くのを待っています…';
+        statusEl.classList.remove('myturn');
+        statusEl.textContent = '相手が書くのを待っています…';
         Net.send('throw', { radical: el.dataset.radical });
       };
     });
@@ -1818,6 +1826,7 @@ function onBOffer(msg) {
 }
 
 function onBDefend(msg) {
+  document.getElementById('bStatus').classList.remove('myturn');
   bstate.radical = msg.radical;
   bstate.isDefending = msg.defender === bstate.myId;
   bstate.deadline = Date.now() + msg.seconds * 1000;
