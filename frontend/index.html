@@ -128,6 +128,10 @@
                border-radius: 10px; padding: 8px 12px; color: var(--accent); font-size: 11px;
                font-weight: 700; font-family: inherit; }
   .inviteBtn.cancel { background: #F1EAD9; color: var(--ink-soft); }
+  .levelPicker { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+  .levelPickBtn { background: var(--accent); color: #fff; border: none; border-radius: 10px;
+                  padding: 8px 10px; font-size: 11px; font-weight: 700; font-family: inherit; }
+  .levelPickBtn:active { background: var(--accent-dark); }
 
   .segmented { display: flex; border: 1px solid var(--border); border-radius: 10px; overflow: hidden;
                margin-bottom: 12px; }
@@ -837,6 +841,8 @@ const LEVEL_LABEL = { low: '初級', elem: '中級', all: '上級' };
 let currentScreen = null;
 let currentRankLevel = 'elem';
 let pendingInvite = null; // { code, roomCode } 自分が送って返事待ちの対戦の誘い
+let inviteLevelPickerFor = null; // 難易度を選んでいる最中のフレンドコード
+let sendingInviteTo = null; // 誘いを送信中のフレンドコード
 function show(id) {
   currentScreen = id;
   SCREENS.forEach(s => document.getElementById(s).classList.toggle('hidden', s !== id));
@@ -1372,12 +1378,12 @@ async function acceptInvite(id, roomCode) {
   }
 }
 
-async function inviteFriend(code, btn) {
+async function inviteFriend(code, level) {
   setFriendsErr('');
-  btn.disabled = true; btn.textContent = '誘っています…';
+  sendingInviteTo = code;
+  refreshFriendsList();
   bReset();
   try {
-    const level = state.level || 'elem';
     const room = await Net.createRoom(level);
     await Players.sendInvite(code, room.code, level);
     bstate.code = room.code; bstate.myId = room.player_id; bstate.level = level;
@@ -1388,6 +1394,7 @@ async function inviteFriend(code, btn) {
     setFriendsErr('誘えませんでした。通信環境を確認してください。');
     pendingInvite = null;
   }
+  sendingInviteTo = null;
   refreshFriendsList();
 }
 
@@ -1421,19 +1428,31 @@ async function refreshFriendsList() {
       .map(l => `<span>${LEVEL_LABEL[l]} <b>${f.best[l]}</b></span>`)
       .join('');
     const isPending = pendingInvite && pendingInvite.code === f.code;
-    const inviteButton = isPending
-      ? `<button class="inviteBtn cancel" data-cancel-invite="${f.code}">誘いを取り消す</button>`
-      : `<button class="inviteBtn" data-invite="${f.code}">
+    const isSending = sendingInviteTo === f.code;
+    const isPicking = inviteLevelPickerFor === f.code;
+    const removeBtn = `<button class="friendRemove" data-code="${f.code}" data-nickname="${f.nickname}">削除</button>`;
+    let actions;
+    if (isPending) {
+      actions = `<button class="inviteBtn cancel" data-cancel-invite="${f.code}">誘いを取り消す</button>${removeBtn}`;
+    } else if (isSending) {
+      actions = `<button class="inviteBtn" disabled>誘っています…</button>${removeBtn}`;
+    } else if (isPicking) {
+      actions = `<div class="levelPicker">
+          <button class="levelPickBtn" data-invite-level="low" data-code="${f.code}">初級</button>
+          <button class="levelPickBtn" data-invite-level="elem" data-code="${f.code}">中級</button>
+          <button class="levelPickBtn" data-invite-level="all" data-code="${f.code}">上級</button>
+          <button class="ghost" data-cancel-picker="${f.code}">やめる</button>
+        </div>`;
+    } else {
+      actions = `<button class="inviteBtn" data-invite="${f.code}">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4 20-7z"/></svg>
           対戦に誘う
-        </button>`;
+        </button>${removeBtn}`;
+    }
     return `<div class="friendRow">
       <div><div class="friendName">${f.nickname}</div><div class="friendCode">${f.code}</div></div>
       <div class="friendBest">${best || 'まだ記録なし'}</div>
-      <div class="friendActions">
-        ${inviteButton}
-        <button class="friendRemove" data-code="${f.code}" data-nickname="${f.nickname}">削除</button>
-      </div>
+      <div class="friendActions">${actions}</div>
     </div>`;
   }).join('') + '</div>';
 
@@ -1446,10 +1465,19 @@ async function refreshFriendsList() {
     };
   });
   listEl.querySelectorAll('.inviteBtn[data-invite]').forEach(b => {
-    b.onclick = () => inviteFriend(b.dataset.invite, b);
+    b.onclick = () => { inviteLevelPickerFor = b.dataset.invite; refreshFriendsList(); };
   });
   listEl.querySelectorAll('.inviteBtn[data-cancel-invite]').forEach(b => {
     b.onclick = () => cancelPendingInvite(b);
+  });
+  listEl.querySelectorAll('[data-invite-level]').forEach(b => {
+    b.onclick = () => {
+      inviteLevelPickerFor = null;
+      inviteFriend(b.dataset.code, b.dataset.inviteLevel);
+    };
+  });
+  listEl.querySelectorAll('[data-cancel-picker]').forEach(b => {
+    b.onclick = () => { inviteLevelPickerFor = null; refreshFriendsList(); };
   });
 }
 
