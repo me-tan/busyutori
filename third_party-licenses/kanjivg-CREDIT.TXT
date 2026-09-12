@@ -1,0 +1,14 @@
+書き順データ: KanjiVG
+Copyright (C) 2009-2024 Ulrich Apel
+https://kanjivg.tagaini.net/
+
+ライセンス: Creative Commons Attribution-Share Alike 3.0
+https://creativecommons.org/licenses/by-sa/3.0/
+
+配置場所:
+- frontend/data/strokes/*.json
+
+KanjiVGのSVG（1画＝1つの<path>で、並び順が書き順）から、パスのd属性だけを
+取り出してJSONにしたもの。部首ごとにファイルを分けている（scripts/build_dict.py）。
+字形そのものには手を加えていないが、形式を変えた派生物にあたるため、
+これらのJSONはCC BY-SA 3.0で配布される（本体のコードはMIT）。
