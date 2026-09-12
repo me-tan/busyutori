@@ -437,8 +437,10 @@
               color: var(--ink); margin-left: var(--s1); }
   /* 見出しは罫線に重ねず、項目ごとに一段落として置く */
   .dsec { margin-top: var(--s5); }
-  .dsec-h { font-size: var(--t-xs); color: var(--ai); font-weight: 700;
+  /* 見出しにもふりがなが乗るので、本文のふりがなより小さくならない字の大きさにする */
+  .dsec-h { font-size: var(--t-sm); color: var(--ai); font-weight: 700;
             letter-spacing: 0.1em; margin-bottom: var(--s2); }
+  .dsec-h rt { font-size: 9px; color: var(--ai-mid); }
   .dmean { font-size: var(--t-base); line-height: 1.9; }
   .dread { display: flex; flex-wrap: wrap; gap: var(--s2); }
   .dread span { font-family: var(--font-mincho); font-size: var(--t-md);
@@ -1378,6 +1380,15 @@ function renderDictKanjiList() {
   loadStrokes(rad); // 字を選んだ時点で書き順が出せるよう、先に読んでおく
 }
 
+// 見出しのふりがなは、自動のふりがな（js/furigana.js）に任せず直接書く。
+// 「使い方」の「方」は「かた」だが、説明文の「日がのぼる方」は「ほう」で、
+// 辞書引きでは読み分けられないため。見出しは決まった文言なので直接書ける。
+function ruby(kanji, yomi) { return `<ruby>${kanji}<rt>${yomi}</rt></ruby>`; }
+const SEC_MEAN  = ruby('意味', 'いみ');
+const SEC_ON    = ruby('音読', 'おんよ') + 'み';
+const SEC_KUN   = ruby('訓読', 'くんよ') + 'み';
+const SEC_WORDS = ruby('使', 'つか') + 'い' + ruby('方', 'かた');
+
 // KANJIDIC2の訓読みは「つか.える」「はつ-」「-そ.める」の形。
 // . より後ろが送り仮名、- は接頭語・接尾語の印なので、読み物としては落とす。
 function kunLabel(s) {
@@ -1412,13 +1423,13 @@ function renderDictDetail() {
     parts.push(`<div class="dsec"><div class="dmean">この漢字の情報が読み込めませんでした。</div></div>`);
   } else {
     if (e.mean) {
-      parts.push(`<div class="dsec"><div class="dsec-h">いみ</div><div class="dmean">${e.mean}</div></div>`);
+      parts.push(`<div class="dsec"><div class="dsec-h">${SEC_MEAN}</div><div class="dmean">${e.mean}</div></div>`);
     }
-    parts.push(readingSection('音読み', e.on));
+    parts.push(readingSection(SEC_ON, e.on));
     // 「はつ」と「はつ-」のように、印を落とすと同じになる読みがあるのでまとめる
-    parts.push(readingSection('訓読み', [...new Set(e.kun.map(kunLabel))]));
+    parts.push(readingSection(SEC_KUN, [...new Set(e.kun.map(kunLabel))]));
     if (e.words.length) {
-      parts.push(`<div class="dsec"><div class="dsec-h">つかいかた</div><div class="dwords">` +
+      parts.push(`<div class="dsec"><div class="dsec-h">${SEC_WORDS}</div><div class="dwords">` +
         e.words.map(([w, y]) => `<div class="dword"><div class="w">${w}</div><div class="y">${y}</div></div>`).join('') +
         `</div></div>`);
     }
