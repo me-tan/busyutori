@@ -417,6 +417,20 @@
   .dhead { text-align: center; padding-bottom: var(--s4); border-bottom: 1px solid var(--rule); }
   .dkanji { font-family: var(--font-kanji); font-size: 88px; line-height: 1.1;
             font-weight: 500; color: var(--ink); }
+  /* 書き順は書き取りの桝に見立て、中心の補助線の上に一画ずつ引く */
+  .dkanjibox { display: flex; align-items: center; justify-content: center; min-height: 148px; }
+  .dsvg { width: 148px; height: 148px; background: var(--card); box-shadow: 0 0 0 1px var(--rule); }
+  .dsvg .guide line { stroke: var(--rule); stroke-width: 1; stroke-dasharray: 4 5; }
+  .dsvg path { fill: none; stroke-width: 4.5; stroke-linecap: round; stroke-linejoin: round; }
+  /* 手本は薄く敷いておく。今どこを書いているのかが分かる */
+  .dsvg .model path { stroke: var(--ai-pale); }
+  .dsvg .live path { stroke: var(--ink); }
+  .dsvg .live path.now { stroke: var(--shu); }
+  .dplay { display: flex; align-items: center; justify-content: center; gap: var(--s3);
+           margin-top: var(--s3); }
+  .dplay button { min-height: 36px; padding: var(--s1) var(--s4); font-size: var(--t-xs); }
+  .dplay .cnt { font-size: var(--t-xs); color: var(--ink-mid); min-width: 62px; text-align: left; }
+  .dnote { font-size: var(--t-xs); color: var(--ink-soft); line-height: 1.7; margin-top: var(--s2); }
   .dfacts { display: flex; justify-content: center; gap: var(--s4); margin-top: var(--s2);
             font-size: var(--t-xs); color: var(--ink-mid); }
   .dfacts b { font-family: var(--font-mincho); font-size: var(--t-md); font-weight: 600;
@@ -1361,6 +1375,7 @@ function renderDictKanjiList() {
   document.querySelectorAll('#dictKanjiGrid .dcell').forEach(el => {
     el.onclick = () => { dict.kanji = el.dataset.kanji; renderDictDetail(); show('dictDetailScreen'); };
   });
+  loadStrokes(rad); // 字を選んだ時点で書き順が出せるよう、先に読んでおく
 }
 
 // KANJIDIC2の訓読みは「つか.える」「はつ-」「-そ.める」の形。
@@ -1375,9 +1390,18 @@ function renderDictDetail() {
   const k = dict.kanji;
   const e = DICT ? DICT[k] : null;
   const grade = DATA.kanji[k] ? DATA.kanji[k].grade : '';
+  stopStrokes();
   const parts = [
     `<div class="dhead">`,
-    `<div class="dkanji">${k}</div>`,
+    // 書き順が読み込めたらSVGに差し替わる。読めなければこの字のまま
+    `<div class="dkanjibox" id="dictStrokeBox"><div class="dkanji">${k}</div></div>`,
+    `<div class="dplay hidden" id="dictPlayRow">`,
+    `<button class="ghost" id="dictPlay">書き順をもう一度</button>`,
+    `<span class="cnt" id="dictStrokeCnt"></span>`,
+    `</div>`,
+    // 書き順のデータが印刷用の字体しか持っておらず、習う画数と合わない字がある
+    e && e.vstrokes ? `<div class="dnote">書き順は印刷でよく使う形（${e.vstrokes}画）で出しています。` +
+                      `学校で習う形は${e.strokes}画です。</div>` : '',
     `<div class="dfacts">`,
     `<span>部首<b class="dv">${radGlyph(dict.radical)}</b></span>`,
     e ? `<span>画数<b class="dv">${e.strokes}</b></span>` : '',
@@ -1400,6 +1424,91 @@ function renderDictDetail() {
     }
   }
   document.getElementById('dictDetail').innerHTML = parts.join('');
+  paintStrokes(dict.radical, k);
+}
+
+/* ── 書き順 ─────────────────────────────────────────────────────
+   KanjiVGのSVGは1画が1つの<path>で、並び順がそのまま書き順。
+   線の長さぶんの破線を引いてから、その隙間を詰めていくと1画を書く動きになる。
+   データは部首ごとに分けてあるので、その部首ぶんだけを読む。 */
+const strokeShards = {};
+
+function shardName(rad) {
+  return ('0000' + rad.codePointAt(0).toString(16)).slice(-5);
+}
+
+function loadStrokes(rad) {
+  const name = shardName(rad);
+  if (!strokeShards[name]) {
+    strokeShards[name] = fetch(`data/strokes/${name}.json`)
+      .then(res => { if (!res.ok) throw new Error(res.status); return res.json(); })
+      .catch(() => { delete strokeShards[name]; return null; }); // 次に開いたときに読み直せるようにする
+  }
+  return strokeShards[name];
+}
+
+async function paintStrokes(rad, k) {
+  const data = await loadStrokes(rad);
+  if (dict.kanji !== k) return; // 読んでいる間に別の字へ移っていたら捨てる
+  const paths = data && data[k];
+  if (!paths || !paths.length) return; // 読めなければ字を出したままにする
+  const g = ps => ps.map(d => `<path d="${d}"/>`).join('');
+  document.getElementById('dictStrokeBox').innerHTML =
+    `<svg class="dsvg" viewBox="0 0 109 109" id="dictSvg">` +
+    `<g class="guide"><line x1="54.5" y1="2" x2="54.5" y2="107"/>` +
+    `<line x1="2" y1="54.5" x2="107" y2="54.5"/></g>` +
+    `<g class="model">${g(paths)}</g><g class="live">${g(paths)}</g></svg>`;
+  document.getElementById('dictPlayRow').classList.remove('hidden');
+  document.getElementById('dictPlay').onclick = playStrokes;
+  playStrokes();
+}
+
+let strokeTimer = null;
+
+function stopStrokes() {
+  clearTimeout(strokeTimer);
+  strokeTimer = null;
+}
+
+function playStrokes() {
+  stopStrokes();
+  const svg = document.getElementById('dictSvg');
+  if (!svg) return;
+  const cnt = document.getElementById('dictStrokeCnt');
+  const paths = [...svg.querySelectorAll('.live path')];
+  // 動きを減らす設定の端末では、線を引く動きはやめて1画ずつ出すだけにする
+  const still = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  for (const p of paths) {
+    const len = p.getTotalLength();
+    p.style.transition = 'none';
+    p.style.strokeDasharray = len;
+    p.style.strokeDashoffset = len;
+    p.classList.remove('now');
+  }
+  svg.getBoundingClientRect(); // 消した状態を一度確定させてから引き始める
+
+  let i = 0;
+  const step = () => {
+    if (i > 0) paths[i - 1].classList.remove('now');
+    if (i >= paths.length) {
+      // 引き終わったら破線の指定を外し、ふつうの字として残す
+      for (const p of paths) { p.style.transition = ''; p.style.strokeDasharray = ''; p.style.strokeDashoffset = ''; }
+      cnt.textContent = `ぜんぶで${paths.length}画`;
+      strokeTimer = null;
+      return;
+    }
+    const p = paths[i];
+    const len = p.getTotalLength();
+    const dur = still ? 0 : Math.max(220, Math.min(900, len * 11));
+    p.style.transition = still ? 'none' : `stroke-dashoffset ${dur}ms linear`;
+    p.style.strokeDashoffset = 0;
+    p.classList.add('now');
+    cnt.textContent = `${i + 1}画目`;
+    i++;
+    strokeTimer = setTimeout(step, dur + 160);
+  };
+  step();
 }
 
 function readingSection(title, list) {
@@ -2108,7 +2217,7 @@ function bind() {
   document.getElementById('dictLvBack').onclick     = () => show('modeScreen');
   document.getElementById('dictRadBack').onclick    = () => show('dictLevelScreen');
   document.getElementById('dictKanjiBack').onclick  = () => show('dictRadScreen');
-  document.getElementById('dictDetailBack').onclick = () => show('dictKanjiScreen');
+  document.getElementById('dictDetailBack').onclick = () => { stopStrokes(); show('dictKanjiScreen'); };
 
   document.getElementById('rec').onclick = judge;
   document.getElementById('erase').onclick = () => {

@@ -143,11 +143,13 @@ OUT_STROKES.mkdir(parents=True, exist_ok=True)
 for old in OUT_STROKES.glob('*.json'):
     old.unlink()
 
+drawn = {}  # 字 -> 書き順データ上の画数
 for rad, rdata in radicals_json['radicals'].items():
     shard = {}
     for kanji_list in rdata['kanji'].values():
         for k in kanji_list:
             shard[k] = strokes_of(k)
+            drawn[k] = len(shard[k])
     name = '%05x.json' % ord(rad[0])
     (OUT_STROKES / name).write_text(
         json.dumps(shard, ensure_ascii=False, separators=(',', ':')), encoding='utf-8')
@@ -166,6 +168,11 @@ for k in sorted(TARGET):
     }
     if meanings.get(k):
         e['mean'] = meanings[k]
+    # KanjiVGは「僅・葛・遜・遡・餅・餌・謎・賭」を印刷標準字体（二点しんにょう等）で
+    # 持っているため、学校で習う形より1画多い。画数の表示と書き順の動きが食い違って
+    # 見えるので、食い違う字だけ書き順側の画数も持たせ、画面で断りを出せるようにする。
+    if k in drawn and drawn[k] != e['strokes']:
+        e['vstrokes'] = drawn[k]
     out[k] = e
 
 OUT_DICT.write_text(json.dumps({
@@ -180,6 +187,7 @@ OUT_DICT.write_text(json.dumps({
 }, ensure_ascii=False, indent=1), encoding='utf-8')
 
 print(f'漢字 {len(out)}字 / 意味あり {sum(1 for e in out.values() if "mean" in e)}字')
+print(f'画数と書き順が食い違う字 {sorted(k for k, e in out.items() if "vstrokes" in e)}')
 print(f'用例ゼロ {sum(1 for k in TARGET if not words[k])}字')
 print(f'{OUT_DICT.relative_to(ROOT)}: {OUT_DICT.stat().st_size // 1024}KB')
 print(f'{OUT_STROKES.relative_to(ROOT)}/: {len(list(OUT_STROKES.glob("*.json")))}ファイル / '
