@@ -22,6 +22,12 @@
     tap: 'tap.m4a', start: 'start.m4a', victory: 'victory.m4a', timeup: 'timeup.m4a',
   };
   const BGM_FILES = { menu: 'menu.m4a' };
+
+  // 音のファイルは読み込みが重いのでキャッシュを許可している。そのため作り直しても
+  // 古いものが鳴り続けてしまうので、URLに版番号を付けて別物として取りに行かせる。
+  // 音源を作り直したら、この数字を1つ増やすこと。
+  const AUDIO_VERSION = 2;
+  function audioUrl(base, file) { return `${base}${file}?v=${AUDIO_VERSION}`; }
   const STORAGE_KEY = 'kbAudioSettings';
   // 音源ファイル自体を小さい音で作り直してある（BGM -12dB、効果音 -6dB）ので、
   // ここは下げすぎない。iOSはこの値を無視するため、iOSでの大きさは音源側で決まる。
@@ -70,7 +76,7 @@
 
   KBAudio.play = function (name) {
     if (!SFX_FILES[name] || volumeOf('se') <= 0) return;
-    const a = new Audio(SFX_BASE + SFX_FILES[name]);
+    const a = new Audio(audioUrl(SFX_BASE, SFX_FILES[name]));
     applyVolume(a, 'se');
     a.play().catch(() => {});
   };
@@ -80,7 +86,7 @@
     KBAudio.stopBgm();
     if (!BGM_FILES[name]) return;
     bgmKey = name;
-    bgmAudio = new Audio(BGM_BASE + BGM_FILES[name]);
+    bgmAudio = new Audio(audioUrl(BGM_BASE, BGM_FILES[name]));
     bgmAudio.loop = true;
     bgmAudio.preload = 'auto';
     applyVolume(bgmAudio, 'bgm');
