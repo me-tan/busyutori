@@ -101,6 +101,21 @@
 
   KBAudio.getSettings = function () { return { ...settings }; };
 
+  // この端末でアプリから音量を変えられるか。iOSは volume への代入を黙って無視して
+  // 常に端末の音量で鳴らすので、実際に代入して読み返して確かめる（機種名で判定すると
+  // 名乗りが変わったときに外れるため、できることを直接試す）。
+  let volumeControllable = null;
+  KBAudio.canControlVolume = function () {
+    if (volumeControllable === null) {
+      try {
+        const probe = new Audio();
+        probe.volume = 0.5;
+        volumeControllable = probe.volume === 0.5;
+      } catch (e) { volumeControllable = false; }
+    }
+    return volumeControllable;
+  };
+
   KBAudio.setSeVolume = function (v) {
     settings.se = Math.max(0, Math.min(1, v)); // 効果音は鳴らすたびに作るので次の音から反映される
     saveSettings();

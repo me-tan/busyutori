@@ -166,6 +166,11 @@
                 font-weight: 700; color: var(--ink); }
   .settingLbl svg { color: var(--ai); flex: none; }
   .settingRow input[type="range"] { width: 132px; height: var(--tap); }
+  /* 音量を変えられない端末では、つまみを操作できないことが見て分かるようにする */
+  .settingRow input[type="range"]:disabled { opacity: 0.35; }
+  .settingRow.disabled .settingLbl { color: var(--ink-soft); }
+  .settingRow.disabled .settingLbl svg { color: var(--ink-soft); }
+  .settingNote { margin-top: var(--s4); font-size: var(--t-sm); line-height: 1.7; color: var(--ink-mid); }
 
   .friendRow { display: flex; align-items: center; justify-content: space-between; gap: var(--s3);
                padding: var(--s3) 0; min-height: 56px; border-bottom: 1px solid var(--rule); }
@@ -657,9 +662,8 @@
 
   <div class="secTitle" style="margin-top:var(--s5)">ログアウト</div>
   <div style="font-size:var(--t-xs);color:var(--ink-mid);margin:var(--s2) 0 var(--s3)">
-    この端末からログアウトします。コードとパスワードのしくみがないため、
-    一度ログアウトすると同じアカウントには戻れません。別の人がこの端末で
-    使う場合などに利用してください。
+    この端末からログアウトします。ユーザー名とパスワードでいつでも入り直せるので、
+    記録やフレンドが消えることはありません。パスワードを忘れると入り直せなくなるので気をつけてください。
   </div>
   <button id="logoutBtn" class="danger">ログアウトする</button>
 </div>
@@ -732,6 +736,10 @@
       </div>
       <input type="checkbox" id="muteAll">
     </label>
+  </div>
+  <div class="settingNote hidden" id="volumeNote">
+    この端末では、アプリから音の大きさを変えられません。本体の音量ボタンで調節してください。
+    「すべての音を消す」はこの端末でも使えます。
   </div>
 </div>
 
@@ -1539,6 +1547,16 @@ function renderSettingsUI() {
   document.getElementById('seVolume').value = Math.round(s.se * 100);
   document.getElementById('bgmVolume').value = Math.round(s.bgm * 100);
   document.getElementById('muteAll').checked = s.muted;
+
+  // iPhoneなどアプリから音量を変えられない端末では、触っても効かないつまみを
+  // 操作できないようにして、本体で調節してもらうよう案内する
+  const canControl = KBAudio.canControlVolume();
+  ['seVolume', 'bgmVolume'].forEach(id => {
+    const slider = document.getElementById(id);
+    slider.disabled = !canControl;
+    slider.closest('.settingRow').classList.toggle('disabled', !canControl);
+  });
+  document.getElementById('volumeNote').classList.toggle('hidden', canControl);
 }
 
 function setProfileErr(t) {
@@ -1935,7 +1953,7 @@ function bind() {
     } catch (e) {}
   };
   document.getElementById('logoutBtn').onclick = () => {
-    if (!confirm('ログアウトしますか？この端末には戻れなくなります。')) return;
+    if (!confirm('ログアウトしますか？ユーザー名とパスワードで入り直せます。')) return;
     Players.clearProfile();
     show('loginScreen');
   };
