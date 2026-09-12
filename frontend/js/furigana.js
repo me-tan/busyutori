@@ -66,7 +66,7 @@
     // 漢字辞書。読みは辞書自身が出すので、ふりがなを重ねない。
     // .cnt は書き順の再生中に1画ごとに書き換わるので、触らずにおく。
     // .dsec-h（見出し）は読みをindex.htmlで直接書いている
-    '.dkanji', '.dv', '.dwords', '.dread', '.cnt', '.dsec-h',
+    '.dkanji', '.dv', '.dwords', '.dread', '.cnt', '.dsec-h', '.dradhead .r',
   ].join(',');
 
   const KANJI = /[一-龥々]/;

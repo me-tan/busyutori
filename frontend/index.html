@@ -414,6 +414,19 @@
   /* ── 漢字辞書 ─────────────────────────────────────────────
      一覧はゲームの桝（.radgrid/.kgrid）をそのまま使い、
      ここでは「漢字をしらべる」画面だけを定義する */
+  /* 漢字一覧の上に出す部首の紹介。なりたちは部首マスターの結果画面と同じ文章 */
+  .dradhead { text-align: center; padding-bottom: var(--s4); margin-bottom: var(--s4);
+              border-bottom: 1px solid var(--rule); }
+  .dradhead .r { font-family: var(--font-kanji); font-size: 56px; line-height: 1.1;
+                 font-weight: 500; color: var(--ink); }
+  .dradhead .n { font-size: var(--t-sm); color: var(--ink-mid); margin-top: var(--s1); }
+  .dradhead .m { font-size: var(--t-base); margin-top: var(--s2); }
+  /* なりたちは長めの文なので、中央ぞろえをやめて左から読ませる */
+  .dradhead .o { font-size: var(--t-sm); color: var(--ink-mid); line-height: 1.9;
+                 margin-top: var(--s1); text-align: left; }
+  /* 見出しは本文（左ぞろえ）の頭に付くので、こちらも左に寄せる */
+  .dradhead .dsec-h { margin-top: var(--s4); margin-bottom: 0; text-align: left; }
+
   .dhead { text-align: center; padding-bottom: var(--s4); border-bottom: 1px solid var(--rule); }
   .dkanji { font-family: var(--font-kanji); font-size: 88px; line-height: 1.1;
             font-weight: 500; color: var(--ink); }
@@ -861,6 +874,7 @@
     </button>
     <div class="navTitle" id="dictKanjiTitle">漢字をえらぶ</div>
   </div>
+  <div class="dradhead" id="dictRadHead"></div>
   <div class="kgrid" id="dictKanjiGrid"></div>
 </div>
 
@@ -1365,8 +1379,14 @@ function renderDictRadicals() {
 
 function renderDictKanjiList() {
   const rad = dict.radical;
-  document.getElementById('dictKanjiTitle').textContent =
-    `${radGlyph(rad)}（${DATA.radicals[rad].name}）の漢字`;
+  const d = DATA.radicals[rad];
+  document.getElementById('dictKanjiTitle').textContent = `${radGlyph(rad)}（${d.name}）の漢字`;
+  // なりたちは部首マスターの結果画面に出しているものと同じ（radicals.jsonのorigin）
+  document.getElementById('dictRadHead').innerHTML =
+    `<div class="r">${radGlyph(rad)}</div>` +
+    `<div class="n">${d.name}</div>` +
+    `<div class="m">${d.meaning}</div>` +
+    (d.origin ? `<div class="dsec-h">なりたち</div><div class="o">${d.origin}</div>` : '');
   // 習う順に見られるよう学年の若い方から並べる
   const list = poolOf(rad, dictGrades());
   document.getElementById('dictKanjiGrid').innerHTML = list.map(k =>
