@@ -402,11 +402,17 @@
   .reveal-origin { font-size: var(--t-sm); color: var(--ink-mid); line-height: 1.9;
                    margin-bottom: var(--s4); text-align: left; }
   .kgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(64px,1fr)); gap: 1px; text-align: center; }
-  .kcell { background: var(--card); border: none; box-shadow: 0 0 0 1px var(--rule); padding: var(--s2) var(--s1); }
+  /* 桝を押すとその字の辞書が開く。押せることが分かるよう部首の桝と同じ反応にする */
+  .kcell { background: var(--card); border: none; box-shadow: 0 0 0 1px var(--rule);
+           padding: var(--s2) var(--s1); cursor: pointer; }
+  @media (hover: hover) { .kcell:hover { background: var(--ai-pale); box-shadow: 0 0 0 1px var(--ai-mid); } }
+  .kcell:active { background: var(--ai-pale); }
   .kcell .k { font-family: var(--font-kanji); font-size: 26px; line-height: 1.3; font-weight: 500; color: var(--ink); }
   .kcell .r { font-size: var(--t-xs); color: var(--ink-mid); margin-top: var(--s1); line-height: 1.5; }
   .kcell .g { font-size: var(--t-xs); color: var(--ink-soft); line-height: 1.5; }
   .more { font-size: var(--t-sm); color: var(--ink-mid); margin-top: var(--s3); }
+  /* 省略された残りを出すボタン。一覧の下に幅いっぱいで置く */
+  .more .revall { width: 100%; border-color: var(--rule); font-size: var(--t-sm); font-weight: 700; }
   .gotbox { margin-top: var(--s5); font-size: var(--t-sm); color: var(--ink-mid); }
   .gotbox .gk { font-family: var(--font-kanji); font-size: var(--t-lg); color: var(--ai);
                 font-weight: 500; margin-right: var(--s1); }
@@ -1081,6 +1087,7 @@
     <div class="reveal-rad" id="bRevRad">—</div>
     <div class="reveal-name" id="bRevName"></div>
     <div class="reveal-lead" id="bRevLead"></div>
+    <div class="reveal-sub" id="bRevSub"></div>
     <div class="reveal-origin" id="bRevOrigin"></div>
     <div class="kgrid" id="bRevGrid"></div>
     <div class="more" id="bRevMore"></div>
@@ -1334,7 +1341,21 @@ function renderRadicalList() {
    ゲームの状態（state）には触らない。
    kanji-dict.json は540KBあるので起動時には読まず、辞書を開いたときに読む。 */
 let DICT = null;
-const dict = { level: 'elem', radical: null, kanji: null };
+let dictLoading = null;
+// backTo は辞書のくわしい画面から戻る先。結果画面から開いたときは結果画面に返す
+const dict = { level: 'elem', radical: null, kanji: null, backTo: 'dictKanjiScreen' };
+
+// 何度呼んでも読み込みは1回だけ。失敗したら次の呼び出しでやり直せるようにする
+function ensureDict() {
+  if (DICT) return Promise.resolve(DICT);
+  if (!dictLoading) {
+    dictLoading = fetch('data/kanji-dict.json')
+      .then(res => { if (!res.ok) throw new Error(res.status); return res.json(); })
+      .then(json => { DICT = json.kanji; return DICT; })
+      .catch(() => { dictLoading = null; return null; });
+  }
+  return dictLoading;
+}
 
 async function openDict() {
   const wait = document.getElementById('dictWait');
@@ -1347,10 +1368,9 @@ async function openDict() {
   // 読み終わるまでは学年を選んでも中身が空なので、選べないようにしておく
   btns.forEach(b => { b.disabled = true; });
   wait.classList.remove('hidden');
-  try {
-    DICT = (await (await fetch('data/kanji-dict.json')).json()).kanji;
+  if (await ensureDict()) {
     btns.forEach(b => { b.disabled = false; });
-  } catch (e) {
+  } else {
     err.textContent = '漢字辞書のデータが読み込めませんでした。通信環境を確かめてから、もう一度開いてください。';
     err.classList.remove('hidden');
   }
@@ -1395,7 +1415,12 @@ function renderDictKanjiList() {
   ).join('');
 
   document.querySelectorAll('#dictKanjiGrid .dcell').forEach(el => {
-    el.onclick = () => { dict.kanji = el.dataset.kanji; renderDictDetail(); show('dictDetailScreen'); };
+    el.onclick = () => {
+      dict.kanji = el.dataset.kanji;
+      dict.backTo = 'dictKanjiScreen';
+      renderDictDetail();
+      show('dictDetailScreen');
+    };
   });
   loadStrokes(rad); // 字を選んだ時点で書き順が出せるよう、先に読んでおく
 }
@@ -1440,7 +1465,10 @@ function renderDictDetail() {
     `</div></div>`,
   ];
   if (!e) {
-    parts.push(`<div class="dsec"><div class="dmean">この漢字の情報が読み込めませんでした。</div></div>`);
+    // DICTがまだ無いのは読み込み中、あるのに引けないのは本当に無いとき
+    parts.push(`<div class="dsec"><div class="dmean">` +
+      (DICT ? 'この漢字の情報が読み込めませんでした。' : '読み込んでいます…') +
+      `</div></div>`);
   } else {
     if (e.mean) {
       parts.push(`<div class="dsec"><div class="dsec-h">${SEC_MEAN}</div><div class="dmean">${e.mean}</div></div>`);
@@ -1824,9 +1852,54 @@ function renderUsed() {
 
 function cellHTML(k) {
   const g = DATA.kanji[k] ? DATA.kanji[k].grade : '';
-  return `<div class="kcell"><div class="k">${k}</div>` +
+  return `<div class="kcell" data-kanji="${k}"><div class="k">${k}</div>` +
          `<div class="r">${firstReading(k)}</div>` +
          `<div class="g">${GLABEL[g] || ''}</div></div>`;
+}
+
+/* 結果画面の漢字一覧。桝を押すと辞書のくわしい画面へ飛び、戻ると結果に返る。
+   字数が多いと24字で切っているので、残りを出すボタンも付ける。 */
+const revealAll = {}; // 一覧のid -> 全部出しているか
+
+function setOriginBox(id, origin) {
+  // 辞書と同じ見出しを付ける。見出しが無いと本文にまぎれて読み飛ばされる
+  document.getElementById(id).innerHTML =
+    origin ? `<div class="dsec-h">なりたち</div>${origin}` : '';
+}
+
+function renderRevealGrid(gridId, moreId, list, radical, backTo) {
+  const all = revealAll[gridId];
+  const shown = all ? list : list.slice(0, MAX_REVEAL);
+  document.getElementById(gridId).innerHTML = shown.map(cellHTML).join('');
+
+  const rest = list.length - shown.length;
+  const moreEl = document.getElementById(moreId);
+  if (rest > 0) moreEl.innerHTML = `<button class="ghost revall">ほか ${rest} 字もぜんぶ見る</button>`;
+  else if (all && list.length > MAX_REVEAL) moreEl.innerHTML = `<button class="ghost revall">はじめの${MAX_REVEAL}字だけにする</button>`;
+  else moreEl.innerHTML = '';
+
+  const btn = moreEl.querySelector('.revall');
+  if (btn) btn.onclick = () => {
+    revealAll[gridId] = !all;
+    renderRevealGrid(gridId, moreId, list, radical, backTo);
+  };
+  document.querySelectorAll(`#${gridId} .kcell`).forEach(el => {
+    el.onclick = () => openKanjiDetail(radical, el.dataset.kanji, backTo);
+  });
+}
+
+async function openKanjiDetail(radical, kanji, backTo) {
+  dict.radical = radical;
+  dict.kanji = kanji;
+  dict.backTo = backTo;
+  // 辞書データは616KBあり、結果画面から開くときはまだ読んでいないことがある。
+  // 押した手ごたえがなくなるので、部首や学年など今出せる分を先に出しておく。
+  renderDictDetail();
+  show('dictDetailScreen');
+  if (!DICT) {
+    await ensureDict();
+    if (dict.kanji === kanji) renderDictDetail(); // 見ている字が変わっていなければ描き直す
+  }
 }
 
 function renderReveal() {
@@ -1843,12 +1916,12 @@ function renderReveal() {
   document.getElementById('revRad').textContent = radGlyph(rad);
   document.getElementById('revName').textContent = d.name;
   document.getElementById('revSub').textContent = d.meaning;
-  document.getElementById('revOrigin').textContent = d.origin ? `なりたち: ${d.origin}` : '';
+  setOriginBox('revOrigin', d.origin);
+  revealAll.revGrid = false; // 前の試合で広げたままにしない
 
   if (!unused.length) {
     document.getElementById('revLead').innerHTML = `${radGlyph(rad)}を含む漢字を、すべて書き出しました`;
-    document.getElementById('revGrid').innerHTML = got.map(cellHTML).join('');
-    document.getElementById('revMore').textContent = '';
+    renderRevealGrid('revGrid', 'revMore', got, rad, 'overScreen');
     document.getElementById('revGot').innerHTML = '';
     return;
   }
@@ -1858,10 +1931,7 @@ function renderReveal() {
 
   const sorted = unused.slice().sort((a,b) =>
     (DATA.kanji[a] ? DATA.kanji[a].grade : 99) - (DATA.kanji[b] ? DATA.kanji[b].grade : 99));
-  const shown = sorted.slice(0, MAX_REVEAL);
-  document.getElementById('revGrid').innerHTML = shown.map(cellHTML).join('');
-  const rest = sorted.length - shown.length;
-  document.getElementById('revMore').textContent = rest > 0 ? `ほか ${rest} 字` : '';
+  renderRevealGrid('revGrid', 'revMore', sorted, rad, 'overScreen');
   document.getElementById('revGot').innerHTML = got.length
     ? 'あなたが書けたのは ' + got.map(k => `<span class="gk">${k}</span>`).join('') + ` の ${got.length} 字`
     : '';
@@ -2248,7 +2318,8 @@ function bind() {
   document.getElementById('dictLvBack').onclick     = () => show('modeScreen');
   document.getElementById('dictRadBack').onclick    = () => show('dictLevelScreen');
   document.getElementById('dictKanjiBack').onclick  = () => show('dictRadScreen');
-  document.getElementById('dictDetailBack').onclick = () => { stopStrokes(); show('dictKanjiScreen'); };
+  // 戻る先は開いた場所によって変わる（辞書の漢字一覧か、対局の結果画面）
+  document.getElementById('dictDetailBack').onclick = () => { stopStrokes(); show(dict.backTo); };
 
   document.getElementById('rec').onclick = judge;
   document.getElementById('erase').onclick = () => {
@@ -2698,22 +2769,20 @@ function onBGameOver(msg) {
     const d = DATA.radicals[radical];
     document.getElementById('bRevRad').textContent = radGlyph(radical);
     document.getElementById('bRevName').textContent = d.name;
-    document.getElementById('bRevOrigin').textContent = d.origin ? `なりたち: ${d.origin}` : '';
+    document.getElementById('bRevSub').textContent = d.meaning;
+    setOriginBox('bRevOrigin', d.origin);
+    revealAll.bRevGrid = false; // 前の試合で広げたままにしない
 
     if (!unused.length) {
       document.getElementById('bRevLead').innerHTML = `${radGlyph(radical)}を含む漢字は、すべて使われました`;
-      document.getElementById('bRevGrid').innerHTML = got.map(cellHTML).join('');
-      document.getElementById('bRevMore').textContent = '';
+      renderRevealGrid('bRevGrid', 'bRevMore', got, radical, 'battleOverScreen');
       document.getElementById('bRevGot').innerHTML = '';
     } else {
       document.getElementById('bRevLead').innerHTML =
         `${radGlyph(radical)}を含む漢字は、まだ <b>${unused.length}</b> 字ありました`;
       const sorted = unused.slice().sort((a, b) =>
         (DATA.kanji[a] ? DATA.kanji[a].grade : 99) - (DATA.kanji[b] ? DATA.kanji[b].grade : 99));
-      const shown = sorted.slice(0, MAX_REVEAL);
-      document.getElementById('bRevGrid').innerHTML = shown.map(cellHTML).join('');
-      const rest = sorted.length - shown.length;
-      document.getElementById('bRevMore').textContent = rest > 0 ? `ほか ${rest} 字` : '';
+      renderRevealGrid('bRevGrid', 'bRevMore', sorted, radical, 'battleOverScreen');
       document.getElementById('bRevGot').innerHTML = got.length
         ? '書かれたのは ' + got.map(k => `<span class="gk">${k}</span>`).join('') + ` の ${got.length} 字`
         : '';
