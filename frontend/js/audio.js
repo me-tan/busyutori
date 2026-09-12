@@ -101,19 +101,19 @@
 
   KBAudio.getSettings = function () { return { ...settings }; };
 
-  // この端末でアプリから音量を変えられるか。iOSは volume への代入を黙って無視して
-  // 常に端末の音量で鳴らすので、実際に代入して読み返して確かめる（機種名で判定すると
-  // 名乗りが変わったときに外れるため、できることを直接試す）。
-  let volumeControllable = null;
+  // この端末でアプリから音量を変えられるか。
+  //
+  // 「volumeに代入して読み返す」やり方では判定できない。iOSは代入された値を
+  // プロパティとしては保持して読み返せるのに、再生時にはそれを無視して端末の
+  // 音量で鳴らすため、どの端末でも「変えられる」と判定されてしまう（実機で確認）。
+  // そのため、この制約を持つiOS（iPhone・iPad。iOSではブラウザの種類を問わず
+  // 同じ制約になる）かどうかで判断する。
   KBAudio.canControlVolume = function () {
-    if (volumeControllable === null) {
-      try {
-        const probe = new Audio();
-        probe.volume = 0.5;
-        volumeControllable = probe.volume === 0.5;
-      } catch (e) { volumeControllable = false; }
-    }
-    return volumeControllable;
+    const ua = navigator.userAgent || '';
+    if (/iPhone|iPad|iPod/.test(ua)) return false;
+    // iPadOS 13以降のSafariはMacを名乗るので、タッチできるMacはiPadとみなす
+    if (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1) return false;
+    return true;
   };
 
   KBAudio.setSeVolume = function (v) {
