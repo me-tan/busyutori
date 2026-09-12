@@ -424,6 +424,8 @@
   .modeNum { font-family: var(--font-mincho); font-size: var(--t-lg); color: var(--ink);
              flex: none; width: 40px; height: 40px; box-shadow: 0 0 0 1px var(--ai);
              display: flex; align-items: center; justify-content: center; line-height: 1; }
+  /* 二つの選択肢が同じ見た目だと見分けにくいので、一つめは藍で塗る */
+  .modeNum.ai { background: var(--ai); color: var(--card); }
   .modeTxt { flex: 1; }
   .modeH { font-family: var(--font-mincho); font-size: 30px; font-weight: 600;
            letter-spacing: 0.08em; color: var(--ink); line-height: 1.3; }
@@ -596,7 +598,7 @@
   <h1 class="logo">ぶしゅとり</h1>
   <div class="modeList">
     <button class="modeItem" id="toBattle">
-      <div class="modeNum">一</div>
+      <div class="modeNum ai">一</div>
       <div class="modeTxt">
         <div class="modeH">たいせん</div>
       </div>

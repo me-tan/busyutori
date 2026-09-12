@@ -98,6 +98,20 @@
     bgmAudio = null; bgmKey = null;
   };
 
+  // ページを開いた直後（まだ誰も画面を触っていない時点）はAudioContextが
+  // suspendedのまま作られ、そこにつないだBGMは鳴らない。最初の操作で
+  // AudioContextを起こし、鳴らし損ねたBGMを鳴らし直す。
+  const WAKE_EVENTS = ['pointerdown', 'touchend', 'keydown'];
+  function wakeAudio() {
+    const c = ensureContext(); // suspendedならresumeを試みる
+    if (bgmKey && bgmAudio && bgmAudio.paused) bgmAudio.play().catch(() => {});
+    // resumeは非同期なので、runningになるまでは次の操作でもう一度試す
+    if (c && c.state === 'running') {
+      WAKE_EVENTS.forEach(t => window.removeEventListener(t, wakeAudio));
+    }
+  }
+  WAKE_EVENTS.forEach(t => window.addEventListener(t, wakeAudio));
+
   KBAudio.getSettings = function () { return { ...settings }; };
 
   KBAudio.setSeVolume = function (v) {
