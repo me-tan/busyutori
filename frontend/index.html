@@ -1283,10 +1283,20 @@ let currentRankLevel = 'elem';
 let pendingInvite = null; // { code, roomCode } 自分が送って返事待ちの対戦の誘い
 let inviteLevelPickerFor = null; // 難易度を選んでいる最中のフレンドコード
 let sendingInviteTo = null; // 誘いを送信中のフレンドコード
-function show(id) {
+// 画面を切り替えてもページのスクロール位置はそのまま残る。一覧の下の方から
+// 漢字を開くと、詳細画面まで下までスクロールした状態で開いてしまうので、
+// 進むときは必ず先頭から見せる。戻るときだけ、離れたときの位置に返す
+//（長い一覧を見ていた場所まで自分でスクロールし直させないため）。
+const scrollPos = {};
+
+function show(id, restore) {
+  const moved = id !== currentScreen;
+  if (currentScreen && moved) scrollPos[currentScreen] = window.scrollY;
   currentScreen = id;
   SCREENS.forEach(s => document.getElementById(s).classList.toggle('hidden', s !== id));
   if (BGM_SCREENS.has(id)) KBAudio.playBgm('menu'); else KBAudio.stopBgm();
+  // 同じ画面を出し直しただけのときは、見ている場所を動かさない
+  if (moved) window.scrollTo(0, restore ? (scrollPos[id] || 0) : 0);
 }
 
 function refreshFriendsScreenIfOpen() {
@@ -2316,10 +2326,11 @@ function bind() {
     };
   });
   document.getElementById('dictLvBack').onclick     = () => show('modeScreen');
-  document.getElementById('dictRadBack').onclick    = () => show('dictLevelScreen');
-  document.getElementById('dictKanjiBack').onclick  = () => show('dictRadScreen');
+  // 戻るときは、長い一覧のどこを見ていたかに返す
+  document.getElementById('dictRadBack').onclick    = () => show('dictLevelScreen', true);
+  document.getElementById('dictKanjiBack').onclick  = () => show('dictRadScreen', true);
   // 戻る先は開いた場所によって変わる（辞書の漢字一覧か、対局の結果画面）
-  document.getElementById('dictDetailBack').onclick = () => { stopStrokes(); show(dict.backTo); };
+  document.getElementById('dictDetailBack').onclick = () => { stopStrokes(); show(dict.backTo, true); };
 
   document.getElementById('rec').onclick = judge;
   document.getElementById('erase').onclick = () => {
