@@ -6,8 +6,10 @@
 #   JMdict_e      - http://ftp.edrdg.org/pub/Nihongo/JMdict_e.gz
 #                   （利用例に出す熟語とその読み）
 #   kanjivg/      - https://github.com/KanjiVG/kanjivg の releases から
-#                   kanjivg-YYYYMMDD-main.zip を展開してできる kanji/ を
-#                   scripts/sources/kanjivg/ に置く（書き順）
+#                   kanjivg-YYYYMMDD-all.zip を展開してできる kanji/ を
+#                   scripts/sources/kanjivg/ に置く（書き順）。
+#                   別字形を含む -all の方が必要（-main には入っていない。理由は
+#                   下の strokes_of のコメント参照）
 # 入手して SOURCE_DIR 以下に配置してから実行する。
 #
 # 漢字の意味（日本語）はどの外部データにも無いため、scripts/kanji-meanings.json に
@@ -129,10 +131,32 @@ for k in TARGET:
 # 1画が1つの <path> になっていて、並び順がそのまま書き順。
 PATH_D = re.compile(r'<path [^>]*?\bd="([^"]+)"')
 
+# KanjiVGの標準の字形は、僅・葛・遜・遡・餅・餌・謎・賭について印刷標準字体
+#（二点しんにょう、食偏、点のある者など）で、学校で習う形より1画多い。
+# これらには学校の形にあたる別字形（-Hyougai）が用意されているので、
+# KANJIDIC2の画数と合う字形を選び直す。楷書体（-Kaisho）は書道の字形で
+# 教科書の形とは違うため、候補から外す。
+variant_used = {}
 
-def strokes_of(ch):
-    svg = (SOURCE_DIR / 'kanjivg' / ('%05x.svg' % ord(ch))).read_text(encoding='utf-8')
-    return PATH_D.findall(svg)
+
+def svg_files(ch):
+    base = SOURCE_DIR / 'kanjivg' / ('%05x.svg' % ord(ch))
+    others = sorted(p for p in base.parent.glob('%05x-*.svg' % ord(ch))
+                    if 'Kaisho' not in p.name)
+    return [base] + others
+
+
+def strokes_of(ch, want):
+    fallback = None
+    for path in svg_files(ch):
+        paths = PATH_D.findall(path.read_text(encoding='utf-8'))
+        if fallback is None:
+            fallback = paths  # 合うものが無ければ標準の字形を使う
+        if len(paths) == want:
+            if path.name != '%05x.svg' % ord(ch):
+                variant_used[ch] = path.name
+            return paths
+    return fallback
 
 
 # 書き順は1字1KBほどあるので、まとめて1ファイルにすると辞書を開くたびに重い。
@@ -148,7 +172,7 @@ for rad, rdata in radicals_json['radicals'].items():
     shard = {}
     for kanji_list in rdata['kanji'].values():
         for k in kanji_list:
-            shard[k] = strokes_of(k)
+            shard[k] = strokes_of(k, info[k]['strokes'])
             drawn[k] = len(shard[k])
     name = '%05x.json' % ord(rad[0])
     (OUT_STROKES / name).write_text(
@@ -168,9 +192,8 @@ for k in sorted(TARGET):
     }
     if meanings.get(k):
         e['mean'] = meanings[k]
-    # KanjiVGは「僅・葛・遜・遡・餅・餌・謎・賭」を印刷標準字体（二点しんにょう等）で
-    # 持っているため、学校で習う形より1画多い。画数の表示と書き順の動きが食い違って
-    # 見えるので、食い違う字だけ書き順側の画数も持たせ、画面で断りを出せるようにする。
+    # 字形を選び直してもなお画数が合わない字が出たら、画面で断りを出せるようにする
+    #（今は該当なし。データを更新したときに黙って食い違わないための備え）
     if k in drawn and drawn[k] != e['strokes']:
         e['vstrokes'] = drawn[k]
     out[k] = e
@@ -187,6 +210,8 @@ OUT_DICT.write_text(json.dumps({
 }, ensure_ascii=False, indent=1), encoding='utf-8')
 
 print(f'漢字 {len(out)}字 / 意味あり {sum(1 for e in out.values() if "mean" in e)}字')
+print(f'学校の形に差し替えた字 {len(variant_used)}字: '
+      + ', '.join(f'{k}({v})' for k, v in sorted(variant_used.items())))
 print(f'画数と書き順が食い違う字 {sorted(k for k, e in out.items() if "vstrokes" in e)}')
 print(f'用例ゼロ {sum(1 for k in TARGET if not words[k])}字')
 print(f'{OUT_DICT.relative_to(ROOT)}: {OUT_DICT.stat().st_size // 1024}KB')
