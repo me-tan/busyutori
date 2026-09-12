@@ -10,9 +10,9 @@
  * 鳴る（Android・PCでは効く）。ただし muted はiOSでも効くので、音量0を消音として
  * 扱えば「音を消したい」という要求だけは全環境で満たせる。
  *
- * またiOSは、消音スイッチ（マナーモード）が入っているとWebの音を鳴らさない。
- * iOS 16.4以降は navigator.audioSession に playback を指定すると鳴らせるので、
- * 使える環境では指定する。
+ * 消音スイッチ（マナーモード）中は鳴らさない方針。iOS 16.4以降の
+ * navigator.audioSession に ambient を指定して、消音スイッチを尊重し、かつ
+ * 相手が自分で流している音楽を止めないようにする。
  */
 (function () {
   const SFX_BASE = 'assets/sfx/';
@@ -23,7 +23,8 @@
   };
   const BGM_FILES = { menu: 'menu.m4a' };
   const STORAGE_KEY = 'kbAudioSettings';
-  const DEFAULTS = { se: 0.8, bgm: 0.4, muted: false };
+  // 初めて開いた人がびっくりしない大きさにする。物足りなければ設定で上げられる
+  const DEFAULTS = { se: 0.4, bgm: 0.15, muted: false };
 
   function loadSettings() {
     try {
@@ -44,9 +45,11 @@
   const settings = loadSettings();
   const KBAudio = {};
 
-  // 消音スイッチが入っていても鳴らせるようにする（対応していない環境では何もしない）
+  // 消音スイッチ（マナーモード）中は鳴らさない。あわせて、相手が自分で流している
+  // 音楽を止めてしまわないようにする。ambientがこの両方を満たす区分。
+  // 対応していない環境でも、もともと消音スイッチは尊重されるので何もしない。
   try {
-    if (navigator.audioSession) navigator.audioSession.type = 'playback';
+    if (navigator.audioSession) navigator.audioSession.type = 'ambient';
   } catch (e) {}
 
   function volumeOf(kind) {
