@@ -411,6 +411,33 @@
   .gotbox .gk { font-family: var(--font-kanji); font-size: var(--t-lg); color: var(--ai);
                 font-weight: 500; margin-right: var(--s1); }
 
+  /* ── 漢字辞書 ─────────────────────────────────────────────
+     一覧はゲームの桝（.radgrid/.kgrid）をそのまま使い、
+     ここでは「漢字をしらべる」画面だけを定義する */
+  .dhead { text-align: center; padding-bottom: var(--s4); border-bottom: 1px solid var(--rule); }
+  .dkanji { font-family: var(--font-kanji); font-size: 88px; line-height: 1.1;
+            font-weight: 500; color: var(--ink); }
+  .dfacts { display: flex; justify-content: center; gap: var(--s4); margin-top: var(--s2);
+            font-size: var(--t-xs); color: var(--ink-mid); }
+  .dfacts b { font-family: var(--font-mincho); font-size: var(--t-md); font-weight: 600;
+              color: var(--ink); margin-left: var(--s1); }
+  /* 見出しは罫線に重ねず、項目ごとに一段落として置く */
+  .dsec { margin-top: var(--s5); }
+  .dsec-h { font-size: var(--t-xs); color: var(--ai); font-weight: 700;
+            letter-spacing: 0.1em; margin-bottom: var(--s2); }
+  .dmean { font-size: var(--t-base); line-height: 1.9; }
+  .dread { display: flex; flex-wrap: wrap; gap: var(--s2); }
+  .dread span { font-family: var(--font-mincho); font-size: var(--t-md);
+                background: var(--card); box-shadow: 0 0 0 1px var(--rule);
+                padding: var(--s1) var(--s3); }
+  .dread.none { color: var(--ink-soft); font-size: var(--t-sm); }
+  /* 用例は語と読みを縦に重ねる。横並びだと長い語で折り返して読みにくい */
+  .dwords { display: grid; grid-template-columns: repeat(auto-fill, minmax(104px,1fr)); gap: 1px; }
+  .dword { background: var(--card); box-shadow: 0 0 0 1px var(--rule);
+           padding: var(--s3) var(--s2); text-align: center; }
+  .dword .w { font-family: var(--font-kanji); font-size: var(--t-lg); font-weight: 500; line-height: 1.4; }
+  .dword .y { font-size: var(--t-xs); color: var(--ink-mid); line-height: 1.5; }
+
   .err { color: var(--shu); font-size: var(--t-sm); line-height: 1.8; }
   /* 取り消せない操作は朱で示す */
   .danger { color: var(--shu); border-color: var(--shu); }
@@ -425,7 +452,9 @@
      まとまって見え、選択肢は親指の届く下側に寄る */
   #modeScreen h1 { margin: auto 0; }
   .modeList { display: flex; flex-direction: column; gap: 1px; }
-  .modeItem { flex: 1 1 0; min-height: 156px; display: flex; align-items: center; gap: var(--s5);
+  /* 選択肢が三つあるので、桝の高さは画面に三つ収まる分までしか取らない
+     （flexで余った高さは分け合うので、広い画面では自然に伸びる） */
+  .modeItem { flex: 1 1 0; min-height: 132px; display: flex; align-items: center; gap: var(--s5);
               width: 100%; text-align: left; background: var(--card); border: none;
               box-shadow: 0 0 0 1px var(--ai); padding: var(--s5) var(--s6);
               font-family: var(--font-ui); cursor: pointer; }
@@ -435,8 +464,9 @@
   .modeNum { font-family: var(--font-mincho); font-size: var(--t-lg); color: var(--ink);
              flex: none; width: 40px; height: 40px; box-shadow: 0 0 0 1px var(--ai);
              display: flex; align-items: center; justify-content: center; line-height: 1; }
-  /* 二つの選択肢が同じ見た目だと見分けにくいので、一つめは藍で塗る */
+  /* 選択肢が同じ見た目だと見分けにくいので、桝の濃さを三段階に変える */
   .modeNum.ai { background: var(--ai); color: var(--card); }
+  .modeNum.pale { background: var(--ai-pale); }
   .modeTxt { flex: 1; }
   .modeH { font-family: var(--font-mincho); font-size: 30px; font-weight: 600;
            letter-spacing: 0.08em; color: var(--ink); line-height: 1.3; }
@@ -500,6 +530,8 @@
   /* 背の低い端末では、参照するための欄をさらに詰めて、書き取り欄と
      「これでいく」を画面に残すことを優先する */
   @media (max-height: 760px) {
+    .modeItem { min-height: 104px; }
+    h1.logo { font-size: 36px; }
     .usedbox { max-height: 104px; }
     .quest { padding-bottom: var(--s2); margin-bottom: var(--s3); }
     .radical { font-size: 44px; }
@@ -518,6 +550,7 @@
     :root { --gutter: 32px; }
     body { max-width: none; padding: 0 var(--gutter) var(--s7); }
     #loginScreen, #soloScreen, #settingsScreen, #friendsScreen, #profileScreen, #levelScreen, #radScreen,
+    #dictLevelScreen, #dictRadScreen, #dictKanjiScreen, #dictDetailScreen,
     #battleSetupScreen, #overScreen, #battleOverScreen {
       max-width: 560px; margin: var(--s8) auto 0;
     }
@@ -618,6 +651,12 @@
       <div class="modeNum">二</div>
       <div class="modeTxt">
         <div class="modeH">ひとりで</div>
+      </div>
+    </button>
+    <button class="modeItem" id="toDict">
+      <div class="modeNum pale">三</div>
+      <div class="modeTxt">
+        <div class="modeH">かんじじてん</div>
       </div>
     </button>
   </div>
@@ -771,6 +810,52 @@
     <div class="navTitle">部首をえらぶ</div>
   </div>
   <div class="radgrid" id="radGrid"></div>
+</div>
+
+<div id="dictLevelScreen" class="hidden">
+  <div class="navbar">
+    <button class="navBack" id="dictLvBack">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg>
+    </button>
+    <div class="navTitle">学年をえらぶ</div>
+  </div>
+  <div class="stack">
+    <button class="bigbtn" data-dictlevel="low">初級<small>小1〜小3で習う漢字</small></button>
+    <button class="bigbtn" data-dictlevel="elem">中級<small>小1〜小6で習う漢字</small></button>
+    <button class="bigbtn" data-dictlevel="all">上級<small>常用漢字すべて</small></button>
+  </div>
+  <div class="waitmsg hidden" id="dictWait">漢字辞書を読み込んでいます…</div>
+  <div class="err hidden" id="dictErr"></div>
+</div>
+
+<div id="dictRadScreen" class="hidden">
+  <div class="navbar">
+    <button class="navBack" id="dictRadBack">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg>
+    </button>
+    <div class="navTitle">部首をえらぶ</div>
+  </div>
+  <div class="radgrid" id="dictRadGrid"></div>
+</div>
+
+<div id="dictKanjiScreen" class="hidden">
+  <div class="navbar">
+    <button class="navBack" id="dictKanjiBack">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg>
+    </button>
+    <div class="navTitle" id="dictKanjiTitle">漢字をえらぶ</div>
+  </div>
+  <div class="kgrid" id="dictKanjiGrid"></div>
+</div>
+
+<div id="dictDetailScreen" class="hidden">
+  <div class="navbar">
+    <button class="navBack" id="dictDetailBack">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg>
+    </button>
+    <div class="navTitle">漢字をしらべる</div>
+  </div>
+  <div id="dictDetail"></div>
 </div>
 
 <div id="playScreen" class="hidden">
@@ -1150,8 +1235,10 @@ async function renderProfileScreen() {
 }
 
 const SCREENS = ['loginScreen','modeScreen','soloScreen','settingsScreen','friendsScreen','profileScreen','levelScreen','radScreen','playScreen','overScreen',
+  'dictLevelScreen','dictRadScreen','dictKanjiScreen','dictDetailScreen',
   'battleSetupScreen','battlePlayScreen','battleOverScreen'];
 const BGM_SCREENS = new Set(['loginScreen','modeScreen','soloScreen','settingsScreen','friendsScreen','profileScreen','levelScreen','radScreen',
+  'dictLevelScreen','dictRadScreen','dictKanjiScreen','dictDetailScreen',
   'overScreen','battleSetupScreen','battleOverScreen']);
 const LEVEL_LABEL = { low: '初級', elem: '中級', all: '上級' };
 let currentScreen = null;
@@ -1206,9 +1293,120 @@ function renderRadicalList() {
            `<div class="c">${done ? '達成' : x.n + '字'}</div></div>`;
   }).join('');
 
-  document.querySelectorAll('.radbtn').forEach(el => {
+  // 漢字辞書にも同じ桝を使っているので、部首マスターの一覧だけに絞る
+  document.querySelectorAll('#radGrid .radbtn').forEach(el => {
     el.onclick = () => startComplete(el.dataset.rad);
   });
+}
+
+/* ── 漢字辞書 ───────────────────────────────────────────────────
+   学年 → 部首 → 漢字 → くわしく、と降りていくだけの読み物。
+   ゲームの状態（state）には触らない。
+   kanji-dict.json は540KBあるので起動時には読まず、辞書を開いたときに読む。 */
+let DICT = null;
+const dict = { level: 'elem', radical: null, kanji: null };
+
+async function openDict() {
+  const wait = document.getElementById('dictWait');
+  const err = document.getElementById('dictErr');
+  const btns = [...document.querySelectorAll('#dictLevelScreen .bigbtn[data-dictlevel]')];
+  wait.classList.add('hidden');
+  err.classList.add('hidden');
+  show('dictLevelScreen');
+  if (DICT) return;
+  // 読み終わるまでは学年を選んでも中身が空なので、選べないようにしておく
+  btns.forEach(b => { b.disabled = true; });
+  wait.classList.remove('hidden');
+  try {
+    DICT = (await (await fetch('data/kanji-dict.json')).json()).kanji;
+    btns.forEach(b => { b.disabled = false; });
+  } catch (e) {
+    err.textContent = '漢字辞書のデータが読み込めませんでした。通信環境を確かめてから、もう一度開いてください。';
+    err.classList.remove('hidden');
+  }
+  wait.classList.add('hidden');
+}
+
+function dictGrades() { return GRADES[dict.level]; }
+
+function renderDictRadicals() {
+  // 部首マスターと違い、1字でもあれば出す（探せない部首があると辞書にならない）
+  const list = Object.keys(DATA.radicals)
+    .map(r => ({ r, n: poolOf(r, dictGrades()).length }))
+    .filter(x => x.n > 0)
+    .sort((a, b) => b.n - a.n);
+
+  document.getElementById('dictRadGrid').innerHTML = list.map(x =>
+    `<div class="radbtn" data-rad="${x.r}">` +
+    `<div class="r">${radGlyph(x.r)}</div><div class="n">${DATA.radicals[x.r].name}</div>` +
+    `<div class="c">${x.n}字</div></div>`
+  ).join('');
+
+  document.querySelectorAll('#dictRadGrid .radbtn').forEach(el => {
+    el.onclick = () => { dict.radical = el.dataset.rad; renderDictKanjiList(); show('dictKanjiScreen'); };
+  });
+}
+
+function renderDictKanjiList() {
+  const rad = dict.radical;
+  document.getElementById('dictKanjiTitle').textContent =
+    `${radGlyph(rad)}（${DATA.radicals[rad].name}）の漢字`;
+  // 習う順に見られるよう学年の若い方から並べる
+  const list = poolOf(rad, dictGrades());
+  document.getElementById('dictKanjiGrid').innerHTML = list.map(k =>
+    `<div class="kcell dcell" data-kanji="${k}">` +
+    `<div class="k">${k}</div><div class="g">${GLABEL[DATA.kanji[k].grade] || ''}</div></div>`
+  ).join('');
+
+  document.querySelectorAll('#dictKanjiGrid .dcell').forEach(el => {
+    el.onclick = () => { dict.kanji = el.dataset.kanji; renderDictDetail(); show('dictDetailScreen'); };
+  });
+}
+
+// KANJIDIC2の訓読みは「つか.える」「はつ-」「-そ.める」の形。
+// . より後ろが送り仮名、- は接頭語・接尾語の印なので、読み物としては落とす。
+function kunLabel(s) {
+  const body = s.replace(/-/g, '');
+  const i = body.indexOf('.');
+  return i < 0 ? body : body.slice(0, i) + '（' + body.slice(i + 1) + '）';
+}
+
+function renderDictDetail() {
+  const k = dict.kanji;
+  const e = DICT ? DICT[k] : null;
+  const grade = DATA.kanji[k] ? DATA.kanji[k].grade : '';
+  const parts = [
+    `<div class="dhead">`,
+    `<div class="dkanji">${k}</div>`,
+    `<div class="dfacts">`,
+    `<span>部首<b class="dv">${radGlyph(dict.radical)}</b></span>`,
+    e ? `<span>画数<b class="dv">${e.strokes}</b></span>` : '',
+    `<span>習う学年<b class="dv">${GLABEL[grade] || '-'}</b></span>`,
+    `</div></div>`,
+  ];
+  if (!e) {
+    parts.push(`<div class="dsec"><div class="dmean">この漢字の情報が読み込めませんでした。</div></div>`);
+  } else {
+    if (e.mean) {
+      parts.push(`<div class="dsec"><div class="dsec-h">いみ</div><div class="dmean">${e.mean}</div></div>`);
+    }
+    parts.push(readingSection('音読み', e.on));
+    // 「はつ」と「はつ-」のように、印を落とすと同じになる読みがあるのでまとめる
+    parts.push(readingSection('訓読み', [...new Set(e.kun.map(kunLabel))]));
+    if (e.words.length) {
+      parts.push(`<div class="dsec"><div class="dsec-h">つかいかた</div><div class="dwords">` +
+        e.words.map(([w, y]) => `<div class="dword"><div class="w">${w}</div><div class="y">${y}</div></div>`).join('') +
+        `</div></div>`);
+    }
+  }
+  document.getElementById('dictDetail').innerHTML = parts.join('');
+}
+
+function readingSection(title, list) {
+  const body = list.length
+    ? `<div class="dread">${list.map(r => `<span>${r}</span>`).join('')}</div>`
+    : `<div class="dread none">ありません</div>`;
+  return `<div class="dsec"><div class="dsec-h">${title}</div>${body}</div>`;
 }
 
 function weightedPick(items, weights) {
@@ -1897,6 +2095,20 @@ function bind() {
   });
   document.getElementById('lvBack').onclick  = () => show('soloScreen');
   document.getElementById('radBack').onclick = () => show('levelScreen');
+
+  document.getElementById('toDict').onclick = openDict;
+  document.querySelectorAll('#dictLevelScreen .bigbtn[data-dictlevel]').forEach(b => {
+    b.onclick = () => {
+      if (!DICT) return; // まだ読み込めていないときは進ませない（画面が空になるため）
+      dict.level = b.dataset.dictlevel;
+      renderDictRadicals();
+      show('dictRadScreen');
+    };
+  });
+  document.getElementById('dictLvBack').onclick     = () => show('modeScreen');
+  document.getElementById('dictRadBack').onclick    = () => show('dictLevelScreen');
+  document.getElementById('dictKanjiBack').onclick  = () => show('dictRadScreen');
+  document.getElementById('dictDetailBack').onclick = () => show('dictKanjiScreen');
 
   document.getElementById('rec').onclick = judge;
   document.getElementById('erase').onclick = () => {
