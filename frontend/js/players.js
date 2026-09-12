@@ -103,6 +103,19 @@
     fetch("/api/scores", { method: "POST", headers: authHeaders(), body: JSON.stringify({ level, streak }) }).catch(() => {});
   }
 
+  async function listCleared() {
+    const res = await fetch("/api/cleared", { headers: authHeaders() });
+    const data = await readJson(res);
+    return data.cleared;
+  }
+
+  function markCleared(level, radical) {
+    if (!getProfile()) return;
+    fetch("/api/cleared", {
+      method: "POST", headers: authHeaders(), body: JSON.stringify({ level, radical }),
+    }).catch(() => {});
+  }
+
   async function listRanking(level) {
     const res = await fetch("/api/ranking?level=" + encodeURIComponent(level), { headers: authHeaders() });
     const data = await readJson(res);
@@ -162,6 +175,7 @@
   window.Players = {
     getProfile, saveProfile, clearProfile, getMe,
     createProfile, login, renameProfile, addFriend, removeFriend, listFriends, submitScore,
+    listCleared, markCleared,
     listRemovals, dismissRemoval,
     listFriendRequests, acceptFriendRequest, declineFriendRequest,
     listRanking, sendInvite, cancelInvite, listInvites, dismissInvite, declineInvite,

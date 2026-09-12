@@ -1034,7 +1034,20 @@ const state = {
   timeLeft: TIME_LIMIT, timerId: null, locked: false,
   target: [], startedAt: 0, passesLeft: PASS_LIMIT
 };
+// 部首マスターで達成済みの部首（"レベル:部首"）。
+// リロードしても消えないよう、正はサーバー（アカウント）側に置き、ここはその写し。
+// 端末に持つと、同じ端末で別の人がログインしたときに前の人の達成が見えてしまう。
 const cleared = new Set();
+
+async function loadCleared() {
+  cleared.clear();
+  if (!Players.getProfile()) return;
+  try {
+    for (const key of await Players.listCleared()) cleared.add(key);
+  } catch (e) { return; } // 取れなくても遊べる。次回の読み込みで拾い直す
+  // 一覧を開いたまま読み終わることがあるので、そのときは表示を更新する
+  if (DATA && currentScreen === 'radScreen') renderRadicalList();
+}
 
 async function boot() {
   try {
@@ -1058,7 +1071,7 @@ async function boot() {
   bind();
   bBind();
 
-  if (Players.getProfile()) { renderModeScreen(); show('modeScreen'); }
+  if (Players.getProfile()) { renderModeScreen(); show('modeScreen'); loadCleared(); }
   else { show('loginScreen'); }
 
   setInterval(refreshFriendBadge, 10000);
@@ -1450,6 +1463,7 @@ function accept(k) {
     renderBoxes();
     if (state.used.size >= state.target.length) {
       cleared.add(state.level + ':' + state.radical);
+      Players.markCleared(state.level, state.radical);
       setTimeout(() => gameOver('complete'), 700);
       return;
     }
@@ -1936,7 +1950,7 @@ function bind() {
     const password = document.getElementById('passwordInput').value;
     if (!name || !username || !password) return;
     setProfileErr('');
-    try { await Players.createProfile(username, password, name); renderModeScreen(); show('modeScreen'); }
+    try { await Players.createProfile(username, password, name); renderModeScreen(); show('modeScreen'); loadCleared(); }
     catch (e) { setProfileErr(e.message || 'はじめられませんでした'); }
   };
   document.getElementById('loginBtn').onclick = async () => {
@@ -1944,7 +1958,7 @@ function bind() {
     const password = document.getElementById('loginPasswordInput').value;
     if (!username || !password) return;
     setLoginErr('');
-    try { await Players.login(username, password); renderModeScreen(); show('modeScreen'); }
+    try { await Players.login(username, password); renderModeScreen(); show('modeScreen'); loadCleared(); }
     catch (e) { setLoginErr(e.message || 'ログインできませんでした'); }
   };
   document.getElementById('copyCodeBtn').onclick = async () => {
@@ -1962,6 +1976,7 @@ function bind() {
   document.getElementById('logoutBtn').onclick = () => {
     if (!confirm('ログアウトしますか？ユーザー名とパスワードで入り直せます。')) return;
     Players.clearProfile();
+    cleared.clear(); // 次に入る人に前の人の達成を見せない
     show('loginScreen');
   };
   document.getElementById('addFriendBtn').onclick = async () => {
