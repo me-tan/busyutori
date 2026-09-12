@@ -59,6 +59,12 @@
     color: var(--ink); background: var(--paper);
   }
   .hidden { display: none !important; }
+
+  /* ふりがな（js/furigana.jsが付ける）。読めれば十分なので控えめにし、
+     行の高さを広げて画面からはみ出さないよう、ルビの分だけ余裕を持たせる */
+  ruby { ruby-position: over; ruby-align: center; }
+  rt { font-size: 0.5em; font-weight: 400; color: var(--ink-soft);
+       letter-spacing: 0; line-height: 1; user-select: none; }
   :focus-visible { outline: 2px solid var(--shu); outline-offset: 2px; }
   @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
@@ -980,6 +986,7 @@
 <script src="js/net.js"></script>
 <script src="js/audio.js"></script>
 <script src="js/players.js"></script>
+<script src="js/furigana.js"></script>
 <script>
 "use strict";
 
