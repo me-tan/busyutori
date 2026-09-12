@@ -23,8 +23,9 @@
   };
   const BGM_FILES = { menu: 'menu.m4a' };
   const STORAGE_KEY = 'kbAudioSettings';
-  // 初めて開いた人がびっくりしない大きさにする。物足りなければ設定で上げられる
-  const DEFAULTS = { se: 0.4, bgm: 0.15, muted: false };
+  // 音源ファイル自体を小さい音で作り直してある（BGM -12dB、効果音 -6dB）ので、
+  // ここは下げすぎない。iOSはこの値を無視するため、iOSでの大きさは音源側で決まる。
+  const DEFAULTS = { se: 0.8, bgm: 0.8, muted: false };
 
   function loadSettings() {
     try {
