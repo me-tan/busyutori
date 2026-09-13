@@ -127,11 +127,23 @@
   let bgmAudio = null;
   let bgmKey = null;
 
+  // 効果音は音ごとに1つだけ作って使い回す。鳴らすたびに new Audio() すると、
+  // グラフにつないだぶんだけ音声の読み込み口が増え続け、iOSは同時に扱える数に
+  // 上限があるため、遊んでいるうちに新しい音が鳴らなくなる（BGMも鳴らなくなる）。
+  // 使い回すと接続は音の種類ぶん（7個）で頭打ちになる。
+  // 同じ音が重なったときは鳴らし直しになるが、この遊び方では困らない。
+  const sfxPool = {};
+
   KBAudio.play = function (name) {
     if (!SFX_FILES[name] || volumeOf('se') <= 0) return;
-    const a = new Audio(audioUrl(SFX_BASE, SFX_FILES[name]));
+    let a = sfxPool[name];
+    if (!a) {
+      a = new Audio(audioUrl(SFX_BASE, SFX_FILES[name]));
+      sfxPool[name] = a;
+    }
     route(a, sfxGain);
     applyVolume(a, 'se');
+    try { a.currentTime = 0; } catch (e) {}
     a.play().catch(() => {});
   };
 
