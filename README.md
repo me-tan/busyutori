@@ -67,22 +67,25 @@ kanjibattle/
 │   ├── USERS.md                   フレンド・ユーザー機能APIの仕様
 │   └── DEVLOG.md                  既知の課題・未確定事項
 ├── frontend/                      静的サイト（そのままどこにでもデプロイ可能）
-│   ├── index.html                 メイン画面（HTML/CSS/JSの本体）
+│   ├── index.html                 画面のHTML/CSSと、ひとり用・フレンドのJS
 │   ├── js/
 │   │   ├── vendor/                外部ライブラリ（KanjiCanvas、ONNX Runtime Web）
 │   │   ├── recognizer.js          手書き漢字の認識（CNNモデルを動かす）
 │   │   ├── config.js              対戦バックエンドAPIのURL設定
 │   │   ├── net.js                 オンライン対戦の通信クライアント
+│   │   ├── battle.js              オンライン対戦の進行（部屋づくり〜勝敗まで）
+│   │   ├── dict.js                漢字辞書（学年→部首→漢字→くわしく）
+│   │   ├── furigana.js            画面の文字にふりがなを振る
 │   │   ├── audio.js               効果音・BGMの再生
 │   │   └── players.js             フレンド機能のクライアント（/api/* は同一オリジン）
-│   ├── assets/                    効果音・BGM（Kenney, CC0）
+│   ├── assets/                    効果音・BGM（Kenney, CC0）とマスコットの絵
 │   ├── models/                    手書き認識のCNNモデルとラベル
 │   ├── data/
 │   │   ├── radicals.json          部首・漢字データ
 │   │   ├── kanji-dict.json        漢字辞書（画数・音訓・利用例・意味）
 │   │   ├── strokes/               書き順（部首ごとに分割。辞書で開いたときだけ読む）
 │   │   └── stroke-counts.json     字→画数（手書き認識の誤受理対策に使用）
-│   └── dev/                       手書き判定ロジックの検証用ページ
+│   └── dev/                       手書き判定ロジックの検証用ページ（公開しない）
 ├── backend/                       対戦サーバー（Python/FastAPI）
 │   ├── app/
 │   │   ├── main.py                REST + WebSocketエンドポイント
