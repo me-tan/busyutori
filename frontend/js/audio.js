@@ -1,14 +1,19 @@
 "use strict";
 /* 効果音・BGMの再生と音量設定の管理。localStorageに音量を保存する。
  *
- * 音は <audio> 要素でそのまま鳴らす。以前は音量スライダーをiOSでも効かせるため
- * Web Audio API（createMediaElementSource + GainNode）を経由させていたが、
- * それによりスマホで効果音もBGMも一切鳴らなくなったため元に戻した。
- * 「音量を細かく変えられる」ことより「確実に鳴る」ことを優先する。
- *
  * iOSの制約として、JSからの <audio>.volume 代入は無視され、端末のハード音量で
- * 鳴る（Android・PCでは効く）。ただし muted はiOSでも効くので、音量0を消音として
- * 扱えば「音を消したい」という要求だけは全環境で満たせる。
+ * 鳴る（Android・PCでは効く）。音量つまみをiOSでも効かせるにはWeb Audioの
+ * GainNodeを通す必要がある。
+ *
+ * 以前これを入れたときスマホで音が一切鳴らなくなったことがある。原因は、
+ * AudioContextがまだsuspendedのうちに createMediaElementSource で要素を
+ * つないでしまい、要素の音がどこにも出なくなっていたこと。resume()は非同期
+ * なので、呼んだ直後はまだrunningになっていない。しかもこの接続は1要素につき
+ * 1回きりで戻せないため、一度そうなった要素は二度と鳴らない。
+ *
+ * そこで、contextがrunningになったことを確かめてからでないとつながない。
+ * つないでいない間はこれまでどおり <audio> のまま鳴らすので、Web Audioが
+ * 使えない・起こせない環境でも音が消えることはない。
  *
  * 消音スイッチ（マナーモード）中は鳴らさない方針。iOS 16.4以降の
  * navigator.audioSession に ambient を指定して、消音スイッチを尊重し、かつ
@@ -52,6 +57,47 @@
   const settings = loadSettings();
   const KBAudio = {};
 
+  // ── Web Audio 経由の音量調整 ──────────────────────────────────
+  // つないだ要素はgainで音量を決める。つないでいない要素は <audio>.volume を使う。
+  let ctx = null, sfxGain = null, bgmGain = null;
+  const routed = new WeakSet();
+
+  function graphReady() { return !!ctx && ctx.state === 'running'; }
+
+  function setupGraph() {
+    if (ctx) return;
+    const Ctx = window.AudioContext || window.webkitAudioContext;
+    if (!Ctx) return;
+    try {
+      ctx = new Ctx();
+      sfxGain = ctx.createGain(); sfxGain.connect(ctx.destination);
+      bgmGain = ctx.createGain(); bgmGain.connect(ctx.destination);
+    } catch (e) { ctx = null; }
+  }
+
+  // 画面を触ったときに呼ぶ。runningになって初めて、鳴っているBGMをつなぎ替える。
+  function wakeGraph() {
+    setupGraph();
+    if (!ctx) return;
+    if (ctx.state === 'running') { routeBgm(); return; }
+    ctx.resume().then(routeBgm).catch(() => {});
+  }
+
+  // 要素をグラフにつなぐ。runningでなければ何もしない（つなぐと音が出なくなるため）
+  function route(el, gain) {
+    if (!graphReady() || !gain || !el || routed.has(el)) return false;
+    try {
+      ctx.createMediaElementSource(el).connect(gain);
+      routed.add(el);
+      return true;
+    } catch (e) { return false; }
+  }
+
+  function routeBgm() {
+    if (!bgmAudio || routed.has(bgmAudio)) return;
+    if (route(bgmAudio, bgmGain)) applyVolume(bgmAudio, 'bgm');
+  }
+
   // 消音スイッチ（マナーモード）中は鳴らさない。あわせて、相手が自分で流している
   // 音楽を止めてしまわないようにする。ambientがこの両方を満たす区分。
   // 対応していない環境でも、もともと消音スイッチは尊重されるので何もしない。
@@ -67,6 +113,14 @@
   function applyVolume(el, kind) {
     if (!el) return;
     const v = volumeOf(kind);
+    if (routed.has(el)) {
+      // グラフ側で絞るので、要素そのものは最大のままにしておく
+      const g = kind === 'bgm' ? bgmGain : sfxGain;
+      if (g) g.gain.value = v;
+      el.volume = 1;
+      el.muted = false;
+      return;
+    }
     el.volume = v;     // iOSでは無視されるが、Android・PCでは効く
     el.muted = v <= 0; // iOSでも効くので、消音だけは確実にできる
   }
@@ -77,6 +131,7 @@
   KBAudio.play = function (name) {
     if (!SFX_FILES[name] || volumeOf('se') <= 0) return;
     const a = new Audio(audioUrl(SFX_BASE, SFX_FILES[name]));
+    route(a, sfxGain);
     applyVolume(a, 'se');
     a.play().catch(() => {});
   };
@@ -89,6 +144,7 @@
     bgmAudio = new Audio(audioUrl(BGM_BASE, BGM_FILES[name]));
     bgmAudio.loop = true;
     bgmAudio.preload = 'auto';
+    route(bgmAudio, bgmGain);
     applyVolume(bgmAudio, 'bgm');
     // 画面を触る前は自動再生が止められる。その場合は下のwakeAudioが鳴らし直す。
     bgmAudio.play().catch(() => {});
@@ -109,6 +165,7 @@
   // そのため、この制約を持つiOS（iPhone・iPad。iOSではブラウザの種類を問わず
   // 同じ制約になる）かどうかで判断する。
   KBAudio.canControlVolume = function () {
+    if (graphReady()) return true; // GainNodeを通せるので、iOSでも音量を変えられる
     const ua = navigator.userAgent || '';
     if (/iPhone|iPad|iPod/.test(ua)) return false;
     // iPadOS 13以降のSafariはMacを名乗るので、タッチできるMacはiPadとみなす
@@ -118,6 +175,7 @@
 
   KBAudio.setSeVolume = function (v) {
     settings.se = Math.max(0, Math.min(1, v)); // 効果音は鳴らすたびに作るので次の音から反映される
+    if (sfxGain) sfxGain.gain.value = volumeOf('se');
     saveSettings();
   };
   KBAudio.setBgmVolume = function (v) {
@@ -128,6 +186,7 @@
   KBAudio.setMuted = function (m) {
     settings.muted = !!m;
     applyVolume(bgmAudio, 'bgm');
+    if (sfxGain) sfxGain.gain.value = volumeOf('se');
     saveSettings();
   };
 
@@ -136,11 +195,18 @@
   // 止まっているBGM」を鳴らし直す。
   ['pointerdown', 'touchend', 'keydown'].forEach(type => {
     window.addEventListener(type, () => {
+      wakeGraph(); // 操作の中でないとAudioContextは起きない
       if (bgmKey && bgmAudio && bgmAudio.paused) {
         applyVolume(bgmAudio, 'bgm');
         bgmAudio.play().catch(() => {});
       }
     });
+  });
+
+  // 別のアプリに切り替えて戻るとAudioContextが止まったままになることがある。
+  // つないだ要素はcontextが止まると鳴らなくなるので、戻ってきたら起こし直す。
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden && ctx && ctx.state === 'suspended') ctx.resume().catch(() => {});
   });
 
   window.KBAudio = KBAudio;
