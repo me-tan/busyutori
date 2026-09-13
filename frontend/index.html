@@ -661,10 +661,6 @@
   <div class="topnav">
     <div class="wordmark">ぶしゅとり</div>
     <div style="flex:1"></div>
-    <button class="topnavName" id="openAccount" title="アカウント">
-      <div id="myNickname">-</div>
-      <div id="myCodeSmall">------</div>
-    </button>
     <button class="iconBtn" id="openFriends" title="フレンド">
       <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16 20v-1.5a4 4 0 00-4-4H6a4 4 0 00-4 4V20"/><circle cx="9" cy="7.5" r="3.5"/><path d="M22 20v-1.5a4 4 0 00-3-3.87"/><path d="M16.5 4.1a4 4 0 010 6.8"/></svg>
       <span class="badgeDot hidden" id="friendReqBadge"></span>
@@ -796,6 +792,7 @@
     </button>
     <div class="navTitle">設定</div>
   </div>
+  <div class="secTitle">音</div>
   <div class="settingsList">
     <div class="settingRow">
       <div class="settingLbl">
@@ -822,6 +819,13 @@
   <div class="settingNote hidden" id="volumeNote">
     この端末では、アプリから音の大きさを変えられません。本体の音量ボタンで調節してください。
     「すべての音を消す」はこの端末でも使えます。
+  </div>
+
+  <div class="secTitle" style="margin-top:var(--s6)">アカウント</div>
+  <div class="stack">
+    <button class="bigbtn" id="openAccount">
+      <span id="settingsAccountName">-</span><small>ニックネームの変更・ログアウト</small>
+    </button>
   </div>
 </div>
 
@@ -1248,8 +1252,6 @@ async function refreshInviteBadge() {
 function renderModeScreen() {
   const p = Players.getProfile();
   if (!p) return;
-  document.getElementById('myNickname').textContent = p.nickname;
-  document.getElementById('myCodeSmall').textContent = 'コード ' + p.code;
   refreshFriendBadge();
   refreshInviteBadge();
 }
@@ -2006,6 +2008,9 @@ function renderSettingsUI() {
 
   // iPhoneなどアプリから音量を変えられない端末では、触っても効かないつまみを
   // 操作できないようにして、本体で調節してもらうよう案内する
+  const p = Players.getProfile();
+  if (p) document.getElementById('settingsAccountName').textContent = p.nickname;
+
   const canControl = KBAudio.canControlVolume();
   ['seVolume', 'bgmVolume'].forEach(id => {
     const slider = document.getElementById(id);
@@ -2366,7 +2371,8 @@ function bind() {
   document.getElementById('toTitle').onclick = () => show('modeScreen');
 
   document.getElementById('openAccount').onclick = () => { renderProfileScreen(); show('profileScreen'); };
-  document.getElementById('profileBack').onclick = () => show('modeScreen');
+  // アカウントは設定の中にあるので、戻り先も設定にする
+  document.getElementById('profileBack').onclick = () => { renderSettingsUI(); show('settingsScreen'); };
   document.getElementById('renameBtn').onclick = async () => {
     const name = document.getElementById('renameInput').value.trim();
     if (!name) return;
