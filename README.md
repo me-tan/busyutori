@@ -11,14 +11,16 @@
 
 | モード | 内容 |
 |---|---|
+| オンライン対戦 | 別々の端末にいる相手と、部首を投げ合う対戦（後述） |
 | タイムアタック | 30秒以内に次々と出題に答える。何連続で書けるか |
 | 部首マスター | 1つの部首の漢字を、制限時間なしですべて書き出す |
-| オンライン対戦 | 別々の端末にいる相手と、部首を投げ合う対戦（後述） |
+| 漢字辞書 | 学年→部首→漢字と降りて、書き順・意味・音訓・使い方を調べる（ゲームではない） |
 
 ### 対戦のルール（概要）
 
 1. 手番プレイヤー（攻撃側）に部首の候補が5つ提示され、1つを選んで相手に投げる
-2. 受けた側（防御側）は20秒以内に、その部首を含む漢字を手書きで答える
+2. 受けた側（防御側）は30秒以内に、その部首を含む漢字を手書きで答える
+   （`backend/app/game.py` の `ANSWER_SECONDS`）
 3. 書ければ攻守交代。書けなければ攻撃側の勝ち
 4. 一度使われた漢字は、その試合中は二度と使えない
 5. 決着がついたら、最後に投げられた部首でまだ使われていなかった漢字を提示する
@@ -31,11 +33,13 @@
 
 ### フレンド機能
 
-ニックネーム＋自動発行コードだけで使える（パスワード・メール不要。起動時に
-ニックネームを決めるまでは他の画面に進めない）。フレンドはコードで申請し、
-相手が承認するとつながる相互方式。つながると、タイムアタックの難易度別
-ベストストリークを見せ合え、フレンド＋自分だけの
-ランキングも見られる。フレンド一覧から1タップで対戦に誘うこともできる
+なまえ・ユーザー名・パスワードでアカウントを作って使う（メールアドレスは不要。
+アカウントを作るまでは他の画面に進めない）。端末を変えても、ユーザー名と
+パスワードで入り直せば記録とフレンドが引き継がれる。フレンドは
+アカウントごとに発行されるコードで申請し、相手が承認するとつながる相互方式。
+つながると、タイムアタックの難易度別ベストストリークを見せ合え、
+フレンド＋自分だけのランキングも見られる。部首マスターの達成状況も
+アカウントに保存される。フレンド一覧から1タップで対戦に誘うこともできる
 （対戦の部屋コードをフレンドに渡すだけの仕組みで、フレンド画面を開いたときに
 確認する。リアルタイムのプッシュ通知ではない）。API仕様は
 [docs/USERS.md](docs/USERS.md) を参照。
@@ -47,12 +51,15 @@
 | フロントエンド | 静的サイト（HTML/CSS/バニラJS、ビルド不要） |
 | 手書き認識 | [DaKanji単漢字CNN](https://github.com/CaptainDario/DaKanji-Single-Kanji-Recognition)（ONNX 2.2MB、MIT）を[ONNX Runtime Web](https://onnxruntime.ai/)でブラウザ内実行。描画とストローク記録は[KanjiCanvas](https://github.com/asdfjkl/kanjicanvas)（MIT） |
 | バックエンド | Python 3.10以上 + [FastAPI](https://fastapi.tiangolo.com/)（対戦のルーム管理・WebSocket） |
-| フレンド機能 | Cloudflare Workers + D1（`workers/`。ニックネーム・フレンド・記録の永続化） |
+| アカウント・フレンド機能 | Cloudflare Workers + D1（`workers/`。アカウント・フレンド・記録の永続化。パスワードはPBKDF2でハッシュ化） |
 | データ | `radicals.json`（CHISE IDS + KANJIDIC2由来、`scripts/build_radicals.py` で生成）／`kanji-dict.json`・`strokes/`（KANJIDIC2 + JMdict + KanjiVG由来、`scripts/build_dict.py` で生成） |
 | データ永続化 | 対戦の状態はサーバーのメモリ上のみ（試合が終われば破棄）。フレンド機能まわりだけD1に永続化 |
 
-タイムアタック・部首マスターの2モードはサーバー不要で完全にオフラインで動く。
-オンライン対戦にはFastAPIサーバーが、フレンド機能にはCloudflare Workers/D1が必要。
+タイムアタック・部首マスター・漢字辞書の3つは、遊ぶこと自体はブラウザの中だけで
+完結する（手書き認識もブラウザ内で動くので、対戦サーバーは要らない）。
+ただしアカウントを作るまで最初の画面から先に進めないため、
+**起動にはCloudflare Workers/D1が必要**。記録・達成・フレンドの保存も同じAPIを使う。
+オンライン対戦だけが、これに加えてFastAPIサーバーを必要とする。
 
 ## ディレクトリ構成
 
@@ -98,15 +105,38 @@ kanjibattle/
 │   └── Dockerfile
 ├── workers/                       フレンド機能API（Cloudflare Workers + D1）
 │   ├── src/index.js               /api/* のルーティング・認証・D1アクセス
-│   └── migrations/0001_init.sql   D1スキーマ
+│   └── migrations/                D1スキーマ（0001〜。番号順にすべて適用する）
 ├── wrangler.jsonc                 フロント配信+workers/+D1のCloudflare設定
 └── scripts/
-    └── build_radicals.py          radicals.json の生成スクリプト
+    ├── build_radicals.py          radicals.json の生成
+    ├── build_dict.py              kanji-dict.json・strokes/ の生成
+    ├── kanji-meanings.json        漢字の意味（人が書いたデータ。生成物ではない）
+    ├── check_meanings.py          ↑の検査（読めない漢字を使っていないか等）
+    └── lower_audio_volume.py      効果音・BGMの音量を下げ直す
 ```
 
 ## ローカルで動かす
 
-### フロントエンドのみ（タイムアタック・コンプリート）
+アカウントを作るまで最初の画面から先に進めないので、**静的サーバーだけでは
+遊べない**（`python3 -m http.server` では `/api/*` が無く、アカウント作成が
+501で失敗する）。ローカルで通しで動かすには `wrangler dev` を使う。
+
+### アカウント機能ごと動かす（タイムアタック・部首マスター・漢字辞書）
+
+```bash
+# 初回だけ: ローカルD1にスキーマを入れる（workers/migrations/ を番号順にすべて）
+for f in workers/migrations/*.sql; do
+  npx wrangler d1 execute kanjinage-users --local --file="$f"
+done
+
+npx wrangler dev
+# 表示された http://localhost:8787/ を開く
+```
+
+静的ファイルの配信と `/api/*` の両方を `wrangler dev` が受け持つ（`wrangler.jsonc`
+の `assets` と `main`）。Cloudflareアカウントは不要で、D1はローカルのSQLiteが使われる。
+
+### 画面だけ確認する（ログインの先には進めない）
 
 ```bash
 cd frontend
@@ -114,6 +144,7 @@ python3 -m http.server 8000
 # http://localhost:8000/ を開く
 ```
 
+ログイン画面までしか進めないが、データの読み込みや見た目の確認には使える。
 `data/radicals.json` を `fetch` するため、`file://` を直接開いても動かない。
 
 ### 対戦モードも試す場合
@@ -121,17 +152,20 @@ python3 -m http.server 8000
 バックエンドは `X | None` 形式の型ヒントを使っているため **Python 3.10以上**が必要（3.9以下では起動時に`TypeError`になる）。`python3 --version` で確認し、古い場合は3.10以上を別途インストールして読み替えること。
 
 ```bash
-# 1. バックエンドを起動
+# 1. 対戦バックエンドを起動
 cd backend
 python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 uvicorn app.main:app --reload --port 8000
 
-# 2. 別ターミナルでフロントエンドを起動
-cd frontend
-python3 -m http.server 5500
+# 2. 別ターミナルでフロントエンド＋アカウント機能を起動
+npx wrangler dev --port 5500
 # http://localhost:5500/ を開く
 ```
+
+対戦はアカウントが要るので、ここでも `wrangler dev` を使う（上の手順でローカルD1に
+スキーマを入れてあること）。1台のPCで試すときは、通常のウィンドウとシークレット
+ウィンドウで別々のアカウントを作り、部屋コードで待ち合わせる。
 
 `frontend/js/config.js` の `API_BASE` がバックエンドのURL（デフォルト
 `http://localhost:8000`）を指しているか確認すること。
