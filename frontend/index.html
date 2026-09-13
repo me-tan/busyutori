@@ -552,10 +552,13 @@
     .btns-secondary { margin-top: var(--s2); }
     .btn-block { margin-top: var(--s2); }
     .picker { margin-top: var(--s2); }
-    .picker-label { margin-bottom: var(--s2); font-size: var(--t-xs); }
-    .pick { font-size: 32px; min-height: 64px; padding: var(--s2) var(--s4); }
-    .result { min-height: 96px; }
-    .msg { margin-top: var(--s2); min-height: 22px; font-size: var(--t-base); }
+    .picker-label { margin-bottom: var(--s1); font-size: var(--t-xs); }
+    .pick { font-size: 30px; min-height: 56px; padding: var(--s1) var(--s4); }
+    /* 候補が出るまで空いたままの欄。中身を詰めたぶん予約も減らし、
+       浮いた高さは書き取り欄に回る（fitCanvasが余りを測って広げる）。
+       指で押す桝なので、56pxは最低限の44pxを下回らない範囲で詰めている */
+    .result { min-height: 80px; margin-top: var(--s2); }
+    .msg { margin-top: var(--s1); min-height: 20px; font-size: var(--t-sm); }
     .usedbox { max-height: 168px; overflow-y: auto; padding-bottom: var(--s2); }
     /* 対戦は自分と相手の2段あるので、どちらもスクロールせずに見えるよう
        参照用の字だけ一回り小さくする */
@@ -573,8 +576,8 @@
     .usedbox { max-height: 104px; }
     .quest { padding-bottom: var(--s2); margin-bottom: var(--s3); }
     .radical { font-size: 44px; }
-    .result { min-height: 92px; }
-    .pick { min-height: 62px; font-size: 28px; }
+    .result { min-height: 74px; }
+    .pick { min-height: 52px; font-size: 26px; }
   }
 
   /* 幅の狭い端末では、書き取り欄（302px）が左右の余白に収まらず横スクロールが
