@@ -566,9 +566,19 @@ async function handleApi(request, env, url) {
   return err(404, "not found");
 }
 
-// デプロイのたびに中身が変わるもの（HTML・アプリのJS・部首データ）は、
-// 古いキャッシュが残っているとサーバー側と食い違って壊れるため、毎回サーバーに
-// 確認させる。フォント・モデル・音などの重い固定ファイルはキャッシュさせたままにする。
+// Workerが自分で返す静的ファイルの応答に、毎回サーバーへ確認させる指示を付ける。
+//
+// ただし実測（2026-09-13）では、この処理は静的ファイルには効いていない。
+// Cloudflareは assets に置いたファイルをWorkerを通さず直接返すため、届くのは
+// Cloudflare側の既定値 "public, max-age=0, must-revalidate" の方だった
+// （/js/*.js・/data/*.json・/models/*.onnx いずれも確認済み）。
+// これも「使う前に必ずサーバーに聞く」指示なので、デプロイのたびに中身が変わる
+// HTML・JS・部首データが古いまま使われる心配は結果的に無い。
+//
+// 裏を返すと、モデル(2.2MB)・音・wasmといった中身の変わらない重いファイルにも
+// 毎回問い合わせが飛ぶ（変わっていなければ304が返るだけなので再ダウンロードは
+// されない）。これを変えたいときはWorker側ではなく、assetsディレクトリに
+// _headers を置いてファイルごとに指定する。
 const NO_CACHE_TYPES = ["text/html", "javascript", "application/json"];
 
 function withNoCache(res) {
