@@ -1264,6 +1264,14 @@ function setAvatarFallback(nickname) {
   if (img.complete && img.naturalWidth === 0) img.onerror();
 }
 
+// 読み込みに失敗した理由を短く出す。原因の切り分けに使う。
+// これまで理由を捨てて「読み込めませんでした」とだけ出していたため、
+// ログインが切れているのか通信が届いていないのか分からなかった。
+function loadErrText(e) {
+  const m = (e && e.message) ? String(e.message) : '';
+  return m || '通信に失敗しました';
+}
+
 function setRenameErr(t) {
   const el = document.getElementById('renameErr');
   if (!t) { el.classList.add('hidden'); el.textContent = ''; return; }
@@ -1287,7 +1295,7 @@ async function renderProfileScreen() {
       `<div class="statRow"><span class="lv">${LEVEL_LABEL[l]}</span><span class="sc">${me.best[l] ?? '-'}</span></div>`
     ).join('');
   } catch (e) {
-    statsEl.innerHTML = '<div class="usedempty" style="padding:14px 2px">読み込めませんでした</div>';
+    statsEl.innerHTML = `<div class="usedempty" style="padding:14px 2px">読み込めませんでした（${loadErrText(e)}）</div>`;
   }
 }
 
@@ -2233,7 +2241,7 @@ async function refreshFriendsList() {
   if (firstLoad) listEl.innerHTML = '<div class="usedempty" style="padding:14px 2px">読み込み中…</div>';
   let friends;
   try { friends = await Players.listFriends(); }
-  catch (e) { if (firstLoad) listEl.innerHTML = '<div class="usedempty" style="padding:14px 2px">読み込めませんでした</div>'; return; }
+  catch (e) { if (firstLoad) listEl.innerHTML = `<div class="usedempty" style="padding:14px 2px">読み込めませんでした（${loadErrText(e)}）</div>`; return; }
   listEl.dataset.loaded = '1';
 
   if (!friends.length) {
@@ -2305,7 +2313,7 @@ async function refreshRanking(level) {
   if (firstLoad) el.innerHTML = '<div class="usedempty" style="padding:14px 2px">読み込み中…</div>';
   let ranking;
   try { ranking = await Players.listRanking(level); }
-  catch (e) { if (firstLoad) el.innerHTML = '<div class="usedempty" style="padding:14px 2px">読み込めませんでした</div>'; return; }
+  catch (e) { if (firstLoad) el.innerHTML = `<div class="usedempty" style="padding:14px 2px">読み込めませんでした（${loadErrText(e)}）</div>`; return; }
   el.dataset.loadedLevel = level;
   if (!ranking.length) { el.innerHTML = '<div class="usedempty" style="padding:14px 2px">まだ記録がありません</div>'; return; }
   el.innerHTML = ranking.map((r, i) => {
