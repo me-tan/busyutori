@@ -97,23 +97,23 @@
     ctx.resume().then(routeBgm).catch(() => {});
   }
 
-  // AudioContextを丸ごと捨てて作り直す。
+  // AudioContextを丸ごと捨てる。作り直すのは次に画面を触ったとき。
   //
-  // 作り直しはここで済ませ、次のタップには「起こす」だけを残す。AudioContextを
-  // 作ることと音データを復号することは操作の外でもできるが、起こすことだけは
-  // 操作の中でないとできないため。全部タップに寄せると、戻ってきて最初に押した
-  // ときだけ画面がもたつく。
+  // ここで先に作っておくとタップが軽くなるが、それはできない。iPhoneでは
+  // 操作の外で作ったAudioContextは、作れてはいても音が出ない状態になる
+  //（戻ってきた直後はBGMが鳴るのに、ボタンを押して繋いだ瞬間に止まる、という
+  // 形で出た）。作るのも起こすのも、操作の中でやること。
   //
-  // 捨てている一瞬は graphReady() が false なので、効果音は <audio> のまま鳴る。
-  // つまり作り直しが済む前でも音は止まらない。
+  // 捨ててから作り直すまでの間は graphReady() が false なので、効果音は
+  // <audio> のまま鳴る。つまりその間も音は止まらない。
   function discardGraph() {
     const old = ctx;
     ctx = null; sfxGain = null; bgmGain = null;
-    // 古いAudioContextと一緒に消える音源なので、持っていても意味がない
+    // 古いAudioContextと一緒に消える音源なので、持っていても意味がない。
+    // 一方、復号済みの音データ（sfxBuffers）はAudioContextに縛られないので、
+    // 取り直さずそのまま使い回す。
     for (const name of Object.keys(sfxNodes)) sfxNodes[name] = null;
     if (old) { try { old.close(); } catch (e) {} }
-    // 復号済みの音データはAudioContextに縛られないので、取り直さず使い回す
-    setupGraph();
 
     // つないだ <audio> は新しいAudioContextにつなぎ直せない（1要素につき1回きり）。
     // BGMは要素ごと作り直す。次に画面を触ったときに鳴り始める。
