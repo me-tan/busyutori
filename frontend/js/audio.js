@@ -84,31 +84,34 @@
       ctx = new Ctx();
       sfxGain = ctx.createGain(); sfxGain.connect(ctx.destination);
       bgmGain = ctx.createGain(); bgmGain.connect(ctx.destination);
-    } catch (e) { ctx = null; }
+    } catch (e) { ctx = null; return; }
+    loadSfxBuffers(); // 復号は起きていなくてもできるので、待たずに始める
   }
 
-  // 画面を触ったときに呼ぶ。runningになって初めて、鳴っているBGMをつなぎ替え、
-  // 効果音のデータを読み込みに行く。
-  function onGraphRunning() {
-    routeBgm();
-    loadSfxBuffers();
-  }
+  // 画面を触ったときに呼ぶ。ここでは起こすことだけをする（操作の中でしかできない
+  // のはこれだけ）。作ることと復号は setupGraph / discardGraph 側で先に済ませる。
   function wakeGraph() {
     setupGraph();
     if (!ctx) return;
-    if (ctx.state === 'running') { onGraphRunning(); return; }
-    ctx.resume().then(onGraphRunning).catch(() => {});
+    if (ctx.state === 'running') { routeBgm(); return; }
+    ctx.resume().then(routeBgm).catch(() => {});
   }
 
-  // AudioContextを丸ごと捨てる。次に画面を触ったときに作り直される。
-  // 捨てている間は graphReady() が false なので、効果音は <audio> のまま鳴る。
-  // つまり、作り直しが済む前でも音が止まらない。
+  // AudioContextを丸ごと捨てて作り直す。
+  //
+  // 作り直しはここで済ませ、次のタップには「起こす」だけを残す。AudioContextを
+  // 作ることと音データを復号することは操作の外でもできるが、起こすことだけは
+  // 操作の中でないとできないため。全部タップに寄せると、戻ってきて最初に押した
+  // ときだけ画面がもたつく。
+  //
+  // 捨てている一瞬は graphReady() が false なので、効果音は <audio> のまま鳴る。
+  // つまり作り直しが済む前でも音は止まらない。
   function discardGraph() {
     const old = ctx;
     ctx = null; sfxGain = null; bgmGain = null;
-    sfxLoadStarted = false;
-    for (const name of Object.keys(sfxBuffers)) delete sfxBuffers[name];
     if (old) { try { old.close(); } catch (e) {} }
+    // 復号済みの音データはAudioContextに縛られないので、取り直さず使い回す
+    setupGraph();
 
     // つないだ <audio> は新しいAudioContextにつなぎ直せない（1要素につき1回きり）。
     // BGMは要素ごと作り直す。次に画面を触ったときに鳴り始める。
@@ -138,7 +141,7 @@
   let sfxLoadStarted = false;
 
   function loadSfxBuffers() {
-    if (sfxLoadStarted || !graphReady()) return;
+    if (sfxLoadStarted || !ctx) return; // 起きていなくても復号はできる
     sfxLoadStarted = true;
     for (const name of Object.keys(SFX_FILES)) {
       fetch(audioUrl(SFX_BASE, SFX_FILES[name]))
