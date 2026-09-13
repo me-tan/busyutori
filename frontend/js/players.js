@@ -18,6 +18,16 @@
   }
   async function readJson(res) {
     const data = await res.json().catch(() => ({}));
+    // 401はトークンがもう通らない状態。持っていても何もできないので捨てて、
+    // 画面側にログインし直してもらうよう知らせる（放っておくと、どの画面でも
+    // 「読み込めませんでした」とだけ出続けて、入り直せば直ることが分からない）
+    if (res.status === 401) {
+      clearProfile();
+      try { window.dispatchEvent(new Event("kb-auth-expired")); } catch (e) {}
+      const err = new Error("ログインし直してください");
+      err.authExpired = true;
+      throw err;
+    }
     if (!res.ok) throw new Error(data.error || "通信に失敗しました");
     return data;
   }
