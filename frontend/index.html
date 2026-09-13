@@ -89,6 +89,9 @@
   h1 { font-family: var(--font-mincho); font-size: var(--t-xl); font-weight: 600; color: var(--ink);
        letter-spacing: 0.12em; line-height: 1.35; margin: 0; }
   h1.logo { font-size: 44px; letter-spacing: 0.16em; line-height: 1.2; }
+  /* トップ画面の題字はマスコットの絵にする（名前は左上に出している） */
+  h1.logoImg { line-height: 0; }
+  h1.logoImg img { display: block; width: 100%; max-width: 248px; height: auto; margin: 0 auto; }
   .secTitle { font-size: var(--t-sm); color: var(--ai); font-weight: 700; margin-bottom: var(--s3);
               letter-spacing: 0.06em; }
 
@@ -118,23 +121,19 @@
 
   /* ── 自分の情報 ─────────────────────────────────────────── */
   /* 名前の頭文字を桝に入れる。原稿用紙の1マスと同じ見立て */
-  /* アカウントを開くボタン。マスコット（ぶしゅとり）の絵を置く。
-     絵が読み込めなかったときだけ、ニックネームの頭文字を枠に入れて出す */
-  .avatarChip { width: var(--tap); height: var(--tap); border: none; background: transparent;
-                color: var(--ink); display: flex; align-items: center; justify-content: center;
-                font-family: var(--font-mincho); font-size: var(--t-md); font-weight: 600;
-                flex: none; cursor: pointer; padding: 0; min-height: 0; }
-  .avatarChip img { width: 100%; height: 100%; object-fit: contain; display: block; }
-  .avatarChip.no-logo { border: 1px solid var(--ai); background: var(--card); }
-  .avatarBig { width: 68px; height: 68px; border: 1px solid var(--ai); background: var(--card);
-               color: var(--ink); display: flex; align-items: center; justify-content: center;
-               font-family: var(--font-mincho); font-size: 30px; font-weight: 600; margin: 0 auto; }
+  /* 左上の題名。真ん中はマスコットの絵にしたので、名前はここで出す */
+  .wordmark { font-family: var(--font-mincho); font-size: var(--t-md); font-weight: 600;
+              letter-spacing: 0.08em; color: var(--ink); flex: none; }
   .statRow { display: flex; align-items: center; justify-content: space-between;
              padding: var(--s3) 0; border-bottom: 1px solid var(--rule); }
   .statRow .lv { font-size: var(--t-sm); font-weight: 700; color: var(--ai); }
   .statRow .sc { font-family: var(--font-mincho); font-size: var(--t-lg); font-weight: 600; color: var(--ink); }
   .topnav { display: flex; align-items: center; gap: var(--s3); }
-  .topnavName { font-size: var(--t-sm); line-height: 1.5; text-align: left; }
+  .topnavName { font-size: var(--t-sm); line-height: 1.5; text-align: right;
+                background: transparent; border: 1px solid transparent; color: inherit;
+                font-family: var(--font-ui); padding: var(--s1) var(--s2); cursor: pointer;
+                min-height: var(--tap); display: flex; flex-direction: column; justify-content: center; }
+  @media (hover: hover) { .topnavName:hover { background: var(--ai-pale); } }
   .topnavName div:first-child { font-weight: 700; color: var(--ink); }
   .topnavName div:last-child { font-size: var(--t-xs); color: var(--ink-soft); letter-spacing: 0.1em; }
   .iconBtn { position: relative; width: var(--tap); height: var(--tap); background: transparent;
@@ -660,14 +659,12 @@
 
 <div id="modeScreen" class="hidden">
   <div class="topnav">
-    <button class="avatarChip" id="avatarChip" title="アカウント">
-      <img src="assets/busyutori.png" alt="ぶしゅとり" id="avatarLogo" width="44" height="44">
-    </button>
-    <div class="topnavName">
+    <div class="wordmark">ぶしゅとり</div>
+    <div style="flex:1"></div>
+    <button class="topnavName" id="openAccount" title="アカウント">
       <div id="myNickname">-</div>
       <div id="myCodeSmall">------</div>
-    </div>
-    <div style="flex:1"></div>
+    </button>
     <button class="iconBtn" id="openFriends" title="フレンド">
       <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16 20v-1.5a4 4 0 00-4-4H6a4 4 0 00-4 4V20"/><circle cx="9" cy="7.5" r="3.5"/><path d="M22 20v-1.5a4 4 0 00-3-3.87"/><path d="M16.5 4.1a4 4 0 010 6.8"/></svg>
       <span class="badgeDot hidden" id="friendReqBadge"></span>
@@ -680,7 +677,7 @@
       </svg>
     </button>
   </div>
-  <h1 class="logo">ぶしゅとり</h1>
+  <h1 class="logo logoImg"><img src="assets/busyutori.png" alt="ぶしゅとり"></h1>
   <div class="modeList">
     <button class="modeItem" id="toBattle">
       <div class="modeNum ai">一</div>
@@ -731,7 +728,6 @@
   </div>
 
   <div style="text-align:center;margin-bottom:24px">
-    <div class="avatarBig" id="profileAvatarBig">?</div>
     <div style="font-size:var(--t-lg);font-weight:700;color:var(--ink);margin-top:var(--s3)" id="profileNicknameDisplay">-</div>
     <div style="font-size:var(--t-xs);color:var(--ink-mid);letter-spacing:0.08em;margin-top:var(--s1)" id="profileCodeDisplay">コード ------</div>
   </div>
@@ -1202,6 +1198,13 @@ async function boot() {
   if (Players.getProfile()) { renderModeScreen(); show('modeScreen'); loadCleared(); }
   else { show('loginScreen'); }
 
+  // トークンが通らなくなったら、ログイン画面に戻して入り直してもらう
+  window.addEventListener('kb-auth-expired', () => {
+    if (currentScreen === 'loginScreen') return;
+    setLoginErr('ログインし直してください');
+    show('loginScreen');
+  });
+
   setInterval(refreshFriendBadge, 10000);
   setInterval(refreshInviteBadge, 10000);
   setInterval(refreshFriendsScreenIfOpen, 10000);
@@ -1243,25 +1246,10 @@ async function refreshInviteBadge() {
 function renderModeScreen() {
   const p = Players.getProfile();
   if (!p) return;
-  setAvatarFallback(p.nickname);
   document.getElementById('myNickname').textContent = p.nickname;
   document.getElementById('myCodeSmall').textContent = 'コード ' + p.code;
   refreshFriendBadge();
   refreshInviteBadge();
-}
-
-// マスコットの絵が置かれていない・読み込めないときは、これまでどおり
-// ニックネームの頭文字を枠に入れて出す（ここが空白になると押す場所が消えるため）
-function setAvatarFallback(nickname) {
-  const chip = document.getElementById('avatarChip');
-  const img = document.getElementById('avatarLogo');
-  if (!img) { chip.textContent = nickname.slice(0, 1); return; }
-  img.onerror = () => {
-    img.remove();
-    chip.classList.add('no-logo');
-    chip.textContent = nickname.slice(0, 1);
-  };
-  if (img.complete && img.naturalWidth === 0) img.onerror();
 }
 
 // 読み込みに失敗した理由を短く出す。原因の切り分けに使う。
@@ -1281,7 +1269,6 @@ function setRenameErr(t) {
 async function renderProfileScreen() {
   const p = Players.getProfile();
   if (!p) return;
-  document.getElementById('profileAvatarBig').textContent = p.nickname.slice(0, 1);
   document.getElementById('profileNicknameDisplay').textContent = p.nickname;
   document.getElementById('profileCodeDisplay').textContent = 'コード ' + p.code;
   document.getElementById('renameInput').value = p.nickname;
@@ -2376,7 +2363,7 @@ function bind() {
   };
   document.getElementById('toTitle').onclick = () => show('modeScreen');
 
-  document.getElementById('avatarChip').onclick = () => { renderProfileScreen(); show('profileScreen'); };
+  document.getElementById('openAccount').onclick = () => { renderProfileScreen(); show('profileScreen'); };
   document.getElementById('profileBack').onclick = () => show('modeScreen');
   document.getElementById('renameBtn').onclick = async () => {
     const name = document.getElementById('renameInput').value.trim();
