@@ -1010,6 +1010,7 @@
     <div class="roomTicket">
       <div class="roomlabel">部屋コード</div>
       <div class="roomcode" id="roomCodeDisplay">----</div>
+      <button id="copyRoomCodeBtn" style="margin-top:var(--s3)">コードをコピー</button>
     </div>
     <div class="waitmsg" id="waitingMsg">相手を待っています…</div>
   </div>
@@ -1106,16 +1107,16 @@
 <!-- ?v= はキャッシュを切るための版番号。Workerのno-cacheが効くのは、それ以降に
      取りに行った分だけなので、古いJSがブラウザに残って動き続けることがある。
      直したはずの不具合が手元で再現しないときは、この数字を1つ増やす。 -->
-<script src="js/vendor/kanji-canvas.js?v=2"></script>
-<script src="js/vendor/ort/ort.wasm.min.js?v=2"></script>
-<script src="js/recognizer.js?v=2"></script>
-<script src="js/config.js?v=2"></script>
-<script src="js/net.js?v=2"></script>
-<script src="js/audio.js?v=2"></script>
-<script src="js/players.js?v=2"></script>
-<script src="js/furigana.js?v=2"></script>
-<script src="js/dict.js?v=2"></script>
-<script src="js/battle.js?v=2"></script>
+<script src="js/vendor/kanji-canvas.js?v=3"></script>
+<script src="js/vendor/ort/ort.wasm.min.js?v=3"></script>
+<script src="js/recognizer.js?v=3"></script>
+<script src="js/config.js?v=3"></script>
+<script src="js/net.js?v=3"></script>
+<script src="js/audio.js?v=3"></script>
+<script src="js/players.js?v=3"></script>
+<script src="js/furigana.js?v=3"></script>
+<script src="js/dict.js?v=3"></script>
+<script src="js/battle.js?v=3"></script>
 <script>
 "use strict";
 
@@ -1316,6 +1317,26 @@ let sendingInviteTo = null; // 誘いを送信中のフレンドコード
 const scrollPos = {};
 
 /* ── 画面の切り替え ─────────────────────── */
+/* コードをコピーするボタン。押すとしばらく「✓ コピーしました」に変わって戻る。
+   フレンドコードと部屋コードで同じ見せ方にするため、1か所にまとめてある。
+   コピーできない環境（クリップボードを触らせないブラウザ）では、黙って
+   何も起きないと押せていないのか分からないので、その旨を出す。 */
+function bindCopyButton(btnId, getCode) {
+  const btn = document.getElementById(btnId);
+  btn.onclick = async () => {
+    const code = getCode();
+    if (!code) return;
+    if (!btn.dataset.original) btn.dataset.original = btn.textContent;
+    clearTimeout(btn._resetTimer);
+    let copied = false;
+    try {
+      if (navigator.clipboard) { await navigator.clipboard.writeText(code); copied = true; }
+    } catch (e) {}
+    btn.textContent = copied ? '✓ コピーしました' : 'コピーできませんでした';
+    btn._resetTimer = setTimeout(() => { btn.textContent = btn.dataset.original; }, 1800);
+  };
+}
+
 function show(id, restore) {
   const moved = id !== currentScreen;
   if (currentScreen && moved) scrollPos[currentScreen] = window.scrollY;
@@ -2193,18 +2214,10 @@ function bind() {
     try { await Players.login(username, password); renderModeScreen(); show('modeScreen'); loadCleared(); }
     catch (e) { setLoginErr(e.message || 'ログインできませんでした'); }
   };
-  document.getElementById('copyCodeBtn').onclick = async () => {
+  bindCopyButton('copyCodeBtn', () => {
     const p = Players.getProfile();
-    if (!p || !navigator.clipboard) return;
-    const btn = document.getElementById('copyCodeBtn');
-    try {
-      await navigator.clipboard.writeText(p.code);
-      clearTimeout(btn._resetTimer);
-      if (!btn.dataset.original) btn.dataset.original = btn.textContent;
-      btn.textContent = '✓ コピーしました';
-      btn._resetTimer = setTimeout(() => { btn.textContent = btn.dataset.original; }, 1500);
-    } catch (e) {}
-  };
+    return p ? p.code : '';
+  });
   document.getElementById('logoutBtn').onclick = () => {
     if (!confirm('ログアウトしますか？ユーザー名とパスワードで入り直せます。')) return;
     Players.clearProfile();

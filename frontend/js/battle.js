@@ -427,6 +427,8 @@ function bBind() {
   document.querySelectorAll('#battleQuickPanel .bigbtn').forEach(b => {
     b.onclick = () => bQuickMatch(b.dataset.qlevel);
   });
+  // 部屋コードは相手に伝えるものなので、手で打ち写さずに渡せるようにする
+  bindCopyButton('copyRoomCodeBtn', () => bstate.code);
   document.getElementById('quickCancelBtn').onclick = () => {
     if (bstate.code && bstate.myId) Net.cancelRoom(bstate.code, bstate.myId);
     bReset();
