@@ -171,10 +171,16 @@
     if (route(bgmAudio, bgmGain)) applyVolume(bgmAudio, 'bgm');
   }
 
-  // BGMを鳴らし、鳴らせたらグラフにつなぐ。順番を逆にしない
+  // BGMを鳴らし、鳴らせたらグラフにつなぐ。順番を逆にしない。
+  //
+  // play() は呼んだ瞬間ではなく少しあとに効く。そのため「止める→作り直して鳴らす」を
+  // 素早く続けると、捨てたはずの古い要素の play() が後から効いて、新しい要素と
+  // 二重に鳴ってしまう（画面を速く行き来したときに起きる）。
+  // 効いた時点でまだ現役かを確かめ、違っていれば止め直す。
   function playBgmAudio(el) {
     if (!el) return;
     el.play().then(() => {
+      if (el !== bgmAudio) { try { el.pause(); } catch (e) {} return; }
       played.add(el);
       routeBgm();
     }).catch(() => {});
