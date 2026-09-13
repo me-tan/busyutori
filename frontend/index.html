@@ -1103,14 +1103,16 @@
   </div>
 </div>
 
-<script src="js/vendor/kanji-canvas.js"></script>
-<script src="js/vendor/ort/ort.wasm.min.js"></script>
-<script src="js/recognizer.js"></script>
-<script src="js/config.js"></script>
-<script src="js/net.js"></script>
-<script src="js/audio.js"></script>
-<script src="js/players.js"></script>
-<script src="js/furigana.js"></script>
+<!-- 版番号は、古いJSがブラウザに残って直したはずの不具合が直らないときに1つ増やす。
+     Workerはno-cacheを付けているが、それが付く前に取りに行った分は残り続けるため。 -->
+<script src="js/vendor/kanji-canvas.js?v=1"></script>
+<script src="js/vendor/ort/ort.wasm.min.js?v=1"></script>
+<script src="js/recognizer.js?v=1"></script>
+<script src="js/config.js?v=1"></script>
+<script src="js/net.js?v=1"></script>
+<script src="js/audio.js?v=1"></script>
+<script src="js/players.js?v=1"></script>
+<script src="js/furigana.js?v=1"></script>
 <script>
 "use strict";
 
