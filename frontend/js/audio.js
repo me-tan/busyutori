@@ -18,6 +18,10 @@
  * BGMは長いので復号せず、これまでどおり <audio> をつなぐ。こちらは
  * 鳴らし始めたあとにつないでいるぶんには実機で鳴っている。
  *
+ * 別のアプリに切り替えて戻ると、iPhoneではAudioContextの音の出口が切られて
+ * resume() でも戻らない。戻ってきたらAudioContextごと捨てて作り直す
+ *（つないだ <audio> はつなぎ直せないので、BGMは要素ごと作り直す）。
+ *
  * 復号が間に合わない・Web Audioが使えない間は <audio> のまま鳴らす。
  * 音が出ないよりは、音量つまみが効かない方がましなので。
  *
@@ -94,6 +98,37 @@
     if (!ctx) return;
     if (ctx.state === 'running') { onGraphRunning(); return; }
     ctx.resume().then(onGraphRunning).catch(() => {});
+  }
+
+  // AudioContextを丸ごと捨てる。次に画面を触ったときに作り直される。
+  // 捨てている間は graphReady() が false なので、効果音は <audio> のまま鳴る。
+  // つまり、作り直しが済む前でも音が止まらない。
+  function discardGraph() {
+    const old = ctx;
+    ctx = null; sfxGain = null; bgmGain = null;
+    sfxLoadStarted = false;
+    for (const name of Object.keys(sfxBuffers)) delete sfxBuffers[name];
+    if (old) { try { old.close(); } catch (e) {} }
+
+    // つないだ <audio> は新しいAudioContextにつなぎ直せない（1要素につき1回きり）。
+    // BGMは要素ごと作り直す。次に画面を触ったときに鳴り始める。
+    // 頭出しに戻らないよう、鳴っていた位置を引き継ぐ。
+    if (bgmKey && bgmAudio && routed.has(bgmAudio)) {
+      const key = bgmKey;
+      const at = bgmAudio.currentTime || 0;
+      KBAudio.stopBgm();
+      KBAudio.playBgm(key);
+      seekBgm(at);
+    }
+  }
+
+  // 新しい要素はまだ長さが分かっていないことがあるので、分かってから位置を合わせる
+  function seekBgm(at) {
+    const el = bgmAudio;
+    if (!el || !at) return;
+    const seek = () => { try { el.currentTime = at; } catch (e) {} };
+    if (el.readyState > 0) seek();
+    else el.addEventListener('loadedmetadata', seek, { once: true });
   }
 
   // ── 効果音のデータ読み込み ────────────────────────────────────
@@ -269,8 +304,14 @@
 
   // 別のアプリに切り替えて戻るとAudioContextが止まったままになることがある。
   // つないだ要素はcontextが止まると鳴らなくなるので、戻ってきたら起こし直す。
+  // 別のアプリに切り替えて戻ってくると、iPhoneではAudioContextの音の出口が
+  // 切られていて、resume() しても音が戻らない（コードをコピーして友だちに送り、
+  // 戻ってきたらBGMも効果音も鳴らなくなる、という形で出た）。
+  // 直す方法が無いので、戻ってきたら古いものは捨てて作り直す。
+  // 出口が生きているなら触らない（PCでタブを行き来しただけのときはこちら）。
   document.addEventListener('visibilitychange', () => {
-    if (!document.hidden && ctx && ctx.state === 'suspended') ctx.resume().catch(() => {});
+    if (document.hidden || !ctx) return;
+    if (ctx.state !== 'running') discardGraph();
   });
 
   window.KBAudio = KBAudio;
