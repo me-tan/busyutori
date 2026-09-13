@@ -1103,8 +1103,9 @@
   </div>
 </div>
 
-<!-- 版番号は、古いJSがブラウザに残って直したはずの不具合が直らないときに1つ増やす。
-     Workerはno-cacheを付けているが、それが付く前に取りに行った分は残り続けるため。 -->
+<!-- ?v= はキャッシュを切るための版番号。Workerのno-cacheが効くのは、それ以降に
+     取りに行った分だけなので、古いJSがブラウザに残って動き続けることがある。
+     直したはずの不具合が手元で再現しないときは、この数字を1つ増やす。 -->
 <script src="js/vendor/kanji-canvas.js?v=1"></script>
 <script src="js/vendor/ort/ort.wasm.min.js?v=1"></script>
 <script src="js/recognizer.js?v=1"></script>
@@ -1253,9 +1254,9 @@ function renderModeScreen() {
   refreshInviteBadge();
 }
 
-// 読み込みに失敗した理由を短く出す。原因の切り分けに使う。
-// これまで理由を捨てて「読み込めませんでした」とだけ出していたため、
-// ログインが切れているのか通信が届いていないのか分からなかった。
+// 読み込みに失敗した理由を、サーバーが返した文言のまま画面に出す。
+// ログインが切れているのか通信が届いていないのかで直し方が変わるので、
+// 「読み込めませんでした」だけで終わらせない。
 function loadErrText(e) {
   const m = (e && e.message) ? String(e.message) : '';
   return m || '通信に失敗しました';
