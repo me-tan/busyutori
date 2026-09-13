@@ -1168,6 +1168,10 @@ const state = {
 // 端末に持つと、同じ端末で別の人がログインしたときに前の人の達成が見えてしまう。
 const cleared = new Set();
 
+/* ── 起動 ────────────────────────────
+   部首データと画数表を読み、保存してある達成を取り直す。
+   読めなかったときは理由を画面に出す（遊べないので黙って進まない）。
+   ──────────────────────────────────────────────────────────── */
 async function loadCleared() {
   cleared.clear();
   if (!Players.getProfile()) return;
@@ -1226,6 +1230,9 @@ async function boot() {
   });
 }
 
+/* ── 通知のバッジ ────────────────────────
+   フレンド申請と対戦の誘いを一定間隔で見に行き、右上に点を出す。
+   ──────────────────────────────────────────────────────────── */
 async function refreshFriendBadge() {
   // 赤バッジ: フレンド関連の通知（申請が来ている／フレンドを解除された）
   const el = document.getElementById('friendReqBadge');
@@ -1308,6 +1315,7 @@ let sendingInviteTo = null; // 誘いを送信中のフレンドコード
 //（長い一覧を見ていた場所まで自分でスクロールし直させないため）。
 const scrollPos = {};
 
+/* ── 画面の切り替え ─────────────────────── */
 function show(id, restore) {
   const moved = id !== currentScreen;
   if (currentScreen && moved) scrollPos[currentScreen] = window.scrollY;
@@ -1329,6 +1337,7 @@ function refreshFriendsScreenIfOpen() {
   refreshRanking(currentRankLevel);
 }
 
+/* ── 出題する部首と、その部首を含む漢字 ───────────── */
 function poolOf(rad, grades) {
   const d = DATA.radicals[rad];
   let ks = [];
@@ -1400,6 +1409,7 @@ function setRadical(rad) {
   document.getElementById('radMeaning').textContent = d.meaning;
 }
 
+/* ── ひとりで遊ぶ（タイムアタック・部首マスター） ──────── */
 function startTime(level) {
   state.mode = 'time'; state.level = level;
   state.used = new Set(); state.streak = 0; state.recent = [];
@@ -1531,6 +1541,10 @@ function renderTimer() {
 
 // 答えになりうる字だけを渡して、その中で順位を付けてもらう。
 // 2000字以上の中から選ばせると、正しく書けていても無関係な字に押し出されてしまうため。
+/* ── 手書きの判定 ────────────────────────
+   認識そのものは js/recognizer.js が行う。ここでは答えになりうる字に絞り、
+   画数と確からしさで誤って受理しないようにしている。
+   ──────────────────────────────────────────────────────────── */
 function answerableSet(inLevel, used) {
   const s = new Set();
   for (const k of inLevel) if (!used.has(k)) s.add(k);
@@ -1630,6 +1644,7 @@ function accept(k) {
   }
 }
 
+/* ── 結果画面 ────────────────────────── */
 function renderUsed() {
   const el = document.getElementById('usedList');
   document.getElementById('usedCount').textContent = state.used.size + '字';
@@ -1759,6 +1774,7 @@ function gameOver(reason) {
   show('overScreen');
 }
 
+/* ── 設定 ──────────────────────────── */
 function renderSettingsUI() {
   const s = KBAudio.getSettings();
   document.getElementById('seVolume').value = Math.round(s.se * 100);
@@ -1776,6 +1792,7 @@ function renderSettingsUI() {
   document.getElementById('volumeNote').classList.toggle('hidden', canControl);
 }
 
+/* ── フレンド・ランキング ──────────────────── */
 function setProfileErr(t) {
   const el = document.getElementById('profileErr');
   if (!t) { el.classList.add('hidden'); el.textContent = ''; return; }
@@ -2077,6 +2094,9 @@ async function refreshRanking(level) {
   }).join('');
 }
 
+/* ── 画面と操作の結びつけ ────────────────────
+   起動時に1回だけ呼ぶ。
+   ──────────────────────────────────────────────────────────── */
 function bind() {
   document.querySelectorAll('#modes .bigbtn[data-mode]').forEach(b => {
     b.onclick = () => { state.mode = b.dataset.mode; show('levelScreen'); };
