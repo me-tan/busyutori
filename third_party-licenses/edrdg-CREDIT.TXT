@@ -1,0 +1,21 @@
+辞書データ: 電子辞書研究開発グループ（EDRDG）
+Electronic Dictionary Research and Development Group, Monash University
+https://www.edrdg.org/
+
+ライセンス: Creative Commons Attribution-ShareAlike 4.0
+https://www.edrdg.org/edrdg/licence.html
+
+使っているファイル:
+
+- KANJIDIC2  https://www.edrdg.org/kanjidic/kanjidic2.xml.gz
+  学年・音読み・訓読み・画数・康熙部首番号（辞書上の正式な部首）。
+  → frontend/data/radicals.json（scripts/build_radicals.py）
+  → frontend/data/kanji-dict.json の strokes / on / kun（scripts/build_dict.py）
+
+- JMdict      http://ftp.edrdg.org/pub/Nihongo/JMdict_e.gz
+  漢字辞書の利用例に出す熟語とその読み。ke_pri（よく使われる語の印）が
+  付いた語を1字あたり6語まで選んでいる。
+  → frontend/data/kanji-dict.json の words（scripts/build_dict.py）
+
+いずれも元データから必要な項目を抜き出して形式を変えた派生物にあたるため、
+これらのJSONはCC BY-SA 4.0で配布される（本体のコードはMIT）。

@@ -59,6 +59,12 @@
     color: var(--ink); background: var(--paper);
   }
   .hidden { display: none !important; }
+
+  /* ふりがな（js/furigana.jsが付ける）。読めれば十分なので控えめにし、
+     行の高さを広げて画面からはみ出さないよう、ルビの分だけ余裕を持たせる */
+  ruby { ruby-position: over; ruby-align: center; }
+  rt { font-size: 0.5em; font-weight: 400; color: var(--ink-soft);
+       letter-spacing: 0; line-height: 1; user-select: none; }
   :focus-visible { outline: 2px solid var(--shu); outline-offset: 2px; }
   @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
@@ -83,6 +89,9 @@
   h1 { font-family: var(--font-mincho); font-size: var(--t-xl); font-weight: 600; color: var(--ink);
        letter-spacing: 0.12em; line-height: 1.35; margin: 0; }
   h1.logo { font-size: 44px; letter-spacing: 0.16em; line-height: 1.2; }
+  /* トップ画面の題字はマスコットの絵にする（名前は左上に出している） */
+  h1.logoImg { line-height: 0; }
+  h1.logoImg img { display: block; width: 100%; max-width: 296px; height: auto; margin: 0 auto; }
   .secTitle { font-size: var(--t-sm); color: var(--ai); font-weight: 700; margin-bottom: var(--s3);
               letter-spacing: 0.06em; }
 
@@ -112,21 +121,19 @@
 
   /* ── 自分の情報 ─────────────────────────────────────────── */
   /* 名前の頭文字を桝に入れる。原稿用紙の1マスと同じ見立て */
-  .avatarChip { width: var(--tap); height: var(--tap); border: 1px solid var(--ai); background: var(--card);
-                color: var(--ink); display: flex; align-items: center; justify-content: center;
-                font-family: var(--font-mincho); font-size: var(--t-md); font-weight: 600;
-                flex: none; cursor: pointer; padding: 0; min-height: 0; }
-  .avatarBig { width: 68px; height: 68px; border: 1px solid var(--ai); background: var(--card);
-               color: var(--ink); display: flex; align-items: center; justify-content: center;
-               font-family: var(--font-mincho); font-size: 30px; font-weight: 600; margin: 0 auto; }
   .statRow { display: flex; align-items: center; justify-content: space-between;
              padding: var(--s3) 0; border-bottom: 1px solid var(--rule); }
   .statRow .lv { font-size: var(--t-sm); font-weight: 700; color: var(--ai); }
   .statRow .sc { font-family: var(--font-mincho); font-size: var(--t-lg); font-weight: 600; color: var(--ink); }
   .topnav { display: flex; align-items: center; gap: var(--s3); }
-  .topnavName { font-size: var(--t-sm); line-height: 1.5; text-align: left; }
-  .topnavName div:first-child { font-weight: 700; color: var(--ink); }
-  .topnavName div:last-child { font-size: var(--t-xs); color: var(--ink-soft); letter-spacing: 0.1em; }
+  /* 誰で遊んでいるかを出す。押すとアカウントが開く。
+     同じ端末を何人かで使い分ける前提なので、遊び始める前に見えるようにしておく */
+  .topnavName { font-size: var(--t-base); font-weight: 700; color: var(--ink); text-align: left;
+                background: transparent; border: 1px solid transparent; font-family: var(--font-ui);
+                margin-left: calc(var(--s2) * -1); padding: var(--s1) var(--s2); cursor: pointer;
+                min-height: var(--tap); display: flex; align-items: center; gap: var(--s2); }
+  .topnavName svg { color: var(--ai); flex: none; }
+  @media (hover: hover) { .topnavName:hover { background: var(--ai-pale); } }
   .iconBtn { position: relative; width: var(--tap); height: var(--tap); background: transparent;
              border: 1px solid transparent; color: var(--ai); display: flex; align-items: center;
              justify-content: center; flex: none; cursor: pointer; padding: 0; min-height: 0; }
@@ -157,7 +164,9 @@
   .bigbtn.has-icon { padding-left: 52px; }
   .bigbtn .icon { position: absolute; left: var(--s4); top: var(--s4); color: var(--ai); }
 
-  .settingsList, .friendsList { border-top: 1px solid var(--rule); }
+  /* 設定は見出しのすぐ下に並ぶので、上の罫線は見出し側のものだけにする
+     （両方あると線が二重に出る）。フレンド一覧は上に別の内容が入るので残す */
+  .friendsList { border-top: 1px solid var(--rule); }
   .settingRow {
     display: flex; align-items: center; justify-content: space-between; gap: var(--s4);
     padding: var(--s3) 0; min-height: 56px; border-bottom: 1px solid var(--rule);
@@ -166,6 +175,11 @@
                 font-weight: 700; color: var(--ink); }
   .settingLbl svg { color: var(--ai); flex: none; }
   .settingRow input[type="range"] { width: 132px; height: var(--tap); }
+  /* 音量を変えられない端末では、つまみを操作できないことが見て分かるようにする */
+  .settingRow input[type="range"]:disabled { opacity: 0.35; }
+  .settingRow.disabled .settingLbl { color: var(--ink-soft); }
+  .settingRow.disabled .settingLbl svg { color: var(--ink-soft); }
+  .settingNote { margin-top: var(--s4); font-size: var(--t-sm); line-height: 1.7; color: var(--ink-mid); }
 
   .friendRow { display: flex; align-items: center; justify-content: space-between; gap: var(--s3);
                padding: var(--s3) 0; min-height: 56px; border-bottom: 1px solid var(--rule); }
@@ -391,14 +405,76 @@
   .reveal-origin { font-size: var(--t-sm); color: var(--ink-mid); line-height: 1.9;
                    margin-bottom: var(--s4); text-align: left; }
   .kgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(64px,1fr)); gap: 1px; text-align: center; }
-  .kcell { background: var(--card); border: none; box-shadow: 0 0 0 1px var(--rule); padding: var(--s2) var(--s1); }
+  /* 桝を押すとその字の辞書が開く。押せることが分かるよう部首の桝と同じ反応にする */
+  .kcell { background: var(--card); border: none; box-shadow: 0 0 0 1px var(--rule);
+           padding: var(--s2) var(--s1); cursor: pointer; }
+  @media (hover: hover) { .kcell:hover { background: var(--ai-pale); box-shadow: 0 0 0 1px var(--ai-mid); } }
+  .kcell:active { background: var(--ai-pale); }
   .kcell .k { font-family: var(--font-kanji); font-size: 26px; line-height: 1.3; font-weight: 500; color: var(--ink); }
   .kcell .r { font-size: var(--t-xs); color: var(--ink-mid); margin-top: var(--s1); line-height: 1.5; }
   .kcell .g { font-size: var(--t-xs); color: var(--ink-soft); line-height: 1.5; }
   .more { font-size: var(--t-sm); color: var(--ink-mid); margin-top: var(--s3); }
+  /* 省略された残りを出すボタン。一覧の下に幅いっぱいで置く */
+  .more .revall { width: 100%; border-color: var(--rule); font-size: var(--t-sm); font-weight: 700; }
   .gotbox { margin-top: var(--s5); font-size: var(--t-sm); color: var(--ink-mid); }
   .gotbox .gk { font-family: var(--font-kanji); font-size: var(--t-lg); color: var(--ai);
                 font-weight: 500; margin-right: var(--s1); }
+
+  /* ── 漢字辞書 ─────────────────────────────────────────────
+     一覧はゲームの桝（.radgrid/.kgrid）をそのまま使い、
+     ここでは「漢字をしらべる」画面だけを定義する */
+  /* 漢字一覧の上に出す部首の紹介。なりたちは部首マスターの結果画面と同じ文章 */
+  .dradhead { text-align: center; padding-bottom: var(--s4); margin-bottom: var(--s4);
+              border-bottom: 1px solid var(--rule); }
+  .dradhead .r { font-family: var(--font-kanji); font-size: 56px; line-height: 1.1;
+                 font-weight: 500; color: var(--ink); }
+  .dradhead .n { font-size: var(--t-sm); color: var(--ink-mid); margin-top: var(--s1); }
+  .dradhead .m { font-size: var(--t-base); margin-top: var(--s2); }
+  /* なりたちは長めの文なので、中央ぞろえをやめて左から読ませる */
+  .dradhead .o { font-size: var(--t-sm); color: var(--ink-mid); line-height: 1.9;
+                 margin-top: var(--s1); text-align: left; }
+  /* 見出しは本文（左ぞろえ）の頭に付くので、こちらも左に寄せる */
+  .dradhead .dsec-h { margin-top: var(--s4); margin-bottom: 0; text-align: left; }
+
+  .dhead { text-align: center; padding-bottom: var(--s4); border-bottom: 1px solid var(--rule); }
+  .dkanji { font-family: var(--font-kanji); font-size: 88px; line-height: 1.1;
+            font-weight: 500; color: var(--ink); }
+  /* 書き順は書き取りの桝に見立て、中心の補助線の上に一画ずつ引く */
+  .dkanjibox { display: flex; align-items: center; justify-content: center; min-height: 148px; }
+  .dsvg { width: 148px; height: 148px; background: var(--card); box-shadow: 0 0 0 1px var(--rule); }
+  .dsvg .guide line { stroke: var(--rule); stroke-width: 1; stroke-dasharray: 4 5; }
+  .dsvg path { fill: none; stroke-width: 4.5; stroke-linecap: round; stroke-linejoin: round; }
+  /* 手本は薄く敷いておく。今どこを書いているのかが分かる */
+  .dsvg .model path { stroke: var(--ai-pale); }
+  .dsvg .live path { stroke: var(--ink); }
+  .dsvg .live path.now { stroke: var(--shu); }
+  .dplay { display: flex; align-items: center; justify-content: center; gap: var(--s3);
+           margin-top: var(--s3); }
+  .dplay button { min-height: 36px; padding: var(--s1) var(--s4); font-size: var(--t-xs); }
+  .dplay .cnt { font-size: var(--t-xs); color: var(--ink-mid); min-width: 62px; text-align: left; }
+  .dnote { font-size: var(--t-xs); color: var(--ink-soft); line-height: 1.7; margin-top: var(--s2); }
+  .dfacts { display: flex; justify-content: center; gap: var(--s4); margin-top: var(--s2);
+            font-size: var(--t-xs); color: var(--ink-mid); }
+  .dfacts b { font-family: var(--font-mincho); font-size: var(--t-md); font-weight: 600;
+              color: var(--ink); margin-left: var(--s1); }
+  /* 見出しは罫線に重ねず、項目ごとに一段落として置く */
+  .dsec { margin-top: var(--s5); }
+  /* 見出しにもふりがなが乗るので、本文のふりがなより小さくならない字の大きさにする */
+  .dsec-h { font-size: var(--t-sm); color: var(--ai); font-weight: 700;
+            letter-spacing: 0.1em; margin-bottom: var(--s2); }
+  .dsec-h rt { font-size: 9px; color: var(--ai-mid); }
+  .dmean { font-size: var(--t-base); line-height: 1.9; }
+  .dread { display: flex; flex-wrap: wrap; gap: var(--s2); }
+  .dread span { font-family: var(--font-mincho); font-size: var(--t-md);
+                background: var(--card); box-shadow: 0 0 0 1px var(--rule);
+                padding: var(--s1) var(--s3); }
+  .dread.none { color: var(--ink-soft); font-size: var(--t-sm); }
+  /* 用例は語と読みを縦に重ねる。横並びだと長い語で折り返して読みにくい */
+  .dwords { display: grid; grid-template-columns: repeat(auto-fill, minmax(104px,1fr)); gap: 1px; }
+  .dword { background: var(--card); box-shadow: 0 0 0 1px var(--rule);
+           padding: var(--s3) var(--s2); text-align: center; }
+  .dword .w { font-family: var(--font-kanji); font-size: var(--t-lg); font-weight: 500; line-height: 1.4; }
+  .dword .y { font-size: var(--t-xs); color: var(--ink-mid); line-height: 1.5; }
 
   .err { color: var(--shu); font-size: var(--t-sm); line-height: 1.8; }
   /* 取り消せない操作は朱で示す */
@@ -414,7 +490,9 @@
      まとまって見え、選択肢は親指の届く下側に寄る */
   #modeScreen h1 { margin: auto 0; }
   .modeList { display: flex; flex-direction: column; gap: 1px; }
-  .modeItem { flex: 1 1 0; min-height: 156px; display: flex; align-items: center; gap: var(--s5);
+  /* 選択肢が三つあるので、桝の高さは画面に三つ収まる分までしか取らない
+     （flexで余った高さは分け合うので、広い画面では自然に伸びる） */
+  .modeItem { flex: 1 1 0; min-height: 132px; display: flex; align-items: center; gap: var(--s5);
               width: 100%; text-align: left; background: var(--card); border: none;
               box-shadow: 0 0 0 1px var(--ai); padding: var(--s5) var(--s6);
               font-family: var(--font-ui); cursor: pointer; }
@@ -424,6 +502,9 @@
   .modeNum { font-family: var(--font-mincho); font-size: var(--t-lg); color: var(--ink);
              flex: none; width: 40px; height: 40px; box-shadow: 0 0 0 1px var(--ai);
              display: flex; align-items: center; justify-content: center; line-height: 1; }
+  /* 選択肢が同じ見た目だと見分けにくいので、桝の濃さを三段階に変える */
+  .modeNum.ai { background: var(--ai); color: var(--card); }
+  .modeNum.pale { background: var(--ai-pale); }
   .modeTxt { flex: 1; }
   .modeH { font-family: var(--font-mincho); font-size: 30px; font-weight: 600;
            letter-spacing: 0.08em; color: var(--ink); line-height: 1.3; }
@@ -487,6 +568,8 @@
   /* 背の低い端末では、参照するための欄をさらに詰めて、書き取り欄と
      「これでいく」を画面に残すことを優先する */
   @media (max-height: 760px) {
+    .modeItem { min-height: 104px; }
+    h1.logo { font-size: 36px; }
     .usedbox { max-height: 104px; }
     .quest { padding-bottom: var(--s2); margin-bottom: var(--s3); }
     .radical { font-size: 44px; }
@@ -505,6 +588,7 @@
     :root { --gutter: 32px; }
     body { max-width: none; padding: 0 var(--gutter) var(--s7); }
     #loginScreen, #soloScreen, #settingsScreen, #friendsScreen, #profileScreen, #levelScreen, #radScreen,
+    #dictLevelScreen, #dictRadScreen, #dictKanjiScreen, #dictDetailScreen,
     #battleSetupScreen, #overScreen, #battleOverScreen {
       max-width: 560px; margin: var(--s8) auto 0;
     }
@@ -575,14 +659,13 @@
 
 <div id="modeScreen" class="hidden">
   <div class="topnav">
-    <button class="avatarChip" id="avatarChip" title="ニックネームを変更">?</button>
-    <div class="topnavName">
-      <div id="myNickname">-</div>
-      <div id="myCodeSmall">------</div>
-    </div>
+    <button class="topnavName" id="openAccount" title="アカウント">
+      <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8.2" r="3.4"/><path d="M5 19.6c0-3.2 3.1-5 7-5s7 1.8 7 5"/></svg>
+      <span id="myNickname">-</span>
+    </button>
     <div style="flex:1"></div>
     <button class="iconBtn" id="openFriends" title="フレンド">
-      <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="9" r="2.8"/><path d="M2.5 19c0-3 2.5-5 5.5-5s5.5 2 5.5 5"/><circle cx="17.5" cy="8.5" r="2.3"/><path d="M14.7 13.7c2.6.3 4.3 2 4.3 4.8"/></svg>
+      <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="6.5" cy="8.8" r="3"/><path d="M2.2 19.4c0-2.5 1.9-3.9 4.3-3.9s4.3 1.4 4.3 3.9"/><circle cx="17.5" cy="8.8" r="3"/><path d="M13.2 19.4c0-2.5 1.9-3.9 4.3-3.9s4.3 1.4 4.3 3.9"/></svg>
       <span class="badgeDot hidden" id="friendReqBadge"></span>
       <span class="badgeDot invite hidden" id="inviteBadge"></span>
     </button>
@@ -593,10 +676,10 @@
       </svg>
     </button>
   </div>
-  <h1 class="logo">ぶしゅとり</h1>
+  <h1 class="logo logoImg"><img src="assets/busyutori.jpg" alt="ぶしゅとり"></h1>
   <div class="modeList">
     <button class="modeItem" id="toBattle">
-      <div class="modeNum">一</div>
+      <div class="modeNum ai">一</div>
       <div class="modeTxt">
         <div class="modeH">たいせん</div>
       </div>
@@ -605,6 +688,12 @@
       <div class="modeNum">二</div>
       <div class="modeTxt">
         <div class="modeH">ひとりで</div>
+      </div>
+    </button>
+    <button class="modeItem" id="toDict">
+      <div class="modeNum pale">三</div>
+      <div class="modeTxt">
+        <div class="modeH">かんじじてん</div>
       </div>
     </button>
   </div>
@@ -638,7 +727,6 @@
   </div>
 
   <div style="text-align:center;margin-bottom:24px">
-    <div class="avatarBig" id="profileAvatarBig">?</div>
     <div style="font-size:var(--t-lg);font-weight:700;color:var(--ink);margin-top:var(--s3)" id="profileNicknameDisplay">-</div>
     <div style="font-size:var(--t-xs);color:var(--ink-mid);letter-spacing:0.08em;margin-top:var(--s1)" id="profileCodeDisplay">コード ------</div>
   </div>
@@ -655,9 +743,8 @@
 
   <div class="secTitle" style="margin-top:var(--s5)">ログアウト</div>
   <div style="font-size:var(--t-xs);color:var(--ink-mid);margin:var(--s2) 0 var(--s3)">
-    この端末からログアウトします。コードとパスワードのしくみがないため、
-    一度ログアウトすると同じアカウントには戻れません。別の人がこの端末で
-    使う場合などに利用してください。
+    この端末からログアウトします。ユーザー名とパスワードでいつでも入り直せるので、
+    記録やフレンドが消えることはありません。パスワードを忘れると入り直せなくなるので気をつけてください。
   </div>
   <button id="logoutBtn" class="danger">ログアウトする</button>
 </div>
@@ -731,6 +818,11 @@
       <input type="checkbox" id="muteAll">
     </label>
   </div>
+  <div class="settingNote hidden" id="volumeNote">
+    この端末では、アプリから音の大きさを変えられません。本体の音量ボタンで調節してください。
+    「すべての音を消す」はこの端末でも使えます。
+  </div>
+
 </div>
 
 <div id="levelScreen" class="hidden">
@@ -755,6 +847,53 @@
     <div class="navTitle">部首をえらぶ</div>
   </div>
   <div class="radgrid" id="radGrid"></div>
+</div>
+
+<div id="dictLevelScreen" class="hidden">
+  <div class="navbar">
+    <button class="navBack" id="dictLvBack">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg>
+    </button>
+    <div class="navTitle">学年をえらぶ</div>
+  </div>
+  <div class="stack">
+    <button class="bigbtn" data-dictlevel="low">初級<small>小1〜小3で習う漢字</small></button>
+    <button class="bigbtn" data-dictlevel="elem">中級<small>小1〜小6で習う漢字</small></button>
+    <button class="bigbtn" data-dictlevel="all">上級<small>常用漢字すべて</small></button>
+  </div>
+  <div class="waitmsg hidden" id="dictWait">漢字辞書を読み込んでいます…</div>
+  <div class="err hidden" id="dictErr"></div>
+</div>
+
+<div id="dictRadScreen" class="hidden">
+  <div class="navbar">
+    <button class="navBack" id="dictRadBack">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg>
+    </button>
+    <div class="navTitle">部首をえらぶ</div>
+  </div>
+  <div class="radgrid" id="dictRadGrid"></div>
+</div>
+
+<div id="dictKanjiScreen" class="hidden">
+  <div class="navbar">
+    <button class="navBack" id="dictKanjiBack">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg>
+    </button>
+    <div class="navTitle" id="dictKanjiTitle">漢字をえらぶ</div>
+  </div>
+  <div class="dradhead" id="dictRadHead"></div>
+  <div class="kgrid" id="dictKanjiGrid"></div>
+</div>
+
+<div id="dictDetailScreen" class="hidden">
+  <div class="navbar">
+    <button class="navBack" id="dictDetailBack">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg>
+    </button>
+    <div class="navTitle">漢字をしらべる</div>
+  </div>
+  <div id="dictDetail"></div>
 </div>
 
 <div id="playScreen" class="hidden">
@@ -950,6 +1089,7 @@
     <div class="reveal-rad" id="bRevRad">—</div>
     <div class="reveal-name" id="bRevName"></div>
     <div class="reveal-lead" id="bRevLead"></div>
+    <div class="reveal-sub" id="bRevSub"></div>
     <div class="reveal-origin" id="bRevOrigin"></div>
     <div class="kgrid" id="bRevGrid"></div>
     <div class="more" id="bRevMore"></div>
@@ -963,13 +1103,19 @@
   </div>
 </div>
 
-<script src="js/vendor/kanji-canvas.js"></script>
-<script src="js/vendor/ort/ort.wasm.min.js"></script>
-<script src="js/recognizer.js"></script>
-<script src="js/config.js"></script>
-<script src="js/net.js"></script>
-<script src="js/audio.js"></script>
-<script src="js/players.js"></script>
+<!-- ?v= はキャッシュを切るための版番号。Workerのno-cacheが効くのは、それ以降に
+     取りに行った分だけなので、古いJSがブラウザに残って動き続けることがある。
+     直したはずの不具合が手元で再現しないときは、この数字を1つ増やす。 -->
+<script src="js/vendor/kanji-canvas.js?v=1"></script>
+<script src="js/vendor/ort/ort.wasm.min.js?v=1"></script>
+<script src="js/recognizer.js?v=1"></script>
+<script src="js/config.js?v=1"></script>
+<script src="js/net.js?v=1"></script>
+<script src="js/audio.js?v=1"></script>
+<script src="js/players.js?v=1"></script>
+<script src="js/furigana.js?v=1"></script>
+<script src="js/dict.js?v=1"></script>
+<script src="js/battle.js?v=1"></script>
 <script>
 "use strict";
 
@@ -1017,7 +1163,24 @@ const state = {
   timeLeft: TIME_LIMIT, timerId: null, locked: false,
   target: [], startedAt: 0, passesLeft: PASS_LIMIT
 };
+// 部首マスターで達成済みの部首（"レベル:部首"）。
+// リロードしても消えないよう、正はサーバー（アカウント）側に置き、ここはその写し。
+// 端末に持つと、同じ端末で別の人がログインしたときに前の人の達成が見えてしまう。
 const cleared = new Set();
+
+/* ── 起動 ────────────────────────────
+   部首データと画数表を読み、保存してある達成を取り直す。
+   読めなかったときは理由を画面に出す（遊べないので黙って進まない）。
+   ──────────────────────────────────────────────────────────── */
+async function loadCleared() {
+  cleared.clear();
+  if (!Players.getProfile()) return;
+  try {
+    for (const key of await Players.listCleared()) cleared.add(key);
+  } catch (e) { return; } // 取れなくても遊べる。次回の読み込みで拾い直す
+  // 一覧を開いたまま読み終わることがあるので、そのときは表示を更新する
+  if (DATA && currentScreen === 'radScreen') renderRadicalList();
+}
 
 async function boot() {
   try {
@@ -1041,8 +1204,15 @@ async function boot() {
   bind();
   bBind();
 
-  if (Players.getProfile()) { renderModeScreen(); show('modeScreen'); }
+  if (Players.getProfile()) { renderModeScreen(); show('modeScreen'); loadCleared(); }
   else { show('loginScreen'); }
+
+  // トークンが通らなくなったら、ログイン画面に戻して入り直してもらう
+  window.addEventListener('kb-auth-expired', () => {
+    if (currentScreen === 'loginScreen') return;
+    setLoginErr('ログインし直してください');
+    show('loginScreen');
+  });
 
   setInterval(refreshFriendBadge, 10000);
   setInterval(refreshInviteBadge, 10000);
@@ -1060,6 +1230,9 @@ async function boot() {
   });
 }
 
+/* ── 通知のバッジ ────────────────────────
+   フレンド申請と対戦の誘いを一定間隔で見に行き、右上に点を出す。
+   ──────────────────────────────────────────────────────────── */
 async function refreshFriendBadge() {
   // 赤バッジ: フレンド関連の通知（申請が来ている／フレンドを解除された）
   const el = document.getElementById('friendReqBadge');
@@ -1085,11 +1258,17 @@ async function refreshInviteBadge() {
 function renderModeScreen() {
   const p = Players.getProfile();
   if (!p) return;
-  document.getElementById('avatarChip').textContent = p.nickname.slice(0, 1);
   document.getElementById('myNickname').textContent = p.nickname;
-  document.getElementById('myCodeSmall').textContent = 'コード ' + p.code;
   refreshFriendBadge();
   refreshInviteBadge();
+}
+
+// 読み込みに失敗した理由を、サーバーが返した文言のまま画面に出す。
+// ログインが切れているのか通信が届いていないのかで直し方が変わるので、
+// 「読み込めませんでした」だけで終わらせない。
+function loadErrText(e) {
+  const m = (e && e.message) ? String(e.message) : '';
+  return m || '通信に失敗しました';
 }
 
 function setRenameErr(t) {
@@ -1101,7 +1280,6 @@ function setRenameErr(t) {
 async function renderProfileScreen() {
   const p = Players.getProfile();
   if (!p) return;
-  document.getElementById('profileAvatarBig').textContent = p.nickname.slice(0, 1);
   document.getElementById('profileNicknameDisplay').textContent = p.nickname;
   document.getElementById('profileCodeDisplay').textContent = 'コード ' + p.code;
   document.getElementById('renameInput').value = p.nickname;
@@ -1115,13 +1293,15 @@ async function renderProfileScreen() {
       `<div class="statRow"><span class="lv">${LEVEL_LABEL[l]}</span><span class="sc">${me.best[l] ?? '-'}</span></div>`
     ).join('');
   } catch (e) {
-    statsEl.innerHTML = '<div class="usedempty" style="padding:14px 2px">読み込めませんでした</div>';
+    statsEl.innerHTML = `<div class="usedempty" style="padding:14px 2px">読み込めませんでした（${loadErrText(e)}）</div>`;
   }
 }
 
 const SCREENS = ['loginScreen','modeScreen','soloScreen','settingsScreen','friendsScreen','profileScreen','levelScreen','radScreen','playScreen','overScreen',
+  'dictLevelScreen','dictRadScreen','dictKanjiScreen','dictDetailScreen',
   'battleSetupScreen','battlePlayScreen','battleOverScreen'];
 const BGM_SCREENS = new Set(['loginScreen','modeScreen','soloScreen','settingsScreen','friendsScreen','profileScreen','levelScreen','radScreen',
+  'dictLevelScreen','dictRadScreen','dictKanjiScreen','dictDetailScreen',
   'overScreen','battleSetupScreen','battleOverScreen']);
 const LEVEL_LABEL = { low: '初級', elem: '中級', all: '上級' };
 let currentScreen = null;
@@ -1129,10 +1309,21 @@ let currentRankLevel = 'elem';
 let pendingInvite = null; // { code, roomCode } 自分が送って返事待ちの対戦の誘い
 let inviteLevelPickerFor = null; // 難易度を選んでいる最中のフレンドコード
 let sendingInviteTo = null; // 誘いを送信中のフレンドコード
-function show(id) {
+// 画面を切り替えてもページのスクロール位置はそのまま残る。一覧の下の方から
+// 漢字を開くと、詳細画面まで下までスクロールした状態で開いてしまうので、
+// 進むときは必ず先頭から見せる。戻るときだけ、離れたときの位置に返す
+//（長い一覧を見ていた場所まで自分でスクロールし直させないため）。
+const scrollPos = {};
+
+/* ── 画面の切り替え ─────────────────────── */
+function show(id, restore) {
+  const moved = id !== currentScreen;
+  if (currentScreen && moved) scrollPos[currentScreen] = window.scrollY;
   currentScreen = id;
   SCREENS.forEach(s => document.getElementById(s).classList.toggle('hidden', s !== id));
   if (BGM_SCREENS.has(id)) KBAudio.playBgm('menu'); else KBAudio.stopBgm();
+  // 同じ画面を出し直しただけのときは、見ている場所を動かさない
+  if (moved) window.scrollTo(0, restore ? (scrollPos[id] || 0) : 0);
 }
 
 function refreshFriendsScreenIfOpen() {
@@ -1146,6 +1337,7 @@ function refreshFriendsScreenIfOpen() {
   refreshRanking(currentRankLevel);
 }
 
+/* ── 出題する部首と、その部首を含む漢字 ───────────── */
 function poolOf(rad, grades) {
   const d = DATA.radicals[rad];
   let ks = [];
@@ -1176,7 +1368,8 @@ function renderRadicalList() {
            `<div class="c">${done ? '達成' : x.n + '字'}</div></div>`;
   }).join('');
 
-  document.querySelectorAll('.radbtn').forEach(el => {
+  // 漢字辞書にも同じ桝を使っているので、部首マスターの一覧だけに絞る
+  document.querySelectorAll('#radGrid .radbtn').forEach(el => {
     el.onclick = () => startComplete(el.dataset.rad);
   });
 }
@@ -1216,6 +1409,7 @@ function setRadical(rad) {
   document.getElementById('radMeaning').textContent = d.meaning;
 }
 
+/* ── ひとりで遊ぶ（タイムアタック・部首マスター） ──────── */
 function startTime(level) {
   state.mode = 'time'; state.level = level;
   state.used = new Set(); state.streak = 0; state.recent = [];
@@ -1347,6 +1541,10 @@ function renderTimer() {
 
 // 答えになりうる字だけを渡して、その中で順位を付けてもらう。
 // 2000字以上の中から選ばせると、正しく書けていても無関係な字に押し出されてしまうため。
+/* ── 手書きの判定 ────────────────────────
+   認識そのものは js/recognizer.js が行う。ここでは答えになりうる字に絞り、
+   画数と確からしさで誤って受理しないようにしている。
+   ──────────────────────────────────────────────────────────── */
 function answerableSet(inLevel, used) {
   const s = new Set();
   for (const k of inLevel) if (!used.has(k)) s.add(k);
@@ -1433,6 +1631,7 @@ function accept(k) {
     renderBoxes();
     if (state.used.size >= state.target.length) {
       cleared.add(state.level + ':' + state.radical);
+      Players.markCleared(state.level, state.radical);
       setTimeout(() => gameOver('complete'), 700);
       return;
     }
@@ -1445,6 +1644,7 @@ function accept(k) {
   }
 }
 
+/* ── 結果画面 ────────────────────────── */
 function renderUsed() {
   const el = document.getElementById('usedList');
   document.getElementById('usedCount').textContent = state.used.size + '字';
@@ -1455,9 +1655,54 @@ function renderUsed() {
 
 function cellHTML(k) {
   const g = DATA.kanji[k] ? DATA.kanji[k].grade : '';
-  return `<div class="kcell"><div class="k">${k}</div>` +
+  return `<div class="kcell" data-kanji="${k}"><div class="k">${k}</div>` +
          `<div class="r">${firstReading(k)}</div>` +
          `<div class="g">${GLABEL[g] || ''}</div></div>`;
+}
+
+/* 結果画面の漢字一覧。桝を押すと辞書のくわしい画面へ飛び、戻ると結果に返る。
+   字数が多いと24字で切っているので、残りを出すボタンも付ける。 */
+const revealAll = {}; // 一覧のid -> 全部出しているか
+
+function setOriginBox(id, origin) {
+  // 辞書と同じ見出しを付ける。見出しが無いと本文にまぎれて読み飛ばされる
+  document.getElementById(id).innerHTML =
+    origin ? `<div class="dsec-h">なりたち</div>${origin}` : '';
+}
+
+function renderRevealGrid(gridId, moreId, list, radical, backTo) {
+  const all = revealAll[gridId];
+  const shown = all ? list : list.slice(0, MAX_REVEAL);
+  document.getElementById(gridId).innerHTML = shown.map(cellHTML).join('');
+
+  const rest = list.length - shown.length;
+  const moreEl = document.getElementById(moreId);
+  if (rest > 0) moreEl.innerHTML = `<button class="ghost revall">ほか ${rest} 字もぜんぶ見る</button>`;
+  else if (all && list.length > MAX_REVEAL) moreEl.innerHTML = `<button class="ghost revall">はじめの${MAX_REVEAL}字だけにする</button>`;
+  else moreEl.innerHTML = '';
+
+  const btn = moreEl.querySelector('.revall');
+  if (btn) btn.onclick = () => {
+    revealAll[gridId] = !all;
+    renderRevealGrid(gridId, moreId, list, radical, backTo);
+  };
+  document.querySelectorAll(`#${gridId} .kcell`).forEach(el => {
+    el.onclick = () => openKanjiDetail(radical, el.dataset.kanji, backTo);
+  });
+}
+
+async function openKanjiDetail(radical, kanji, backTo) {
+  dict.radical = radical;
+  dict.kanji = kanji;
+  dict.backTo = backTo;
+  // 辞書データは616KBあり、結果画面から開くときはまだ読んでいないことがある。
+  // 押した手ごたえがなくなるので、部首や学年など今出せる分を先に出しておく。
+  renderDictDetail();
+  show('dictDetailScreen');
+  if (!DICT) {
+    await ensureDict();
+    if (dict.kanji === kanji) renderDictDetail(); // 見ている字が変わっていなければ描き直す
+  }
 }
 
 function renderReveal() {
@@ -1474,12 +1719,12 @@ function renderReveal() {
   document.getElementById('revRad').textContent = radGlyph(rad);
   document.getElementById('revName').textContent = d.name;
   document.getElementById('revSub').textContent = d.meaning;
-  document.getElementById('revOrigin').textContent = d.origin ? `なりたち: ${d.origin}` : '';
+  setOriginBox('revOrigin', d.origin);
+  revealAll.revGrid = false; // 前の試合で広げたままにしない
 
   if (!unused.length) {
     document.getElementById('revLead').innerHTML = `${radGlyph(rad)}を含む漢字を、すべて書き出しました`;
-    document.getElementById('revGrid').innerHTML = got.map(cellHTML).join('');
-    document.getElementById('revMore').textContent = '';
+    renderRevealGrid('revGrid', 'revMore', got, rad, 'overScreen');
     document.getElementById('revGot').innerHTML = '';
     return;
   }
@@ -1489,10 +1734,7 @@ function renderReveal() {
 
   const sorted = unused.slice().sort((a,b) =>
     (DATA.kanji[a] ? DATA.kanji[a].grade : 99) - (DATA.kanji[b] ? DATA.kanji[b].grade : 99));
-  const shown = sorted.slice(0, MAX_REVEAL);
-  document.getElementById('revGrid').innerHTML = shown.map(cellHTML).join('');
-  const rest = sorted.length - shown.length;
-  document.getElementById('revMore').textContent = rest > 0 ? `ほか ${rest} 字` : '';
+  renderRevealGrid('revGrid', 'revMore', sorted, rad, 'overScreen');
   document.getElementById('revGot').innerHTML = got.length
     ? 'あなたが書けたのは ' + got.map(k => `<span class="gk">${k}</span>`).join('') + ` の ${got.length} 字`
     : '';
@@ -1532,13 +1774,25 @@ function gameOver(reason) {
   show('overScreen');
 }
 
+/* ── 設定 ──────────────────────────── */
 function renderSettingsUI() {
   const s = KBAudio.getSettings();
   document.getElementById('seVolume').value = Math.round(s.se * 100);
   document.getElementById('bgmVolume').value = Math.round(s.bgm * 100);
   document.getElementById('muteAll').checked = s.muted;
+
+  // iPhoneなどアプリから音量を変えられない端末では、触っても効かないつまみを
+  // 操作できないようにして、本体で調節してもらうよう案内する
+  const canControl = KBAudio.canControlVolume();
+  ['seVolume', 'bgmVolume'].forEach(id => {
+    const slider = document.getElementById(id);
+    slider.disabled = !canControl;
+    slider.closest('.settingRow').classList.toggle('disabled', !canControl);
+  });
+  document.getElementById('volumeNote').classList.toggle('hidden', canControl);
 }
 
+/* ── フレンド・ランキング ──────────────────── */
 function setProfileErr(t) {
   const el = document.getElementById('profileErr');
   if (!t) { el.classList.add('hidden'); el.textContent = ''; return; }
@@ -1754,7 +2008,7 @@ async function refreshFriendsList() {
   if (firstLoad) listEl.innerHTML = '<div class="usedempty" style="padding:14px 2px">読み込み中…</div>';
   let friends;
   try { friends = await Players.listFriends(); }
-  catch (e) { if (firstLoad) listEl.innerHTML = '<div class="usedempty" style="padding:14px 2px">読み込めませんでした</div>'; return; }
+  catch (e) { if (firstLoad) listEl.innerHTML = `<div class="usedempty" style="padding:14px 2px">読み込めませんでした（${loadErrText(e)}）</div>`; return; }
   listEl.dataset.loaded = '1';
 
   if (!friends.length) {
@@ -1826,7 +2080,7 @@ async function refreshRanking(level) {
   if (firstLoad) el.innerHTML = '<div class="usedempty" style="padding:14px 2px">読み込み中…</div>';
   let ranking;
   try { ranking = await Players.listRanking(level); }
-  catch (e) { if (firstLoad) el.innerHTML = '<div class="usedempty" style="padding:14px 2px">読み込めませんでした</div>'; return; }
+  catch (e) { if (firstLoad) el.innerHTML = `<div class="usedempty" style="padding:14px 2px">読み込めませんでした（${loadErrText(e)}）</div>`; return; }
   el.dataset.loadedLevel = level;
   if (!ranking.length) { el.innerHTML = '<div class="usedempty" style="padding:14px 2px">まだ記録がありません</div>'; return; }
   el.innerHTML = ranking.map((r, i) => {
@@ -1840,6 +2094,9 @@ async function refreshRanking(level) {
   }).join('');
 }
 
+/* ── 画面と操作の結びつけ ────────────────────
+   起動時に1回だけ呼ぶ。
+   ──────────────────────────────────────────────────────────── */
 function bind() {
   document.querySelectorAll('#modes .bigbtn[data-mode]').forEach(b => {
     b.onclick = () => { state.mode = b.dataset.mode; show('levelScreen'); };
@@ -1857,6 +2114,22 @@ function bind() {
   document.getElementById('lvBack').onclick  = () => show('soloScreen');
   document.getElementById('radBack').onclick = () => show('levelScreen');
 
+  document.getElementById('toDict').onclick = openDict;
+  document.querySelectorAll('#dictLevelScreen .bigbtn[data-dictlevel]').forEach(b => {
+    b.onclick = () => {
+      if (!DICT) return; // まだ読み込めていないときは進ませない（画面が空になるため）
+      dict.level = b.dataset.dictlevel;
+      renderDictRadicals();
+      show('dictRadScreen');
+    };
+  });
+  document.getElementById('dictLvBack').onclick     = () => show('modeScreen');
+  // 戻るときは、長い一覧のどこを見ていたかに返す
+  document.getElementById('dictRadBack').onclick    = () => show('dictLevelScreen', true);
+  document.getElementById('dictKanjiBack').onclick  = () => show('dictRadScreen', true);
+  // 戻る先は開いた場所によって変わる（辞書の漢字一覧か、対局の結果画面）
+  document.getElementById('dictDetailBack').onclick = () => { stopStrokes(); show(dict.backTo, true); };
+
   document.getElementById('rec').onclick = judge;
   document.getElementById('erase').onclick = () => {
     KanjiCanvas.erase('can');
@@ -1873,8 +2146,8 @@ function bind() {
   };
   document.getElementById('toTitle').onclick = () => show('modeScreen');
 
-  document.getElementById('avatarChip').onclick = () => { renderProfileScreen(); show('profileScreen'); };
-  document.getElementById('profileBack').onclick = () => show('modeScreen');
+  document.getElementById('openAccount').onclick = () => { renderProfileScreen(); show('profileScreen'); };
+  document.getElementById('profileBack').onclick = () => { renderModeScreen(); show('modeScreen'); };
   document.getElementById('renameBtn').onclick = async () => {
     const name = document.getElementById('renameInput').value.trim();
     if (!name) return;
@@ -1909,7 +2182,7 @@ function bind() {
     const password = document.getElementById('passwordInput').value;
     if (!name || !username || !password) return;
     setProfileErr('');
-    try { await Players.createProfile(username, password, name); renderModeScreen(); show('modeScreen'); }
+    try { await Players.createProfile(username, password, name); renderModeScreen(); show('modeScreen'); loadCleared(); }
     catch (e) { setProfileErr(e.message || 'はじめられませんでした'); }
   };
   document.getElementById('loginBtn').onclick = async () => {
@@ -1917,7 +2190,7 @@ function bind() {
     const password = document.getElementById('loginPasswordInput').value;
     if (!username || !password) return;
     setLoginErr('');
-    try { await Players.login(username, password); renderModeScreen(); show('modeScreen'); }
+    try { await Players.login(username, password); renderModeScreen(); show('modeScreen'); loadCleared(); }
     catch (e) { setLoginErr(e.message || 'ログインできませんでした'); }
   };
   document.getElementById('copyCodeBtn').onclick = async () => {
@@ -1933,8 +2206,9 @@ function bind() {
     } catch (e) {}
   };
   document.getElementById('logoutBtn').onclick = () => {
-    if (!confirm('ログアウトしますか？この端末には戻れなくなります。')) return;
+    if (!confirm('ログアウトしますか？ユーザー名とパスワードで入り直せます。')) return;
     Players.clearProfile();
+    cleared.clear(); // 次に入る人に前の人の達成を見せない
     show('loginScreen');
   };
   document.getElementById('addFriendBtn').onclick = async () => {
@@ -1969,467 +2243,6 @@ function bind() {
   document.addEventListener('click', e => {
     if (e.target.closest('button')) KBAudio.play('tap');
   });
-}
-
-/* ---------------- オンライン対戦 ---------------- */
-
-const bstate = {
-  code: null, myId: null, level: null,
-  radical: null, deadline: 0, totalSeconds: 0, tickId: null, quickTimeoutId: null,
-  isDefending: false, used: [], locked: false, setupStep: 'battleChoice',
-};
-const QUICKMATCH_TIMEOUT_SECONDS = 20;
-
-const BATTLE_STEPS = ['battleChoice', 'battleFriendPanel', 'battleQuickPanel', 'battleCreatePanel', 'battleJoinPanel', 'battleWaiting', 'quickWaiting'];
-const BATTLE_PARENT_STEP = {
-  battleFriendPanel: 'battleChoice', battleQuickPanel: 'battleChoice',
-  battleCreatePanel: 'battleFriendPanel', battleJoinPanel: 'battleFriendPanel',
-};
-
-const BATTLE_STEP_TITLE = {
-  battleChoice: 'だれかと対戦する', battleFriendPanel: '部屋コードで対戦',
-  battleQuickPanel: '難易度をえらぶ', battleCreatePanel: '難易度をえらぶ',
-  battleJoinPanel: '部屋に入る', battleWaiting: '部屋コードで対戦', quickWaiting: 'すぐに対戦',
-};
-
-function battleShowStep(step) {
-  BATTLE_STEPS.forEach(id => document.getElementById(id).classList.toggle('hidden', id !== step));
-  bstate.setupStep = step;
-  document.getElementById('battleSetupTitle').textContent = BATTLE_STEP_TITLE[step];
-}
-
-function battleBackStep() {
-  if (bstate.setupStep === 'quickWaiting' && bstate.code && bstate.myId) {
-    Net.cancelRoom(bstate.code, bstate.myId);
-  }
-  if (bstate.setupStep === 'battleWaiting' || bstate.setupStep === 'quickWaiting') { bReset(); return; }
-  const parent = BATTLE_PARENT_STEP[bstate.setupStep];
-  if (parent) { battleShowStep(parent); bSetErr(''); }
-  else { bReset(); show('modeScreen'); }
-}
-
-function bReset() {
-  Net.close();
-  bstate.code = null; bstate.myId = null; bstate.level = null;
-  bstate.radical = null; bstate.deadline = 0; bstate.used = []; bstate.locked = false;
-  clearInterval(bstate.tickId);
-  clearTimeout(bstate.quickTimeoutId);
-  battleShowStep('battleChoice');
-  bSetErr('');
-  bSetBusy('');
-}
-
-function bSetErr(t) {
-  const el = document.getElementById('battleErr');
-  if (!t) { el.classList.add('hidden'); el.textContent = ''; return; }
-  el.classList.remove('hidden'); el.textContent = t;
-}
-
-let battleBusyTimer = null;
-function bSetBusy(t) {
-  clearTimeout(battleBusyTimer);
-  const el = document.getElementById('battleBusy');
-  document.querySelectorAll('#battleSetupScreen button').forEach(b => { b.disabled = !!t; });
-  if (!t) { el.classList.add('hidden'); el.textContent = ''; return; }
-  el.classList.remove('hidden'); el.textContent = t;
-}
-
-async function bCreateRoom(level) {
-  bSetErr('');
-  bSetBusy('部屋を作っています…');
-  battleBusyTimer = setTimeout(
-    () => bSetBusy('部屋を作っています…（サーバーが起動中の場合があります。もう少しお待ちください）'), 6000);
-  try {
-    const room = await Net.createRoom(level);
-    bstate.code = room.code; bstate.myId = room.player_id; bstate.level = level;
-    bSetBusy('');
-    bEnterWaiting('相手を待っています…');
-    bConnect();
-  } catch (e) {
-    bSetBusy('');
-    bSetErr('部屋を作れませんでした。通信環境を確認してください。');
-  }
-}
-
-async function bJoinRoom(code) {
-  bSetErr('');
-  bSetBusy('部屋に入っています…');
-  battleBusyTimer = setTimeout(
-    () => bSetBusy('部屋に入っています…（サーバーが起動中の場合があります。もう少しお待ちください）'), 6000);
-  try {
-    const room = await Net.joinRoom(code);
-    bstate.code = room.code; bstate.myId = room.player_id; bstate.level = room.level;
-    bSetBusy('');
-    bEnterWaiting('対戦を開始しています…');
-    bConnect();
-  } catch (e) {
-    bSetBusy('');
-    bSetErr('その部屋には入れませんでした。コードを確認してください。');
-  }
-}
-
-async function bQuickMatch(level) {
-  bSetErr('');
-  bSetBusy('対戦相手をさがしています…');
-  battleBusyTimer = setTimeout(
-    () => bSetBusy('対戦相手をさがしています…（サーバーが起動中の場合があります）'), 6000);
-  try {
-    const room = await Net.quickMatch(level);
-    bstate.code = room.code; bstate.myId = room.player_id; bstate.level = level;
-    bSetBusy('');
-    bEnterQuickWaiting();
-    bConnect();
-    if (room.is_host) {
-      bstate.quickTimeoutId = setTimeout(() => {
-        Net.cancelRoom(bstate.code, bstate.myId);
-        bReset();
-        bSetErr('対戦相手が見つかりませんでした。もう一度お試しください。');
-      }, QUICKMATCH_TIMEOUT_SECONDS * 1000);
-    }
-  } catch (e) {
-    bSetBusy('');
-    bSetErr('マッチングできませんでした。通信環境を確認してください。');
-  }
-}
-
-function bEnterQuickWaiting() {
-  battleShowStep('quickWaiting');
-}
-
-function bEnterWaiting(msg) {
-  battleShowStep('battleWaiting');
-  document.getElementById('roomCodeDisplay').textContent = bstate.code;
-  document.getElementById('waitingMsg').textContent = msg;
-}
-
-function bConnect() {
-  Net.connect(bstate.code, bstate.myId);
-  Net.on('start', onBStart);
-  Net.on('offer', onBOffer);
-  Net.on('defend', onBDefend);
-  Net.on('answer_rejected', onBRejected);
-  Net.on('turn_result', onBTurnResult);
-  Net.on('game_over', onBGameOver);
-  Net.on('rematch_requested', onBRematchRequested);
-  Net.on('rematch_declined', onBRematchDeclined);
-  Net.on('closed', () => bSetErr('通信が切れました。もう一度お試しください。'));
-}
-
-function onBStart() {
-  pendingInvite = null;
-  clearTimeout(bstate.quickTimeoutId);
-  document.getElementById('bRoomCodeBox').classList.add('hidden');
-  document.getElementById('bRoomCode').textContent = bstate.code;
-  document.getElementById('bGiveUp').classList.add('hidden');
-  bRenderUsed();
-  show('battlePlayScreen');
-  KBAudio.play('start');
-}
-
-function onBOffer(msg) {
-  clearInterval(bstate.tickId);
-  bstate.locked = false;
-  bstate.used = msg.used || [];
-  bstate.radical = null; // 次の部首が投げられるまでは「出題中の部首」なし
-  bRenderUsed();
-  KanjiCanvas.erase('canBattle');
-  document.getElementById('bPicker').classList.add('hidden');
-  bSetMsg('', '');
-  document.getElementById('bStatus').classList.remove('myturn');
-
-  const iAmAttacker = msg.attacker === bstate.myId;
-  document.getElementById('bOfferBox').classList.toggle('hidden', !iAmAttacker);
-  document.getElementById('bBoard').classList.add('hidden');
-  document.getElementById('bRadicalBox').classList.add('hidden');
-  document.getElementById('bTimer').textContent = '-';
-
-  if (iAmAttacker) {
-    const statusEl = document.getElementById('bStatus');
-    statusEl.textContent = 'あなたの番です。部首をえらんで、相手に投げてください';
-    statusEl.classList.add('myturn');
-    KBAudio.play('tap');
-    document.getElementById('bOfferRow').innerHTML = msg.choices.map(c =>
-      `<div class="radbtn" data-radical="${c.radical}">` +
-      `<div class="r">${radGlyph(c.radical)}</div><div class="n">${c.name}</div></div>`
-    ).join('');
-    document.querySelectorAll('#bOfferRow .radbtn').forEach(el => {
-      el.onclick = () => {
-        document.getElementById('bOfferBox').classList.add('hidden');
-        statusEl.classList.remove('myturn');
-        statusEl.textContent = '相手が書くのを待っています…';
-        Net.send('throw', { radical: el.dataset.radical });
-      };
-    });
-  } else {
-    document.getElementById('bStatus').textContent = '相手が部首をえらんでいます…';
-  }
-}
-
-function onBDefend(msg) {
-  document.getElementById('bStatus').classList.remove('myturn');
-  bstate.radical = msg.radical;
-  bstate.isDefending = msg.defender === bstate.myId;
-  bstate.deadline = Date.now() + msg.seconds * 1000;
-  bstate.totalSeconds = msg.seconds;
-  bRenderUsedFocus(); // 出題された部首で既に使われた字を出し直す
-
-  const d = DATA.radicals[msg.radical];
-  document.getElementById('bRadicalBox').classList.remove('hidden');
-  document.getElementById('bRadical').textContent = radGlyph(msg.radical);
-  document.getElementById('bRadName').textContent = d.name;
-  document.getElementById('bRadMeaning').textContent = d.meaning;
-  document.getElementById('bOfferBox').classList.add('hidden');
-
-  if (bstate.isDefending) {
-    document.getElementById('bStatus').textContent = 'この部首を含む漢字を書いてください';
-    document.getElementById('bBoard').classList.remove('hidden');
-    document.getElementById('bGiveUp').classList.remove('hidden');
-    KanjiCanvas.erase('canBattle');
-    fitCanvas('canBattle');
-  } else {
-    document.getElementById('bStatus').textContent = '相手が書いています…';
-    document.getElementById('bGiveUp').classList.add('hidden');
-  }
-  bTick();
-}
-
-function bTick() {
-  clearInterval(bstate.tickId);
-  const ring = document.getElementById('bTimerRingFg');
-  const render = () => {
-    const left = Math.max(0, Math.ceil((bstate.deadline - Date.now()) / 1000));
-    const el = document.getElementById('bTimer');
-    el.textContent = left;
-    const low = left <= 5;
-    el.classList.toggle('low', low);
-    updateRing(ring, left / bstate.totalSeconds, low);
-    if (left <= 0) clearInterval(bstate.tickId);
-  };
-  render();
-  bstate.tickId = setInterval(render, 250);
-}
-
-async function bJudge() {
-  if (bstate.locked || !bstate.isDefending) return;
-  const inRange = new Set(poolOf(bstate.radical, ALL_GRADES));
-  const usedSet = new Set(usedEntries().map(u => u.kanji));
-
-  const strokes = KanjiRecog.strokesOf('canBattle');
-  const { top, pool } = await KanjiRecog.recognize(strokes, answerableSet(inRange, usedSet));
-  if (bstate.locked || !bstate.isDefending) return; // 認識を待つ間に手番が終わっていることがある
-
-  const valid = validCandidates(top, pool, strokes.length);
-
-  const picker = document.getElementById('bPicker');
-  const row = document.getElementById('bPickRow');
-  row.innerHTML = '';
-
-  if (!valid.length) {
-    picker.classList.add('hidden');
-    bSetMsg(explainMiss(top, inRange, inRange, usedSet), 'ng');
-    return;
-  }
-
-  bSetMsg('', '');
-  // 1位がはっきり抜けているならタップさせずに送信する
-  if (valid.length === 1 || valid[1][1] < valid[0][1] * OCR_AMBIGUOUS) { bSubmit(valid[0][0]); return; }
-  picker.classList.remove('hidden');
-  for (const [k] of valid) {
-    const b = document.createElement('button');
-    b.className = 'pick';
-    const g = DATA.kanji[k] ? DATA.kanji[k].grade : '';
-    b.innerHTML = k + '<small>' + (GLABEL[g] || '') + '</small>';
-    b.onclick = () => bSubmit(k);
-    row.appendChild(b);
-  }
-}
-
-function bSubmit(kanji) {
-  if (bstate.locked) return;
-  bstate.locked = true;
-  document.getElementById('bPicker').classList.add('hidden');
-  bSetMsg(kanji + '  送信しました', 'ok');
-  Net.send('answer', { kanji });
-}
-
-function onBRejected(msg) {
-  bstate.locked = false;
-  const why = { used: 'もう使われています', not_in_radical: 'その部首を含みません' };
-  bSetMsg(`「${msg.kanji}」は${why[msg.reason] || '認められませんでした'}`, 'ng');
-}
-
-function onBTurnResult(msg) {
-  clearInterval(bstate.tickId);
-  bstate.used = msg.used || [];
-  bRenderUsed();
-  KBAudio.play('correct');
-}
-
-function onBGameOver(msg) {
-  clearInterval(bstate.tickId);
-  const iLost = msg.loser === bstate.myId;
-  const title = document.getElementById('bOverTitle');
-  const unit = document.getElementById('bOverUnit');
-
-  const rematchBtn = document.getElementById('bRematchBtn');
-  const rematchMsg = document.getElementById('bRematchMsg');
-  rematchMsg.classList.add('hidden');
-  rematchMsg.textContent = '';
-  if (msg.reason === 'disconnect') {
-    rematchBtn.disabled = true;
-    rematchMsg.classList.remove('hidden');
-    rematchMsg.textContent = '相手との通信が切れたため、再戦はできません';
-  } else {
-    rematchBtn.disabled = false;
-  }
-
-  const REASON_TEXT = {
-    timeout: iLost ? '時間切れで負けました' : '相手が時間切れ。あなたの勝ちです',
-    give_up: iLost ? 'こうさんしました' : '相手がこうさん。あなたの勝ちです',
-    disconnect: '相手との通信が切れました',
-    exhausted: '出せる部首がなくなりました（引き分け）',
-  };
-  title.textContent = REASON_TEXT[msg.reason] || '対戦終了';
-  unit.textContent = '';
-  if (msg.reason === 'timeout' || msg.reason === 'give_up') {
-    KBAudio.play(iLost ? 'timeup' : 'victory');
-  }
-
-  const box = document.getElementById('bReveal');
-  if (!msg.reveal) {
-    box.classList.add('hidden');
-  } else {
-    box.classList.remove('hidden');
-    const { radical, unused, got } = msg.reveal;
-    const d = DATA.radicals[radical];
-    document.getElementById('bRevRad').textContent = radGlyph(radical);
-    document.getElementById('bRevName').textContent = d.name;
-    document.getElementById('bRevOrigin').textContent = d.origin ? `なりたち: ${d.origin}` : '';
-
-    if (!unused.length) {
-      document.getElementById('bRevLead').innerHTML = `${radGlyph(radical)}を含む漢字は、すべて使われました`;
-      document.getElementById('bRevGrid').innerHTML = got.map(cellHTML).join('');
-      document.getElementById('bRevMore').textContent = '';
-      document.getElementById('bRevGot').innerHTML = '';
-    } else {
-      document.getElementById('bRevLead').innerHTML =
-        `${radGlyph(radical)}を含む漢字は、まだ <b>${unused.length}</b> 字ありました`;
-      const sorted = unused.slice().sort((a, b) =>
-        (DATA.kanji[a] ? DATA.kanji[a].grade : 99) - (DATA.kanji[b] ? DATA.kanji[b].grade : 99));
-      const shown = sorted.slice(0, MAX_REVEAL);
-      document.getElementById('bRevGrid').innerHTML = shown.map(cellHTML).join('');
-      const rest = sorted.length - shown.length;
-      document.getElementById('bRevMore').textContent = rest > 0 ? `ほか ${rest} 字` : '';
-      document.getElementById('bRevGot').innerHTML = got.length
-        ? '書かれたのは ' + got.map(k => `<span class="gk">${k}</span>`).join('') + ` の ${got.length} 字`
-        : '';
-    }
-  }
-  show('battleOverScreen');
-}
-
-function onBRematchRequested(msg) {
-  if (msg.by === bstate.myId) return; // 自分の送信のエコーは無視（ボタン側で既に表示済み）
-  const el = document.getElementById('bRematchMsg');
-  el.classList.remove('hidden');
-  el.textContent = '相手が再戦を希望しています！「再戦する」を押すと始まります';
-}
-
-function onBRematchDeclined() {
-  document.getElementById('bRematchBtn').disabled = true;
-  const el = document.getElementById('bRematchMsg');
-  el.classList.remove('hidden');
-  el.textContent = '相手が対戦を終了しました';
-}
-
-function bSetMsg(t, c) {
-  const el = document.getElementById('bMsg');
-  el.textContent = t; el.className = 'msg' + (c ? ' ' + c : '');
-  if (c === 'ng') KBAudio.play('incorrect');
-}
-
-// サーバーが古い形式（漢字の文字列だけ）を返しても表示が壊れないようにする
-function usedEntries() {
-  return bstate.used.map(u => (typeof u === 'string' ? { kanji: u, by: null } : u));
-}
-
-function bRenderUsed() {
-  const used = usedEntries();
-  document.getElementById('bUsedCount').textContent = used.length + '字';
-  // 新しく書いた字ほど左（先頭）に来るように、答えた順を逆にして並べる
-  const mine = used.filter(u => u.by === bstate.myId).map(u => u.kanji).reverse();
-  const theirs = used.filter(u => u.by !== bstate.myId).map(u => u.kanji).reverse();
-  fillUsedLane('bUsedListMine', mine);
-  fillUsedLane('bUsedListTheirs', theirs);
-  bRenderUsedFocus();
-}
-
-// 使用済みがこの字数を超えたら、いま出題中の部首の分だけ抜き出して上に出す
-const USED_FOCUS_FROM = 10;
-
-function bRenderUsedFocus() {
-  const box = document.getElementById('bUsedFocus');
-  if (!bstate.radical || bstate.used.length < USED_FOCUS_FROM) { box.classList.add('hidden'); return; }
-  const pool = new Set(poolOf(bstate.radical, ALL_GRADES));
-  const hits = usedEntries().filter(u => pool.has(u.kanji)).map(u => u.kanji).reverse();
-  if (!hits.length) { box.classList.add('hidden'); return; }
-  box.classList.remove('hidden');
-  document.getElementById('bUsedFocusRad').textContent = radGlyph(bstate.radical);
-  document.getElementById('bUsedFocusList').innerHTML = hits.map(k => `<span>${k}</span>`).join('');
-}
-
-function fillUsedLane(id, kanjiList) {
-  const el = document.getElementById(id);
-  if (!kanjiList.length) { el.innerHTML = '<span class="usedempty">まだありません</span>'; return; }
-  el.innerHTML = kanjiList.map(k => `<span>${k}</span>`).join('');
-  el.scrollLeft = 0; // 新しい字が左端に来るので、常に先頭が見える位置に戻しておく
-}
-
-function bBind() {
-  const BATTLE_PANEL = { friend: 'battleFriendPanel', quick: 'battleQuickPanel', create: 'battleCreatePanel', join: 'battleJoinPanel' };
-  document.querySelectorAll('#battleChoice .bigbtn, #battleFriendPanel .bigbtn').forEach(b => {
-    b.onclick = () => battleShowStep(BATTLE_PANEL[b.dataset.battle]);
-  });
-  document.querySelectorAll('#battleQuickPanel .bigbtn').forEach(b => {
-    b.onclick = () => bQuickMatch(b.dataset.qlevel);
-  });
-  document.getElementById('quickCancelBtn').onclick = () => {
-    if (bstate.code && bstate.myId) Net.cancelRoom(bstate.code, bstate.myId);
-    bReset();
-  };
-  document.querySelectorAll('#battleCreatePanel .bigbtn').forEach(b => {
-    b.onclick = () => bCreateRoom(b.dataset.blevel);
-  });
-  document.getElementById('joinCodeBtn').onclick = () => {
-    const code = document.getElementById('joinCodeInput').value.trim();
-    if (code) bJoinRoom(code);
-  };
-  document.getElementById('battleBack').onclick = battleBackStep;
-
-  document.getElementById('bRec').onclick = bJudge;
-  document.getElementById('bErase').onclick = () => {
-    KanjiCanvas.erase('canBattle');
-    document.getElementById('bPicker').classList.add('hidden');
-    bSetMsg('', '');
-  };
-  document.getElementById('bUndo').onclick = () => KanjiCanvas.deleteLast('canBattle');
-  document.getElementById('bGiveUp').onclick = () => {
-    if (bstate.isDefending) Net.send('give_up', {});
-  };
-  document.getElementById('bRematchBtn').onclick = () => {
-    const btn = document.getElementById('bRematchBtn');
-    const el = document.getElementById('bRematchMsg');
-    btn.disabled = true;
-    el.classList.remove('hidden');
-    el.textContent = '相手の返事を待っています…';
-    Net.send('rematch', {});
-  };
-  document.getElementById('bLeaveBtn').onclick = () => {
-    Net.send('leave', {});
-    Net.close();
-    bReset();
-    show('modeScreen');
-  };
 }
 
 boot();

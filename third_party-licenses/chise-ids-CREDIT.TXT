@@ -1,0 +1,19 @@
+字形分解データ: CHISE IDS（cjkvi-ids の ids.txt）
+CHISE project  http://www.chise.org/
+配布元         https://github.com/cjkvi/cjkvi-ids
+
+ライセンス: cjkvi-ids の README によると ids.txt は CHISE project 由来で
+GPLv2（同リポジトリの他のデータも GPLv2）。
+
+使い方:
+scripts/build_radicals.py が、同じ康熙部首番号でも表示形が2通りある部首
+（氵/水・亻/人・扌/手・忄/心・灬/火・衤/衣・礻/示・犭/犬）について、
+どちらの字形で出題するかを決めるためだけに参照している。
+frontend/data/radicals.json には ids.txt の内容そのもの（字形分解の文字列）は
+含まれず、「この字は氵の形を持つ」という判定結果だけが反映される。
+
+注意: ids.txt が GPLv2 であるため、この判定結果を含む radicals.json に
+GPLv2 の条件が及ぶかどうかは、はっきりさせていない。判定に使っただけで
+データを再配布していないという整理だが、法的な確認は取っていない。
+気になる場合は、表示形の判定を ids.txt に頼らない方法（部首ごとの字形を
+手作業で列挙する等）に置き換えれば、この論点自体をなくせる。

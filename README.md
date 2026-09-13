@@ -48,7 +48,7 @@
 | 手書き認識 | [DaKanji単漢字CNN](https://github.com/CaptainDario/DaKanji-Single-Kanji-Recognition)（ONNX 2.2MB、MIT）を[ONNX Runtime Web](https://onnxruntime.ai/)でブラウザ内実行。描画とストローク記録は[KanjiCanvas](https://github.com/asdfjkl/kanjicanvas)（MIT） |
 | バックエンド | Python 3.10以上 + [FastAPI](https://fastapi.tiangolo.com/)（対戦のルーム管理・WebSocket） |
 | フレンド機能 | Cloudflare Workers + D1（`workers/`。ニックネーム・フレンド・記録の永続化） |
-| データ | `radicals.json`（CHISE IDS + KANJIDIC2由来、`scripts/build_radicals.py` で生成） |
+| データ | `radicals.json`（CHISE IDS + KANJIDIC2由来、`scripts/build_radicals.py` で生成）／`kanji-dict.json`・`strokes/`（KANJIDIC2 + JMdict + KanjiVG由来、`scripts/build_dict.py` で生成） |
 | データ永続化 | 対戦の状態はサーバーのメモリ上のみ（試合が終われば破棄）。フレンド機能まわりだけD1に永続化 |
 
 タイムアタック・部首マスターの2モードはサーバー不要で完全にオフラインで動く。
@@ -60,27 +60,32 @@
 kanjibattle/
 ├── README.md
 ├── LICENSE                        本プロジェクトのライセンス（MIT）
-├── third_party-licenses/          同梱物のライセンス（KanjiCanvas・認識モデル・ONNX Runtime）
+├── third_party-licenses/          同梱物のライセンス（ライブラリ・認識モデル・辞書データ・音源）
 ├── docs/
 │   ├── GAME_DESIGN.md             ルール・データ仕様・設計判断の理由
 │   ├── BACKEND.md                 対戦APIのプロトコル仕様
 │   ├── USERS.md                   フレンド・ユーザー機能APIの仕様
 │   └── DEVLOG.md                  既知の課題・未確定事項
 ├── frontend/                      静的サイト（そのままどこにでもデプロイ可能）
-│   ├── index.html                 メイン画面（HTML/CSS/JSの本体）
+│   ├── index.html                 画面のHTML/CSSと、ひとり用・フレンドのJS
 │   ├── js/
 │   │   ├── vendor/                外部ライブラリ（KanjiCanvas、ONNX Runtime Web）
 │   │   ├── recognizer.js          手書き漢字の認識（CNNモデルを動かす）
 │   │   ├── config.js              対戦バックエンドAPIのURL設定
 │   │   ├── net.js                 オンライン対戦の通信クライアント
+│   │   ├── battle.js              オンライン対戦の進行（部屋づくり〜勝敗まで）
+│   │   ├── dict.js                漢字辞書（学年→部首→漢字→くわしく）
+│   │   ├── furigana.js            画面の文字にふりがなを振る
 │   │   ├── audio.js               効果音・BGMの再生
 │   │   └── players.js             フレンド機能のクライアント（/api/* は同一オリジン）
-│   ├── assets/                    効果音・BGM（Kenney, CC0）
+│   ├── assets/                    効果音・BGM（Kenney, CC0）とマスコットの絵
 │   ├── models/                    手書き認識のCNNモデルとラベル
 │   ├── data/
 │   │   ├── radicals.json          部首・漢字データ
+│   │   ├── kanji-dict.json        漢字辞書（画数・音訓・利用例・意味）
+│   │   ├── strokes/               書き順（部首ごとに分割。辞書で開いたときだけ読む）
 │   │   └── stroke-counts.json     字→画数（手書き認識の誤受理対策に使用）
-│   └── dev/                       手書き判定ロジックの検証用ページ
+│   └── dev/                       手書き判定ロジックの検証用ページ（公開しない）
 ├── backend/                       対戦サーバー（Python/FastAPI）
 │   ├── app/
 │   │   ├── main.py                REST + WebSocketエンドポイント
@@ -153,3 +158,10 @@ python3 -m http.server 5500
 | [KanjiCanvas](https://github.com/asdfjkl/kanjicanvas) | [kanjicanvas-LICENSE.TXT](third_party-licenses/kanjicanvas-LICENSE.TXT)（MIT、バックリンク条項あり） |
 | [DaKanji単漢字認識モデル](https://github.com/CaptainDario/DaKanji-Single-Kanji-Recognition) | [dakanji-single-kanji-recognition-LICENSE.TXT](third_party-licenses/dakanji-single-kanji-recognition-LICENSE.TXT)（MIT） |
 | [ONNX Runtime Web](https://onnxruntime.ai/) | [onnxruntime-LICENSE.TXT](third_party-licenses/onnxruntime-LICENSE.TXT)（MIT） |
+| [KANJIDIC2・JMdict](https://www.edrdg.org/)（学年・音訓・画数・利用例） | [edrdg-CREDIT.TXT](third_party-licenses/edrdg-CREDIT.TXT)（CC BY-SA 4.0） |
+| [KanjiVG](https://kanjivg.tagaini.net/)（書き順） | [kanjivg-CREDIT.TXT](third_party-licenses/kanjivg-CREDIT.TXT)（CC BY-SA 3.0） |
+| [CHISE IDS](http://www.chise.org/)（字形分解） | [chise-ids-CREDIT.TXT](third_party-licenses/chise-ids-CREDIT.TXT)（GPLv2） |
+| 効果音・BGM（Kenney ほか） | [kenney-sfx-CREDIT.TXT](third_party-licenses/kenney-sfx-CREDIT.TXT)（CC0、表記義務なし） |
+
+コードはMITだが、`frontend/data/`配下の生成データは元データの
+CC BY-SA（KANJIDIC2・JMdict・KanjiVG）を引き継ぐ。

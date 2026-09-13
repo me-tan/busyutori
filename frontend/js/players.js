@@ -18,6 +18,16 @@
   }
   async function readJson(res) {
     const data = await res.json().catch(() => ({}));
+    // 401はトークンがもう通らない状態。持っていても何もできないので捨てて、
+    // 画面側にログインし直してもらうよう知らせる（放っておくと、どの画面でも
+    // 「読み込めませんでした」とだけ出続けて、入り直せば直ることが分からない）
+    if (res.status === 401) {
+      clearProfile();
+      try { window.dispatchEvent(new Event("kb-auth-expired")); } catch (e) {}
+      const err = new Error("ログインし直してください");
+      err.authExpired = true;
+      throw err;
+    }
     if (!res.ok) throw new Error(data.error || "通信に失敗しました");
     return data;
   }
@@ -103,6 +113,19 @@
     fetch("/api/scores", { method: "POST", headers: authHeaders(), body: JSON.stringify({ level, streak }) }).catch(() => {});
   }
 
+  async function listCleared() {
+    const res = await fetch("/api/cleared", { headers: authHeaders() });
+    const data = await readJson(res);
+    return data.cleared;
+  }
+
+  function markCleared(level, radical) {
+    if (!getProfile()) return;
+    fetch("/api/cleared", {
+      method: "POST", headers: authHeaders(), body: JSON.stringify({ level, radical }),
+    }).catch(() => {});
+  }
+
   async function listRanking(level) {
     const res = await fetch("/api/ranking?level=" + encodeURIComponent(level), { headers: authHeaders() });
     const data = await readJson(res);
@@ -162,6 +185,7 @@
   window.Players = {
     getProfile, saveProfile, clearProfile, getMe,
     createProfile, login, renameProfile, addFriend, removeFriend, listFriends, submitScore,
+    listCleared, markCleared,
     listRemovals, dismissRemoval,
     listFriendRequests, acceptFriendRequest, declineFriendRequest,
     listRanking, sendInvite, cancelInvite, listInvites, dismissInvite, declineInvite,

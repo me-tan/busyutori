@@ -81,6 +81,8 @@
 | `DELETE /api/removals/:id` | 必要 | 解除通知を確認済みにする |
 | `POST /api/scores` | 必要 | `{level, streak}` → タイムアタック結果を記録（追記のみ。ベストは`MAX(streak)`で都度計算） |
 | `GET /api/ranking?level=elem` | 必要 | `{ranking: [{code, nickname, best, isMe}]}`（自分＋フレンドのみ、best降順） |
+| `GET /api/cleared` | 必要 | `{cleared: ["elem:氵", ...]}`。部首マスターで達成済みの部首（`"レベル:部首"`） |
+| `POST /api/cleared` | 必要 | `{level, radical}` → 達成した部首を記録（同じものを何度達成しても1行） |
 | `POST /api/invites` | 必要 | `{code, room_code, level}` → `code`のフレンドを対戦に誘う（`code`がフレンドでないと400） |
 | `DELETE /api/invites/room/:room_code` | 必要 | 誘った側が、相手の返事を待たずに自分の誘いを取り消す。誘われていた側に`invite_cancels`で通知を残す |
 | `GET /api/invite-cancels` | 必要 | `{cancels: [{id, from_nickname, created_at}]}`。自分あての誘いが取り消された、まだ確認していない通知（1日以内） |
@@ -101,7 +103,10 @@
 `0004_username_password.sql`: players に username/password_hash/password_salt を追加、
 `0005_removals.sql`: removals、`0006_invite_declines.sql`: invite_declines、
 `0007_invite_declines_room.sql`: invite_declines に room_code を追加、
-`0008_invite_cancels.sql`: invite_cancels）。
+`0008_invite_cancels.sql`: invite_cancels、
+`0009_cleared.sql`: cleared）。
+部首マスターの達成は端末ではなくアカウントに紐づけている。リロードで消えないため、
+かつ同じ端末で別の人がログインしたときに前の人の達成が見えないようにするため。
 `friends`テーブルは`0003`で使わなくなったが、データはそのまま残してある
 （削除していない）。D1無料枠は1日あたり読み取り500万行・書き込み10万行・
 容量5GB（2026年9月時点、超過するとその日はエラーになる）。この規模のアプリなら十分。
@@ -115,7 +120,7 @@
    （`wrangler d1 execute kanjinage-users --remote --file=workers/migrations/0001_init.sql`、
    続けて`0002_invites.sql`、`0003_friend_requests.sql`、`0004_username_password.sql`、
    `0005_removals.sql`、`0006_invite_declines.sql`、`0007_invite_declines_room.sql`、
-   `0008_invite_cancels.sql`も）。
+   `0008_invite_cancels.sql`、`0009_cleared.sql`も）。
 4. `wrangler deploy` でフロントエンド（`frontend/`）とWorker（`workers/src/index.js`）を
    まとめてデプロイする。
 
@@ -135,5 +140,6 @@ wrangler d1 execute kanjinage-users --local --file=workers/migrations/0005_remov
 wrangler d1 execute kanjinage-users --local --file=workers/migrations/0006_invite_declines.sql
 wrangler d1 execute kanjinage-users --local --file=workers/migrations/0007_invite_declines_room.sql
 wrangler d1 execute kanjinage-users --local --file=workers/migrations/0008_invite_cancels.sql
+wrangler d1 execute kanjinage-users --local --file=workers/migrations/0009_cleared.sql
 wrangler dev --local
 ```

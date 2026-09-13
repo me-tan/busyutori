@@ -535,6 +535,34 @@ async function handleApi(request, env, url) {
     return json({ ok: true });
   }
 
+  // GET /api/cleared — 部首マスターで達成済みの部首。"level:部首" の配列で返す
+  if (method === "GET" && parts.length === 2 && parts[1] === "cleared") {
+    const me = await requireAuth(request, db);
+    if (!me) return err(401, "認証が必要です");
+    const rows = await db
+      .prepare("SELECT level, radical FROM cleared WHERE player_code = ?")
+      .bind(me.code)
+      .all();
+    return json({ cleared: rows.results.map((r) => `${r.level}:${r.radical}`) });
+  }
+
+  // POST /api/cleared  { level, radical } — 達成した部首を記録する
+  if (method === "POST" && parts.length === 2 && parts[1] === "cleared") {
+    const me = await requireAuth(request, db);
+    if (!me) return err(401, "認証が必要です");
+    const body = await request.json().catch(() => ({}));
+    const level = body.level;
+    const radical = typeof body.radical === "string" ? body.radical.trim() : "";
+    if (!LEVELS.has(level)) return err(400, "levelが不正です");
+    if (!radical) return err(400, "radicalを入力してください");
+    // 同じ部首を何度達成しても1行に保つ
+    await db
+      .prepare("INSERT OR IGNORE INTO cleared (player_code, level, radical, created_at) VALUES (?, ?, ?, ?)")
+      .bind(me.code, level, radical, Date.now())
+      .run();
+    return json({ ok: true });
+  }
+
   return err(404, "not found");
 }
 
