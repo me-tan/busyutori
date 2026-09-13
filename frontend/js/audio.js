@@ -5,18 +5,21 @@
  * 鳴る（Android・PCでは効く）。音量つまみをiOSでも効かせるにはWeb Audioの
  * GainNodeを通す必要がある。
  *
- * つなぐときの決まりごとは2つ。どちらも、createMediaElementSource が1要素に
- * つき1回きりで元に戻せないため、失敗するとその要素が二度と鳴らなくなるから。
+ * 効果音とBGMで鳴らし方が違う。iPhoneでの実機確認でこうなった。
  *
- * 1. AudioContextが running になったことを確かめてからつなぐ。suspended の
- *    ままつなぐと、その要素の音はどこにも出なくなる。resume() は非同期なので
- *    呼んだ直後はまだ running ではない。
- * 2. その要素を一度鳴らせたことを確かめてからつなぐ。一度も鳴っていない要素を
- *    つなぐと、iPhoneではそのまま無音になる（BGMは鳴るのに効果音だけ鳴らない、
- *    という形で出た。BGMは鳴らし始めたあとにつないでいたため無事だった）。
+ * 効果音は <audio> をグラフにつながない。音のデータを読み込んで復号し、
+ * 鳴らすたびに使い捨ての音源（BufferSource）をgainにつないで鳴らす。
+ * iPhoneでは <audio> を createMediaElementSource でつなぐと、AudioContextが
+ * running でも、その要素を一度鳴らせたあとでも無音になった（1回目は鳴り、
+ * つないだ2回目から鳴らなくなる、という形で出た）。この接続は1要素につき
+ * 1回きりで元に戻せないため、つないだ時点で手遅れになる。
+ * BufferSourceなら鳴らすたびに作り直すので、無音のまま固定されることがない。
  *
- * つないでいない間は <audio> のまま鳴らす。Web Audioが使えない・起こせない
- * 環境でも音が消えないようにするため。
+ * BGMは長いので復号せず、これまでどおり <audio> をつなぐ。こちらは
+ * 鳴らし始めたあとにつないでいるぶんには実機で鳴っている。
+ *
+ * 復号が間に合わない・Web Audioが使えない間は <audio> のまま鳴らす。
+ * 音が出ないよりは、音量つまみが効かない方がましなので。
  *
  * 消音スイッチ（マナーモード）中は鳴らさない方針。iOS 16.4以降の
  * navigator.audioSession に ambient を指定して、消音スイッチを尊重し、かつ
@@ -80,12 +83,36 @@
     } catch (e) { ctx = null; }
   }
 
-  // 画面を触ったときに呼ぶ。runningになって初めて、鳴っているBGMをつなぎ替える。
+  // 画面を触ったときに呼ぶ。runningになって初めて、鳴っているBGMをつなぎ替え、
+  // 効果音のデータを読み込みに行く。
+  function onGraphRunning() {
+    routeBgm();
+    loadSfxBuffers();
+  }
   function wakeGraph() {
     setupGraph();
     if (!ctx) return;
-    if (ctx.state === 'running') { routeBgm(); return; }
-    ctx.resume().then(routeBgm).catch(() => {});
+    if (ctx.state === 'running') { onGraphRunning(); return; }
+    ctx.resume().then(onGraphRunning).catch(() => {});
+  }
+
+  // ── 効果音のデータ読み込み ────────────────────────────────────
+  // 復号はAudioContextが起きてからでないとできない。失敗した音は <audio> の
+  // ままになるだけで、鳴らなくなることはない。
+  const sfxBuffers = {};
+  let sfxLoadStarted = false;
+
+  function loadSfxBuffers() {
+    if (sfxLoadStarted || !graphReady()) return;
+    sfxLoadStarted = true;
+    for (const name of Object.keys(SFX_FILES)) {
+      fetch(audioUrl(SFX_BASE, SFX_FILES[name]))
+        .then(res => res.arrayBuffer())
+        // 古いSafariは Promise を返さないので、コールバック形式で受ける
+        .then(buf => new Promise((ok, ng) => ctx.decodeAudioData(buf, ok, ng)))
+        .then(decoded => { sfxBuffers[name] = decoded; })
+        .catch(() => {});
+    }
   }
 
   // 要素をグラフにつなぐ。runningでなければ何もしない（つなぐと音が出なくなるため）
@@ -99,17 +126,17 @@
   }
 
   function routeBgm() {
-    // 効果音と同じで、一度鳴らせたことを確かめてからでないとつながない
+    // 鳴らせたことを確かめてからでないとつながない（冒頭の説明を参照）
     if (!bgmAudio || routed.has(bgmAudio) || !played.has(bgmAudio)) return;
     if (route(bgmAudio, bgmGain)) applyVolume(bgmAudio, 'bgm');
   }
 
-  // 鳴らして、鳴らせたら印を付ける。この印が付いた要素だけグラフにつなぐ
-  function playAndMark(el, kind) {
+  // BGMを鳴らし、鳴らせたらグラフにつなぐ。順番を逆にしない
+  function playBgmAudio(el) {
     if (!el) return;
     el.play().then(() => {
       played.add(el);
-      if (kind === 'bgm') routeBgm();
+      routeBgm();
     }).catch(() => {});
   }
 
@@ -143,26 +170,35 @@
   let bgmAudio = null;
   let bgmKey = null;
 
-  // 効果音は音ごとに1つだけ作って使い回す。鳴らすたびに new Audio() すると、
-  // グラフにつないだぶんだけ音声の読み込み口が増え続け、iOSは同時に扱える数に
-  // 上限があるため、遊んでいるうちに新しい音が鳴らなくなる（BGMも鳴らなくなる）。
-  // 使い回すと接続は音の種類ぶん（7個）で頭打ちになる。
-  // 同じ音が重なったときは鳴らし直しになるが、この遊び方では困らない。
+  // 復号が済むまでの控え。音ごとに1つだけ作って使い回す（鳴らすたびに
+  // new Audio() すると、iOSは同時に扱える数に上限があるため、遊んでいるうちに
+  // 新しい音が鳴らなくなる）。ここの要素はグラフにつながない。
   const sfxPool = {};
 
   KBAudio.play = function (name) {
     if (!SFX_FILES[name] || volumeOf('se') <= 0) return;
+
+    // 復号が済んでいれば、使い捨ての音源で鳴らす。要素を残さないので、
+    // どの端末でも「つないだせいで無音のまま固定される」ことがない。
+    if (graphReady() && sfxBuffers[name]) {
+      try {
+        const src = ctx.createBufferSource();
+        src.buffer = sfxBuffers[name];
+        src.connect(sfxGain);
+        sfxGain.gain.value = volumeOf('se');
+        src.start();
+        return;
+      } catch (e) { /* 下の <audio> で鳴らす */ }
+    }
+
     let a = sfxPool[name];
     if (!a) {
       a = new Audio(audioUrl(SFX_BASE, SFX_FILES[name]));
       sfxPool[name] = a;
     }
-    // まだ一度も鳴っていない要素はつながない。最初の1回は <audio> のまま鳴らし、
-    // 鳴らせたことを確かめてから2回目以降でつなぐ。
-    if (played.has(a)) route(a, sfxGain);
     applyVolume(a, 'se');
     try { a.currentTime = 0; } catch (e) {}
-    playAndMark(a, 'se');
+    a.play().catch(() => {});
   };
 
   KBAudio.playBgm = function (name) {
@@ -175,7 +211,7 @@
     bgmAudio.preload = 'auto';
     applyVolume(bgmAudio, 'bgm');
     // 画面を触る前は自動再生が止められる。その場合は下の操作待ち受けが鳴らし直す。
-    playAndMark(bgmAudio, 'bgm');
+    playBgmAudio(bgmAudio);
   };
 
   KBAudio.stopBgm = function () {
@@ -226,7 +262,7 @@
       wakeGraph(); // 操作の中でないとAudioContextは起きない
       if (bgmKey && bgmAudio && bgmAudio.paused) {
         applyVolume(bgmAudio, 'bgm');
-        playAndMark(bgmAudio, 'bgm');
+        playBgmAudio(bgmAudio);
       }
     });
   });
