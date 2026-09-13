@@ -109,6 +109,8 @@
   function discardGraph() {
     const old = ctx;
     ctx = null; sfxGain = null; bgmGain = null;
+    // 古いAudioContextと一緒に消える音源なので、持っていても意味がない
+    for (const name of Object.keys(sfxNodes)) sfxNodes[name] = null;
     if (old) { try { old.close(); } catch (e) {} }
     // 復号済みの音データはAudioContextに縛られないので、取り直さず使い回す
     setupGraph();
@@ -212,6 +214,15 @@
   // new Audio() すると、iOSは同時に扱える数に上限があるため、遊んでいるうちに
   // 新しい音が鳴らなくなる）。ここの要素はグラフにつながない。
   const sfxPool = {};
+  // いま鳴っている音源。音の種類ごとに1つだけ持ち、鳴らし直すときに止める
+  const sfxNodes = {};
+
+  function stopSfx(name) {
+    const prev = sfxNodes[name];
+    if (!prev) return;
+    sfxNodes[name] = null;
+    try { prev.onended = null; prev.stop(); } catch (e) {}
+  }
 
   KBAudio.play = function (name) {
     if (!SFX_FILES[name] || volumeOf('se') <= 0) return;
@@ -220,10 +231,16 @@
     // どの端末でも「つないだせいで無音のまま固定される」ことがない。
     if (graphReady() && sfxBuffers[name]) {
       try {
+        // 同じ音がまだ鳴っていたら止めてから鳴らし直す。作った音源はそのぶん
+        // 重なって鳴るため、止めないと同じ音が二重に聞こえる（<audio>のときは
+        // 頭出しして鳴らし直していたので、自然と1つだけになっていた）。
+        stopSfx(name);
         const src = ctx.createBufferSource();
         src.buffer = sfxBuffers[name];
         src.connect(sfxGain);
         sfxGain.gain.value = volumeOf('se');
+        src.onended = () => { if (sfxNodes[name] === src) sfxNodes[name] = null; };
+        sfxNodes[name] = src;
         src.start();
         return;
       } catch (e) { /* 下の <audio> で鳴らす */ }
@@ -240,7 +257,13 @@
   };
 
   KBAudio.playBgm = function (name) {
-    if (bgmKey === name && bgmAudio && !bgmAudio.paused) return;
+    // 同じ曲の用意が済んでいるなら、要素は作り直さず鳴らし直すだけにする。
+    // 画面を移るたびにここへ来るので、作り直していると、止める前の音と
+    // 重なって聞こえることがある。
+    if (bgmKey === name && bgmAudio) {
+      if (bgmAudio.paused) playBgmAudio(bgmAudio);
+      return;
+    }
     KBAudio.stopBgm();
     if (!BGM_FILES[name]) return;
     bgmKey = name;
