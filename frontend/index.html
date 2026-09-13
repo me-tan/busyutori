@@ -1107,16 +1107,16 @@
 <!-- ?v= はキャッシュを切るための版番号。Workerのno-cacheが効くのは、それ以降に
      取りに行った分だけなので、古いJSがブラウザに残って動き続けることがある。
      直したはずの不具合が手元で再現しないときは、この数字を1つ増やす。 -->
-<script src="js/vendor/kanji-canvas.js?v=9"></script>
-<script src="js/vendor/ort/ort.wasm.min.js?v=9"></script>
-<script src="js/recognizer.js?v=9"></script>
-<script src="js/config.js?v=9"></script>
-<script src="js/net.js?v=9"></script>
-<script src="js/audio.js?v=9"></script>
-<script src="js/players.js?v=9"></script>
-<script src="js/furigana.js?v=9"></script>
-<script src="js/dict.js?v=9"></script>
-<script src="js/battle.js?v=9"></script>
+<script src="js/vendor/kanji-canvas.js?v=10"></script>
+<script src="js/vendor/ort/ort.wasm.min.js?v=10"></script>
+<script src="js/recognizer.js?v=10"></script>
+<script src="js/config.js?v=10"></script>
+<script src="js/net.js?v=10"></script>
+<script src="js/audio.js?v=10"></script>
+<script src="js/players.js?v=10"></script>
+<script src="js/furigana.js?v=10"></script>
+<script src="js/dict.js?v=10"></script>
+<script src="js/battle.js?v=10"></script>
 <script>
 "use strict";
 
@@ -1471,7 +1471,19 @@ function startComplete(rad) {
 // そのまま canvas の座標として使うため）ので、width/height属性の実寸ごと変える。
 // 認識は書いた字の外接矩形で正規化しているので、大きさを変えても精度は変わらない。
 const CANVAS_MIN = 190;
-const CANVAS_MAX = 340;
+
+// 書き取り欄の上限。縦に余っていれば、この値と親要素の幅まで広げる。
+//
+// PCとスマホで値を分けている。PC表示では書き取り欄の列幅をキャンバスの実寸から
+// 決めている（--canvas-size）ため、上限を外すと「測る→列が広がる→その幅まで
+// 広げる→…」と、大きさを測り直すたびに少しずつ太り続ける。PC側の340pxは
+// その歯止めでもあるので動かさない。
+// 1カラムで縦に並ぶスマホ表示にはこの循環がないので、画面の幅いっぱいまで使える。
+const CANVAS_MAX_MOBILE = 420;
+const CANVAS_MAX_DESKTOP = 340;
+function canvasMax() {
+  return window.innerWidth >= 900 ? CANVAS_MAX_DESKTOP : CANVAS_MAX_MOBILE;
+}
 
 function applyCanvasSize(can, px) {
   if (can.width === px) return;
@@ -1483,7 +1495,7 @@ function applyCanvasSize(can, px) {
 function fitCanvas(id) {
   const can = document.getElementById(id);
   if (!can || !can.offsetParent) return; // 表示されていないと余白を測れない
-  const maxW = Math.min(can.parentElement.clientWidth, CANVAS_MAX);
+  const maxW = Math.min(can.parentElement.clientWidth, canvasMax());
   // いちど最小にして、画面にどれだけ余っているかを測る。
   // documentElement.scrollHeight は画面の高さより小さくならないので、
   // 中身そのものの高さが分かる body 側で測る。
