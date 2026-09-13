@@ -5,11 +5,15 @@
  * 鳴る（Android・PCでは効く）。音量つまみをiOSでも効かせるにはWeb Audioの
  * GainNodeを通す必要がある。
  *
- * つなぐときの決まりごと：AudioContextが running になったことを確かめてから
- * でないとつながない。suspended のままつなぐと、その要素の音はどこにも出なく
- * なる。resume() は非同期なので呼んだ直後はまだ running ではなく、しかも
- * createMediaElementSource は1要素につき1回きりで元に戻せないため、一度そう
- * なった要素は二度と鳴らない。
+ * つなぐときの決まりごとは2つ。どちらも、createMediaElementSource が1要素に
+ * つき1回きりで元に戻せないため、失敗するとその要素が二度と鳴らなくなるから。
+ *
+ * 1. AudioContextが running になったことを確かめてからつなぐ。suspended の
+ *    ままつなぐと、その要素の音はどこにも出なくなる。resume() は非同期なので
+ *    呼んだ直後はまだ running ではない。
+ * 2. その要素を一度鳴らせたことを確かめてからつなぐ。一度も鳴っていない要素を
+ *    つなぐと、iPhoneではそのまま無音になる（BGMは鳴るのに効果音だけ鳴らない、
+ *    という形で出た。BGMは鳴らし始めたあとにつないでいたため無事だった）。
  *
  * つないでいない間は <audio> のまま鳴らす。Web Audioが使えない・起こせない
  * 環境でも音が消えないようにするため。
@@ -60,6 +64,8 @@
   // つないだ要素はgainで音量を決める。つないでいない要素は <audio>.volume を使う。
   let ctx = null, sfxGain = null, bgmGain = null;
   const routed = new WeakSet();
+  // 一度でも鳴らせた要素。つないでよいのはこれだけ（冒頭の決まりごと2）
+  const played = new WeakSet();
 
   function graphReady() { return !!ctx && ctx.state === 'running'; }
 
@@ -93,8 +99,18 @@
   }
 
   function routeBgm() {
-    if (!bgmAudio || routed.has(bgmAudio)) return;
+    // 効果音と同じで、一度鳴らせたことを確かめてからでないとつながない
+    if (!bgmAudio || routed.has(bgmAudio) || !played.has(bgmAudio)) return;
     if (route(bgmAudio, bgmGain)) applyVolume(bgmAudio, 'bgm');
+  }
+
+  // 鳴らして、鳴らせたら印を付ける。この印が付いた要素だけグラフにつなぐ
+  function playAndMark(el, kind) {
+    if (!el) return;
+    el.play().then(() => {
+      played.add(el);
+      if (kind === 'bgm') routeBgm();
+    }).catch(() => {});
   }
 
   // 消音スイッチ（マナーモード）中は鳴らさない。あわせて、相手が自分で流している
@@ -141,10 +157,12 @@
       a = new Audio(audioUrl(SFX_BASE, SFX_FILES[name]));
       sfxPool[name] = a;
     }
-    route(a, sfxGain);
+    // まだ一度も鳴っていない要素はつながない。最初の1回は <audio> のまま鳴らし、
+    // 鳴らせたことを確かめてから2回目以降でつなぐ。
+    if (played.has(a)) route(a, sfxGain);
     applyVolume(a, 'se');
     try { a.currentTime = 0; } catch (e) {}
-    a.play().catch(() => {});
+    playAndMark(a, 'se');
   };
 
   KBAudio.playBgm = function (name) {
@@ -155,10 +173,9 @@
     bgmAudio = new Audio(audioUrl(BGM_BASE, BGM_FILES[name]));
     bgmAudio.loop = true;
     bgmAudio.preload = 'auto';
-    route(bgmAudio, bgmGain);
     applyVolume(bgmAudio, 'bgm');
-    // 画面を触る前は自動再生が止められる。その場合は下のwakeAudioが鳴らし直す。
-    bgmAudio.play().catch(() => {});
+    // 画面を触る前は自動再生が止められる。その場合は下の操作待ち受けが鳴らし直す。
+    playAndMark(bgmAudio, 'bgm');
   };
 
   KBAudio.stopBgm = function () {
@@ -209,7 +226,7 @@
       wakeGraph(); // 操作の中でないとAudioContextは起きない
       if (bgmKey && bgmAudio && bgmAudio.paused) {
         applyVolume(bgmAudio, 'bgm');
-        bgmAudio.play().catch(() => {});
+        playAndMark(bgmAudio, 'bgm');
       }
     });
   });
