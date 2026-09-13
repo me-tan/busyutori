@@ -163,7 +163,9 @@
   .bigbtn.has-icon { padding-left: 52px; }
   .bigbtn .icon { position: absolute; left: var(--s4); top: var(--s4); color: var(--ai); }
 
-  .settingsList, .friendsList { border-top: 1px solid var(--rule); }
+  /* 設定は見出しのすぐ下に並ぶので、上の罫線は見出し側のものだけにする
+     （両方あると線が二重に出る）。フレンド一覧は上に別の内容が入るので残す */
+  .friendsList { border-top: 1px solid var(--rule); }
   .settingRow {
     display: flex; align-items: center; justify-content: space-between; gap: var(--s4);
     padding: var(--s3) 0; min-height: 56px; border-bottom: 1px solid var(--rule);
