@@ -121,21 +121,18 @@
 
   /* ── 自分の情報 ─────────────────────────────────────────── */
   /* 名前の頭文字を桝に入れる。原稿用紙の1マスと同じ見立て */
-  /* 左上の題名。真ん中はマスコットの絵にしたので、名前はここで出す */
-  .wordmark { font-family: var(--font-mincho); font-size: var(--t-md); font-weight: 600;
-              letter-spacing: 0.08em; color: var(--ink); flex: none; }
   .statRow { display: flex; align-items: center; justify-content: space-between;
              padding: var(--s3) 0; border-bottom: 1px solid var(--rule); }
   .statRow .lv { font-size: var(--t-sm); font-weight: 700; color: var(--ai); }
   .statRow .sc { font-family: var(--font-mincho); font-size: var(--t-lg); font-weight: 600; color: var(--ink); }
   .topnav { display: flex; align-items: center; gap: var(--s3); }
-  .topnavName { font-size: var(--t-sm); line-height: 1.5; text-align: right;
-                background: transparent; border: 1px solid transparent; color: inherit;
-                font-family: var(--font-ui); padding: var(--s1) var(--s2); cursor: pointer;
-                min-height: var(--tap); display: flex; flex-direction: column; justify-content: center; }
+  /* 誰で遊んでいるかを出す。押すとアカウントが開く。
+     同じ端末を何人かで使い分ける前提なので、遊び始める前に見えるようにしておく */
+  .topnavName { font-size: var(--t-base); font-weight: 700; color: var(--ink); text-align: left;
+                background: transparent; border: 1px solid transparent; font-family: var(--font-ui);
+                margin-left: calc(var(--s2) * -1); padding: var(--s1) var(--s2); cursor: pointer;
+                min-height: var(--tap); display: flex; align-items: center; }
   @media (hover: hover) { .topnavName:hover { background: var(--ai-pale); } }
-  .topnavName div:first-child { font-weight: 700; color: var(--ink); }
-  .topnavName div:last-child { font-size: var(--t-xs); color: var(--ink-soft); letter-spacing: 0.1em; }
   .iconBtn { position: relative; width: var(--tap); height: var(--tap); background: transparent;
              border: 1px solid transparent; color: var(--ai); display: flex; align-items: center;
              justify-content: center; flex: none; cursor: pointer; padding: 0; min-height: 0; }
@@ -659,7 +656,7 @@
 
 <div id="modeScreen" class="hidden">
   <div class="topnav">
-    <div class="wordmark">ぶしゅとり</div>
+    <button class="topnavName" id="openAccount" title="アカウント"><span id="myNickname">-</span></button>
     <div style="flex:1"></div>
     <button class="iconBtn" id="openFriends" title="フレンド">
       <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="6.5" cy="8.8" r="3"/><path d="M2.2 19.4c0-2.5 1.9-3.9 4.3-3.9s4.3 1.4 4.3 3.9"/><circle cx="17.5" cy="8.8" r="3"/><path d="M13.2 19.4c0-2.5 1.9-3.9 4.3-3.9s4.3 1.4 4.3 3.9"/></svg>
@@ -792,7 +789,6 @@
     </button>
     <div class="navTitle">設定</div>
   </div>
-  <div class="secTitle">音</div>
   <div class="settingsList">
     <div class="settingRow">
       <div class="settingLbl">
@@ -821,12 +817,6 @@
     「すべての音を消す」はこの端末でも使えます。
   </div>
 
-  <div class="secTitle" style="margin-top:var(--s6)">アカウント</div>
-  <div class="stack">
-    <button class="bigbtn" id="openAccount">
-      <span id="settingsAccountName">-</span><small>ニックネームの変更・ログアウト</small>
-    </button>
-  </div>
 </div>
 
 <div id="levelScreen" class="hidden">
@@ -1252,6 +1242,7 @@ async function refreshInviteBadge() {
 function renderModeScreen() {
   const p = Players.getProfile();
   if (!p) return;
+  document.getElementById('myNickname').textContent = p.nickname;
   refreshFriendBadge();
   refreshInviteBadge();
 }
@@ -2008,9 +1999,6 @@ function renderSettingsUI() {
 
   // iPhoneなどアプリから音量を変えられない端末では、触っても効かないつまみを
   // 操作できないようにして、本体で調節してもらうよう案内する
-  const p = Players.getProfile();
-  if (p) document.getElementById('settingsAccountName').textContent = p.nickname;
-
   const canControl = KBAudio.canControlVolume();
   ['seVolume', 'bgmVolume'].forEach(id => {
     const slider = document.getElementById(id);
@@ -2371,8 +2359,7 @@ function bind() {
   document.getElementById('toTitle').onclick = () => show('modeScreen');
 
   document.getElementById('openAccount').onclick = () => { renderProfileScreen(); show('profileScreen'); };
-  // アカウントは設定の中にあるので、戻り先も設定にする
-  document.getElementById('profileBack').onclick = () => { renderSettingsUI(); show('settingsScreen'); };
+  document.getElementById('profileBack').onclick = () => { renderModeScreen(); show('modeScreen'); };
   document.getElementById('renameBtn').onclick = async () => {
     const name = document.getElementById('renameInput').value.trim();
     if (!name) return;
